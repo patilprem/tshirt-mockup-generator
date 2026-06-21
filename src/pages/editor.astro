@@ -1,0 +1,50 @@
+---
+import Editor from '../components/Editor.astro';
+import '../styles/global.css';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="shortcut icon" href="/favicon.ico" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+		<link rel="manifest" href="/site.webmanifest" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Editor — Mockup Studio</title>
+		<meta name="description" content="Generate photo-realistic T-shirt mockups online. Change colors, upload custom designs with automatic crease/wrinkle blending, and download high-resolution PNG outputs instantly." />
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://mockupstudio.app/editor" />
+		<meta property="og:title" content="Editor — Mockup Studio" />
+		<meta property="og:description" content="Generate photo-realistic T-shirt mockups online. Change colors, upload custom designs with automatic crease/wrinkle blending, and download high-resolution PNG outputs instantly." />
+		<meta property="og:image" content="https://mockupstudio.app/og-image.png" />
+		<meta property="og:site_name" content="Mockup Studio" />
+
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Editor — Mockup Studio" />
+		<meta name="twitter:description" content="Generate photo-realistic T-shirt mockups online. Change colors, upload custom designs with automatic crease/wrinkle blending, and download high-resolution PNG outputs instantly." />
+		<meta name="twitter:image" content="https://mockupstudio.app/og-image.png" />
+	</head>
+	<body>
+		<header class="app-header">
+			<div class="logo-container">
+				<a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+					<img src="/favicon-96x96.png" class="logo-icon" alt="" aria-hidden="true" />
+					<span class="logo-text">Mockup Studio</span>
+					<span class="logo-badge">3D Folds</span>
+				</a>
+			</div>
+			<div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+				<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; box-shadow: 0 0 8px var(--accent);"></span>
+				Client Canvas Engine Active
+			</div>
+		</header>
+		
+		<Editor />
+	</body>
+</html>

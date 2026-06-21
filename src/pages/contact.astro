@@ -1,0 +1,179 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Contact Us"
+  description="Get in touch with the Mockup Studio team. Have a question, found a bug, or want to suggest a feature? We'd love to hear from you."
+  canonical="https://mockupstudio.app/contact"
+>
+
+  <!-- Page Hero -->
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">Contact Us</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">💬</span>
+      <h1>Get in touch</h1>
+      <p class="page-hero-sub">Have a question, found a bug, or want to suggest a feature? We'd love to hear from you. We typically respond within 1–2 business days.</p>
+    </div>
+  </div>
+
+  <!-- Contact Grid -->
+  <div class="page-content-wide">
+    <div class="contact-grid">
+
+      <!-- Left: Contact info -->
+      <div class="contact-info">
+        <h2>Ways to reach us</h2>
+        <p>Choose the channel that works best for you. For general questions and feature ideas, the contact form is fastest. For legal and privacy matters, please use the dedicated emails.</p>
+
+        <a href="mailto:hello@mockupstudio.app" class="contact-method">
+          <div class="contact-method-icon" aria-hidden="true">✉️</div>
+          <div class="contact-method-text">
+            <strong>General Enquiries</strong>
+            hello@mockupstudio.app
+          </div>
+        </a>
+
+        <a href="mailto:support@mockupstudio.app" class="contact-method">
+          <div class="contact-method-icon" aria-hidden="true">🛠️</div>
+          <div class="contact-method-text">
+            <strong>Bug Reports &amp; Support</strong>
+            support@mockupstudio.app
+          </div>
+        </a>
+
+        <a href="mailto:privacy@mockupstudio.app" class="contact-method">
+          <div class="contact-method-icon" aria-hidden="true">🔒</div>
+          <div class="contact-method-text">
+            <strong>Privacy &amp; Legal</strong>
+            privacy@mockupstudio.app
+          </div>
+        </a>
+
+        <!-- FAQ nudge -->
+        <div style="margin-top: 32px; padding: 18px; background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 10px;">
+            <strong style="color: var(--text-primary);">Looking for quick answers?</strong><br />
+            Check our FAQ — most common questions are answered there.
+          </p>
+          <a href="/#faq" style="font-size: 0.85rem; color: var(--primary); text-decoration: none; font-weight: 600;">
+            View FAQ →
+          </a>
+        </div>
+      </div>
+
+      <!-- Right: Contact form -->
+      <div class="contact-form" id="contact-form-wrapper">
+        <h2>Send us a message</h2>
+
+        <form id="contact-form" novalidate>
+          <div class="form-group">
+            <label for="contact-name">Your Name <span style="color:var(--secondary)">*</span></label>
+            <input
+              type="text"
+              id="contact-name"
+              name="name"
+              placeholder="Jane Smith"
+              autocomplete="name"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="contact-email">Email Address <span style="color:var(--secondary)">*</span></label>
+            <input
+              type="email"
+              id="contact-email"
+              name="email"
+              placeholder="jane@example.com"
+              autocomplete="email"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="contact-subject">Subject <span style="color:var(--secondary)">*</span></label>
+            <select id="contact-subject" name="subject" required>
+              <option value="" disabled selected>Select a topic…</option>
+              <option value="bug">🐛 Bug Report</option>
+              <option value="feature">💡 Feature Request</option>
+              <option value="question">❓ General Question</option>
+              <option value="business">💼 Business / Partnership</option>
+              <option value="privacy">🔒 Privacy / Legal</option>
+              <option value="other">📝 Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="contact-message">Message <span style="color:var(--secondary)">*</span></label>
+            <textarea
+              id="contact-message"
+              name="message"
+              rows="5"
+              placeholder="Describe your question or issue in as much detail as possible…"
+              required
+            ></textarea>
+          </div>
+
+          <button type="submit" class="form-submit" id="contact-submit-btn">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Send Message
+          </button>
+        </form>
+
+        <!-- Success state (shown after submit) -->
+        <div class="form-success" id="form-success" aria-live="polite">
+          <div class="form-success-icon" aria-hidden="true">🎉</div>
+          <h3>Message sent!</h3>
+          <p>Thanks for reaching out. We'll get back to you within 1–2 business days.</p>
+          <a href="/" style="display:inline-block;margin-top:16px;color:var(--primary);font-size:0.9rem;font-weight:600;text-decoration:none;">← Back to Home</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('contact-form') as HTMLFormElement;
+    const successBox = document.getElementById('form-success');
+    const submitBtn = document.getElementById('contact-submit-btn');
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Basic validation
+      const name = (document.getElementById('contact-name') as HTMLInputElement).value.trim();
+      const email = (document.getElementById('contact-email') as HTMLInputElement).value.trim();
+      const subject = (document.getElementById('contact-subject') as HTMLSelectElement).value;
+      const message = (document.getElementById('contact-message') as HTMLTextAreaElement).value.trim();
+
+      if (!name || !email || !subject || !message) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address.');
+        return;
+      }
+
+      // Simulate form submission (replace with real endpoint)
+      if (submitBtn) {
+        submitBtn.textContent = 'Sending…';
+        (submitBtn as HTMLButtonElement).disabled = true;
+      }
+
+      // Simulate network delay
+      await new Promise(r => setTimeout(r, 1200));
+
+      // Show success
+      form.style.display = 'none';
+      if (successBox) successBox.style.display = 'block';
+    });
+  </script>
+
+</PageLayout>

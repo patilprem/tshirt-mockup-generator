@@ -1,0 +1,140 @@
+---
+// PageLayout.astro — Shared layout for all inner pages (About, Privacy, Terms, Contact)
+import '../styles/global.css';
+import '../styles/landing.css';
+import '../styles/page.css';
+
+interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  noindex?: boolean;
+}
+
+const { title, description, canonical, noindex = false } = Astro.props;
+const fullTitle = `${title} — Mockup Studio`;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex, follow" />}
+    {!noindex && <meta name="robots" content="index, follow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="Mockup Studio" />
+    <meta property="og:image" content="https://mockupstudio.app/og-image.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://mockupstudio.app/og-image.png" />
+  </head>
+
+  <body class="landing-body inner-page">
+
+    <!-- NAV -->
+    <nav class="landing-nav scrolled" aria-label="Main navigation">
+      <div class="nav-inner">
+        <a href="/" class="nav-logo" aria-label="Mockup Studio home">
+          <img src="/favicon-96x96.png" class="logo-icon" alt="" aria-hidden="true" />
+          <span class="logo-text">Mockup Studio</span>
+          <span class="logo-badge">Free</span>
+        </a>
+        <ul class="nav-links" role="list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/editor">Editor</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+        <a href="/editor" class="nav-cta" id="nav-launch-btn">Launch Editor →</a>
+        <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+      <div class="nav-mobile-menu" id="nav-mobile-menu" aria-hidden="true">
+        <a href="/">Home</a>
+        <a href="/editor">Editor</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+        <a href="/editor" class="nav-cta-mobile">Launch Editor →</a>
+      </div>
+    </nav>
+
+    <!-- PAGE CONTENT -->
+    <main id="main-content" class="page-main">
+      <slot />
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="landing-footer landing-footer-full" aria-label="Site footer">
+      <div class="footer-full-inner">
+        <div class="footer-col footer-col-brand">
+          <div class="footer-brand">
+            <img src="/favicon-96x96.png" class="logo-icon" alt="" aria-hidden="true" />
+            <span class="logo-text">Mockup Studio</span>
+          </div>
+          <p class="footer-tagline">The best free t-shirt mockup generator online. AI-powered 3D fabric folds, 8 garments, instant PNG download.</p>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Product</h4>
+          <nav aria-label="Product links">
+            <a href="/">Home</a>
+            <a href="/editor">Editor</a>
+            <a href="/#how-it-works">How it Works</a>
+            <a href="/#faq">FAQ</a>
+          </nav>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Company</h4>
+          <nav aria-label="Company links">
+            <a href="/about">About Us</a>
+            <a href="/contact">Contact Us</a>
+          </nav>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Legal</h4>
+          <nav aria-label="Legal links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms &amp; Conditions</a>
+          </nav>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2025 Mockup Studio — Free T-Shirt Mockup Generator Online. All mockups generated in-browser. No data stored.</p>
+      </div>
+    </footer>
+
+    <script>
+      const hamburger = document.getElementById('nav-hamburger');
+      const mobileMenu = document.getElementById('nav-mobile-menu');
+      hamburger?.addEventListener('click', () => {
+        const isOpen = mobileMenu.classList.toggle('open');
+        hamburger.setAttribute('aria-expanded', isOpen.toString());
+        mobileMenu.setAttribute('aria-hidden', (!isOpen).toString());
+      });
+      mobileMenu?.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+          mobileMenu.classList.remove('open');
+          hamburger?.setAttribute('aria-expanded', 'false');
+          mobileMenu.setAttribute('aria-hidden', 'true');
+        });
+      });
+    </script>
+
+  </body>
+</html>

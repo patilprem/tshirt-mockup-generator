@@ -1,0 +1,2473 @@
+---
+// src/components/Editor.astro
+---
+
+<div class="app-container" data-mobile-tab="design">
+  <!-- Mobile Tab Navigation (Only visible on mobile) -->
+  <div class="mobile-nav-bar" id="mobile-nav-bar" role="tablist" aria-label="Mobile Navigation">
+    <button class="mobile-nav-btn active" data-target="design" role="tab" aria-selected="true" aria-controls="design-graphic-section design-adjustment-panel">
+      <span class="nav-icon" aria-hidden="true">✨</span>
+      <span class="nav-text">Design</span>
+    </button>
+    <button class="mobile-nav-btn" data-target="garment" role="tab" aria-selected="false" aria-controls="garment-type-section shirt-color-section">
+      <span class="nav-icon" aria-hidden="true">👕</span>
+      <span class="nav-text">Garment</span>
+    </button>
+    <button class="mobile-nav-btn" data-target="background" role="tab" aria-selected="false" aria-controls="mockup-background-section">
+      <span class="nav-icon" aria-hidden="true">🖼️</span>
+      <span class="nav-text">Background</span>
+    </button>
+    <button class="mobile-nav-btn" data-target="props" role="tab" aria-selected="false" aria-controls="aesthetic-props-section">
+      <span class="nav-icon" aria-hidden="true">🌿</span>
+      <span class="nav-text">Props</span>
+    </button>
+  </div>
+
+  <!-- Left Sidebar Controls -->
+  <aside class="sidebar sidebar-left">
+    <!-- Section 0: Garment Type -->
+    <div class="panel-section" id="garment-type-section">
+      <h3 class="panel-title">Garment Type</h3>
+      <div class="control-group">
+        <div class="garment-grid" id="garment-selector">
+          <button class="garment-card active" data-garment="crewneck" title="Classic Crewneck">
+            <span class="garment-icon" aria-hidden="true">👕</span>
+            <span class="garment-name">Crewneck</span>
+          </button>
+          <button class="garment-card" data-garment="ladies" title="Ladies Fitted Tee">
+            <span class="garment-icon" aria-hidden="true">👚</span>
+            <span class="nav-name" style="font-size: 0.75rem; white-space: nowrap;">Ladies Tee</span>
+          </button>
+          <button class="garment-card" data-garment="polo" title="Polo Collar Tee">
+            <span class="garment-icon" aria-hidden="true">👔</span>
+            <span class="garment-name">Polo Collar</span>
+          </button>
+          <button class="garment-card" data-garment="longsleeve" title="Long Sleeve Tee">
+            <span class="garment-icon" aria-hidden="true">🧥</span>
+            <span class="garment-name">Long Sleeve</span>
+          </button>
+          <button class="garment-card" data-garment="hoodie" title="Sport Hoodie">
+            <span class="garment-icon" aria-hidden="true">🧥</span>
+            <span class="garment-name">Hoodie</span>
+          </button>
+          <button class="garment-card" data-garment="sweatshirt" title="Sweatshirt">
+            <span class="garment-icon" aria-hidden="true">👕</span>
+            <span class="garment-name">Sweatshirt</span>
+          </button>
+          <button class="garment-card" data-garment="vneck" title="V-Neck Tee">
+            <span class="garment-icon" aria-hidden="true">👕</span>
+            <span class="garment-name">V-Neck</span>
+          </button>
+          <button class="garment-card" data-garment="tanktop" title="Tank Top">
+            <span class="garment-icon" aria-hidden="true">🎽</span>
+            <span class="garment-name">Tank Top</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 1: T-Shirt Color -->
+    <div class="panel-section" id="shirt-color-section">
+      <h3 class="panel-title">T-Shirt Color</h3>
+      <div class="control-group">
+        <div class="color-grid" id="preset-colors">
+          <button class="color-btn" style="background-color: #ffffff;" data-color="#ffffff" title="Classic White" aria-label="Classic White"></button>
+          <button class="color-btn active" style="background-color: #212121;" data-color="#212121" title="Vintage Black" aria-label="Vintage Black"></button>
+          <button class="color-btn" style="background-color: #afb0b1;" data-color="#afb0b1" title="Athletic Heather Grey" aria-label="Athletic Heather Grey"></button>
+          <button class="color-btn" style="background-color: #373a3c;" data-color="#373a3c" title="Charcoal Grey" aria-label="Charcoal Grey"></button>
+          <button class="color-btn" style="background-color: #1b2230;" data-color="#1b2230" title="Classic Navy Blue" aria-label="Classic Navy Blue"></button>
+          <button class="color-btn" style="background-color: #1e3b8a;" data-color="#1e3b8a" title="Royal Blue" aria-label="Royal Blue"></button>
+          <button class="color-btn" style="background-color: #4b533f;" data-color="#4b533f" title="Olive Green" aria-label="Olive Green"></button>
+          <button class="color-btn" style="background-color: #1e3328;" data-color="#1e3328" title="Forest Green" aria-label="Forest Green"></button>
+          <button class="color-btn" style="background-color: #521c22;" data-color="#521c22" title="Maroon Burgundy" aria-label="Maroon Burgundy"></button>
+          <button class="color-btn" style="background-color: #d2c6af;" data-color="#d2c6af" title="Sand Beige" aria-label="Sand Beige"></button>
+          <button class="color-btn" style="background-color: #f5d5db;" data-color="#f5d5db" title="Baby Pink" aria-label="Baby Pink"></button>
+          <button class="color-btn" style="background-color: #6b7c85;" data-color="#6b7c85" title="Dusty Blue" aria-label="Dusty Blue"></button>
+        </div>
+      </div>
+      <div class="control-group">
+        <label class="control-label" for="fabric-hex-input">Custom Fabric Color</label>
+        <div class="custom-color-wrapper" id="custom-color-toggle" style="cursor: pointer; user-select: none;">
+          <div class="color-btn" id="custom-color-preview" style="background-color: #ffffff; width: 22px; height: 22px; border: 2px solid var(--border-glass); margin: 0; box-shadow: none;" aria-hidden="true"></div>
+          <span id="color-hex-label" class="color-picker-value">#ffffff</span>
+          <span style="margin-left: auto; font-size: 0.75rem; color: var(--text-muted);" aria-hidden="true">▼</span>
+        </div>
+        
+        <div id="swatch-grid-panel" class="swatch-panel" style="display: none;">
+          <div class="swatch-tabs" id="fabric-swatch-tabs">
+            <button type="button" class="swatch-tab active" data-tab="presets">Presets</button>
+            <button type="button" class="swatch-tab" data-tab="custom">Custom</button>
+          </div>
+          
+          <div class="tab-content" id="fabric-presets-content">
+            <div class="swatch-grid" id="swatch-grid"></div>
+          </div>
+          
+          <div class="tab-content" id="fabric-custom-content" style="display: none;">
+            <div class="picker-container">
+              <div class="picker-row">
+                <div class="sl-container" id="fabric-sl-container">
+                  <canvas class="sl-canvas" width="200" height="200"></canvas>
+                  <div class="sl-marker" id="fabric-sl-marker"></div>
+                </div>
+                <div class="hue-container" id="fabric-hue-container">
+                  <canvas class="hue-canvas" width="20" height="200"></canvas>
+                  <div class="hue-marker" id="fabric-hue-marker"></div>
+                </div>
+              </div>
+              <div class="picker-input-row">
+                <div class="hex-input-wrapper">
+                  <input type="text" class="hex-text-input" id="fabric-hex-input" name="fabric-hex" autocomplete="off" placeholder="#ffffff (e.g. #ff0000)…" maxlength="7" value="#ffffff" />
+                  <div class="hex-preview-box" id="fabric-hex-preview" style="background-color: #ffffff;" aria-hidden="true"></div>
+                </div>
+                <button type="button" class="eye-dropper-btn" id="fabric-eyedropper-btn" title="Pick color from screen" aria-label="Pick color from screen">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 22l6-6M8.5 12.5l5 5M12.5 8.5l5 5M16 4l4 4-2.5 2.5-4-4L16 4z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Mockup Background -->
+    <div class="panel-section" id="mockup-background-section">
+      <h3 class="panel-title">Mockup Background</h3>
+      <div class="control-group">
+        <div class="texture-grid" id="bg-selector" style="grid-template-columns: repeat(2, 1fr);">
+          <button class="texture-btn" data-bg="solid-picker">Solid Color</button>
+          <button class="texture-btn" data-bg="transparent">Transparent</button>
+          <button class="texture-btn active" data-bg="wood-white">Wood Panel White</button>
+          <button class="texture-btn" data-bg="wood-brown">Wood Panel Brown</button>
+        </div>
+      </div>
+      <div class="control-group" id="bg-color-picker-container" style="display: none;">
+        <label class="control-label" for="bg-hex-input">Background Color</label>
+        <div class="custom-color-wrapper" id="bg-custom-color-toggle" style="cursor: pointer; user-select: none;">
+          <div class="color-btn" id="bg-custom-color-preview" style="background-color: #121318; width: 22px; height: 22px; border: 2px solid var(--border-glass); margin: 0; box-shadow: none;" aria-hidden="true"></div>
+          <span id="bg-color-hex-label" class="color-picker-value">#121318</span>
+          <span style="margin-left: auto; font-size: 0.75rem; color: var(--text-muted);" aria-hidden="true">▼</span>
+        </div>
+
+        <div id="bg-swatch-grid-panel" class="swatch-panel" style="display: none; width: 100%;">
+          <div class="swatch-tabs" id="bg-swatch-tabs">
+            <button type="button" class="swatch-tab active" data-tab="presets">Presets</button>
+            <button type="button" class="swatch-tab" data-tab="custom">Custom</button>
+          </div>
+          
+          <div class="tab-content" id="bg-presets-content">
+            <div class="swatch-grid" id="bg-swatch-grid"></div>
+          </div>
+          
+          <div class="tab-content" id="bg-custom-content" style="display: none;">
+            <div class="picker-container">
+              <div class="picker-row">
+                <div class="sl-container" id="bg-sl-container">
+                  <canvas class="sl-canvas" width="200" height="200"></canvas>
+                  <div class="sl-marker" id="bg-sl-marker"></div>
+                </div>
+                <div class="hue-container" id="bg-hue-container">
+                  <canvas class="hue-canvas" width="20" height="200"></canvas>
+                  <div class="hue-marker" id="bg-hue-marker"></div>
+                </div>
+              </div>
+              <div class="picker-input-row">
+                <div class="hex-input-wrapper">
+                  <input type="text" class="hex-text-input" id="bg-hex-input" name="bg-hex" autocomplete="off" placeholder="#121318 (e.g. #000000)…" maxlength="7" value="#121318" />
+                  <div class="hex-preview-box" id="bg-hex-preview" style="background-color: #121318;" aria-hidden="true"></div>
+                </div>
+                <button type="button" class="eye-dropper-btn" id="bg-eyedropper-btn" title="Pick color from screen" aria-label="Pick color from screen">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 22l6-6M8.5 12.5l5 5M12.5 8.5l5 5M16 4l4 4-2.5 2.5-4-4L16 4z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Viewport Workspace (Center) -->
+  <main class="viewport" style="flex-direction: column; gap: 12px;">
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="editor-canvas" width="1000" height="1000"></canvas>
+      <!-- Loading Overlay -->
+      <div class="canvas-loading-overlay" id="canvas-loading" style="display: none;" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="loading-text">Processing Garment Folds…</div>
+      </div>
+    </div>
+    <div class="canvas-hint" id="canvas-hint">Drag logo to place | Corner handles to scale | Top handle to rotate</div>
+    
+    <!-- Central Export Actions Panel -->
+    <div class="viewport-export-panel" style="width: 100%; max-width: 600px; margin-top: 8px;">
+      <div class="btn-row" style="width: 100%;">
+        <button class="btn btn-primary" id="download-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Mockup
+        </button>
+        <button class="btn btn-secondary" id="reset-btn">Reset</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Right Sidebar: Adjustments & Export Actions -->
+  <aside class="sidebar sidebar-right">
+    <!-- Section 3: Design Graphic -->
+    <div class="panel-section" id="design-graphic-section">
+      <h3 class="panel-title">Design Graphic</h3>
+      
+      <!-- Upload Dropzone -->
+      <div class="control-group">
+        <div class="upload-zone" id="drop-zone" role="button" aria-label="Upload custom design" tabindex="0">
+          <span class="upload-icon" aria-hidden="true">✦</span>
+          <span class="upload-text">Upload Custom Design</span>
+          <span class="upload-hint">Drag & drop PNG/JPG or click to browse</span>
+          <input type="file" id="file-input" accept="image/*" style="display: none;" aria-label="Upload custom design file" />
+        </div>
+      </div>
+
+      <!-- Sample Graphics Grid -->
+      <div class="control-group">
+        <label class="control-label">Or Choose a Sample Graphic</label>
+        <div class="designs-grid" id="sample-designs">
+          <button class="design-thumb active" data-src="/assets/designs/minimal_rose.png" aria-label="Select Minimal Rose preset">
+            <img src="/assets/designs/minimal_rose.png" alt="Minimal Rose" />
+          </button>
+          <button class="design-thumb" data-src="/assets/designs/minimal_mountain.png" aria-label="Select Minimal Mountain preset">
+            <img src="/assets/designs/minimal_mountain.png" alt="Minimal Mountain" />
+          </button>
+          <button class="design-thumb" data-src="/assets/designs/cat.png" aria-label="Select Retro Cat preset">
+            <img src="/assets/designs/cat.png" alt="Retro Cat" />
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Adjust Design -->
+    <div class="panel-section" id="design-adjustment-panel" style="padding-bottom: 24px;">
+      <h3 class="panel-title">Adjust Design</h3>
+      
+      <div class="control-group">
+        <label class="control-label">Alignment</label>
+        <div class="align-btn-grid" role="group" aria-label="Alignment presets">
+          <button class="align-btn" id="align-top">Chest</button>
+          <button class="align-btn" id="align-center">Center</button>
+          <button class="align-btn" id="align-bottom">Belly</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="scale-slider">
+          Size <span id="scale-val">35%</span>
+        </label>
+        <input type="range" id="scale-slider" min="10" max="90" value="35" />
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="rotate-slider">
+          Rotation <span id="rotate-val">0°</span>
+        </label>
+        <input type="range" id="rotate-slider" min="-180" max="180" value="0" />
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="opacity-slider">
+          Opacity <span id="opacity-val">100%</span>
+        </label>
+        <input type="range" id="opacity-slider" min="10" max="100" value="100" />
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="shadow-depth-slider">
+          Fold Shadows <span id="shadow-depth-val">60%</span>
+        </label>
+        <input type="range" id="shadow-depth-slider" min="10" max="100" value="60" />
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="highlight-shine-slider">
+          Fabric Shine <span id="highlight-shine-val">15%</span>
+        </label>
+        <input type="range" id="highlight-shine-slider" min="0" max="60" value="15" />
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Fabric Integration</label>
+        <div class="texture-grid" style="grid-template-columns: 1fr 1fr;" role="group" aria-label="Fabric integration mode">
+          <button class="texture-btn active" id="blend-realistic">Realistic (3D Folds)</button>
+          <button class="texture-btn" id="blend-flat">Flat Overlay</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5: Aesthetic Props -->
+    <div class="panel-section" id="aesthetic-props-section">
+      <h3 class="panel-title">Aesthetic Props</h3>
+      <div class="control-group">
+        <div class="props-grid" id="props-selector">
+          <button class="prop-card" data-prop="plant" title="Dense Table Plant" aria-label="Toggle Dense Table Plant prop">
+            <span class="prop-icon" aria-hidden="true">🌿</span>
+            <span class="prop-name">Plant</span>
+          </button>
+          <button class="prop-card" data-prop="hat" title="Straw Hat" aria-label="Toggle Straw Hat prop">
+            <span class="prop-icon" aria-hidden="true">👒</span>
+            <span class="prop-name">Straw Hat</span>
+          </button>
+          <button class="prop-card" data-prop="shoes" title="Canvas Shoes" aria-label="Toggle Canvas Shoes prop">
+            <span class="prop-icon" aria-hidden="true">👟</span>
+            <span class="prop-name">Shoes</span>
+          </button>
+          <button class="prop-card" data-prop="sunglasses" title="Aviator Sunglasses" aria-label="Toggle Aviator Sunglasses prop">
+            <span class="prop-icon" aria-hidden="true">🕶️</span>
+            <span class="prop-name">Sunglasses</span>
+          </button>
+          <button class="prop-card" data-prop="jeans" title="Folded Jeans" aria-label="Toggle Folded Jeans prop">
+            <span class="prop-icon" aria-hidden="true">👖</span>
+            <span class="prop-name">Jeans</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- Client-side script handling all interactivity and Canvas operations -->
+<script>
+  // Full-spectrum HSV Custom Color Picker helper class
+  class CustomColorPicker {
+    constructor({
+      slContainer,
+      slCanvas,
+      slMarker,
+      hueContainer,
+      hueCanvas,
+      hueMarker,
+      hexInput,
+      hexPreview,
+      eyedropperBtn,
+      initialColor,
+      onChange
+    }) {
+      this.slContainer = slContainer;
+      this.slCanvas = slCanvas;
+      this.slMarker = slMarker;
+      this.hueContainer = hueContainer;
+      this.hueCanvas = hueCanvas;
+      this.hueMarker = hueMarker;
+      this.hexInput = hexInput;
+      this.hexPreview = hexPreview;
+      this.eyedropperBtn = eyedropperBtn;
+      this.onChange = onChange;
+
+      this.h = 0; // 0-360
+      this.s = 0; // 0-100
+      this.v = 100; // 0-100
+
+      this.isDraggingSl = false;
+      this.isDraggingHue = false;
+
+      this.init();
+      this.setColor(initialColor, false);
+    }
+
+    init() {
+      // 1. Draw static Hue gradient on the hue canvas
+      this.drawHueGradient();
+
+      // 2. Attach event listeners for SL canvas
+      const handleSlStart = (e) => {
+        this.isDraggingSl = true;
+        this.handleSlMove(e);
+      };
+      this.slCanvas.addEventListener('mousedown', handleSlStart);
+      this.slCanvas.addEventListener('touchstart', handleSlStart, { passive: false });
+
+      // 3. Attach event listeners for Hue canvas
+      const handleHueStart = (e) => {
+        this.isDraggingHue = true;
+        this.handleHueMove(e);
+      };
+      this.hueCanvas.addEventListener('mousedown', handleHueStart);
+      this.hueCanvas.addEventListener('touchstart', handleHueStart, { passive: false });
+
+      // Global move and up handlers
+      window.addEventListener('mousemove', (e) => {
+        if (this.isDraggingSl) this.handleSlMove(e);
+        if (this.isDraggingHue) this.handleHueMove(e);
+      });
+      window.addEventListener('touchmove', (e) => {
+        if (this.isDraggingSl) this.handleSlMove(e);
+        if (this.isDraggingHue) this.handleHueMove(e);
+      }, { passive: false });
+
+      window.addEventListener('mouseup', () => {
+        this.isDraggingSl = false;
+        this.isDraggingHue = false;
+      });
+      window.addEventListener('touchend', () => {
+        this.isDraggingSl = false;
+        this.isDraggingHue = false;
+      });
+
+      // 4. Hex input typing handler
+      this.hexInput.addEventListener('input', (e) => {
+        let value = e.target.value;
+        if (value && !value.startsWith('#')) {
+          value = '#' + value;
+        }
+        value = value.replace(/[^#0-9A-Fa-f]/g, '');
+        e.target.value = value.toUpperCase();
+
+        if (value.length === 7 || value.length === 4) {
+          this.setColor(value, true);
+        }
+      });
+
+      this.hexInput.addEventListener('blur', () => {
+        this.hexInput.value = this.getHex().toUpperCase();
+      });
+
+      // 5. Eyedropper integration
+      if (window.EyeDropper) {
+        this.eyedropperBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          try {
+            const eyeDropper = new window.EyeDropper();
+            const result = await eyeDropper.open();
+            this.setColor(result.sRGBHex, true);
+          } catch (err) {
+            console.warn('Eyedropper canceled or failed:', err);
+          }
+        });
+      } else {
+        this.eyedropperBtn.style.display = 'none';
+      }
+    }
+
+    drawHueGradient() {
+      const ctx = this.hueCanvas.getContext('2d');
+      const w = this.hueCanvas.width;
+      const h = this.hueCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#ff0000');
+      grad.addColorStop(0.17, '#ffff00');
+      grad.addColorStop(0.33, '#00ff00');
+      grad.addColorStop(0.5, '#00ffff');
+      grad.addColorStop(0.67, '#0000ff');
+      grad.addColorStop(0.83, '#ff00ff');
+      grad.addColorStop(1, '#ff0000');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    drawSlGradient() {
+      const ctx = this.slCanvas.getContext('2d');
+      const w = this.slCanvas.width;
+      const h = this.slCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.fillStyle = `hsl(${this.h}, 100%, 50%)`;
+      ctx.fillRect(0, 0, w, h);
+
+      const whiteGrad = ctx.createLinearGradient(0, 0, w, 0);
+      whiteGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      whiteGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = whiteGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const blackGrad = ctx.createLinearGradient(0, h, 0, 0);
+      blackGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      blackGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = blackGrad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    handleSlMove(e) {
+      if (e.cancelable) e.preventDefault();
+      const rect = this.slCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      let x = clientX - rect.left;
+      let y = clientY - rect.top;
+
+      x = Math.max(0, Math.min(rect.width, x));
+      y = Math.max(0, Math.min(rect.height, y));
+
+      this.s = Math.round((x / rect.width) * 100);
+      this.v = Math.round((1 - y / rect.height) * 100);
+
+      this.updateMarkerPositions();
+      this.updateInputs(true);
+    }
+
+    handleHueMove(e) {
+      if (e.cancelable) e.preventDefault();
+      const rect = this.hueCanvas.getBoundingClientRect();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      let y = clientY - rect.top;
+      y = Math.max(0, Math.min(rect.height, y));
+
+      this.h = Math.round((y / rect.height) * 360);
+      if (this.h >= 360) this.h = 359;
+
+      this.drawSlGradient();
+      this.updateMarkerPositions();
+      this.updateInputs(true);
+    }
+
+    setColor(colorHex, triggerCallback = true) {
+      const hsv = this.hexToHsv(colorHex);
+      this.h = hsv.h;
+      this.s = hsv.s;
+      this.v = hsv.v;
+
+      this.drawSlGradient();
+      this.updateMarkerPositions();
+      this.updateInputs(triggerCallback, colorHex);
+    }
+
+    updateMarkerPositions() {
+      const slRect = this.slCanvas.getBoundingClientRect();
+      const x = (this.s / 100) * (slRect.width || 200);
+      const y = (1 - this.v / 100) * (slRect.height || 200);
+      this.slMarker.style.left = `${x}px`;
+      this.slMarker.style.top = `${y}px`;
+
+      const hueRect = this.hueCanvas.getBoundingClientRect();
+      const hy = (this.h / 360) * (hueRect.height || 200);
+      this.hueMarker.style.top = `${hy}px`;
+    }
+
+    updateInputs(triggerCallback = true, hexVal = null) {
+      const hex = hexVal || this.getHex();
+      if (document.activeElement !== this.hexInput) {
+        this.hexInput.value = hex.toUpperCase();
+      }
+      this.hexPreview.style.backgroundColor = hex;
+
+      if (triggerCallback && this.onChange) {
+        this.onChange(hex);
+      }
+    }
+
+    getHex() {
+      return this.hsvToHex(this.h, this.s, this.v);
+    }
+
+    hexToHsv(hex) {
+      hex = hex.replace(/^#/, '');
+      if (hex.length === 3) {
+        hex = hex[0]+hex[0] + hex[1]+hex[1] + hex[2]+hex[2];
+      }
+      if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
+        return { h: 0, s: 0, v: 100 };
+      }
+
+      let r = parseInt(hex.substring(0, 2), 16) / 255;
+      let g = parseInt(hex.substring(2, 4), 16) / 255;
+      let b = parseInt(hex.substring(4, 6), 16) / 255;
+
+      let max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, v = max;
+
+      let d = max - min;
+      s = max === 0 ? 0 : d / max;
+
+      if (max === min) {
+        h = 0;
+      } else {
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(v * 100) };
+    }
+
+    hsvToHex(h, s, v) {
+      s /= 100;
+      v /= 100;
+      let c = v * s;
+      let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      let m = v - c;
+      let r = 0, g = 0, b = 0;
+
+      if (h >= 0 && h < 60) {
+        r = c; g = x; b = 0;
+      } else if (h >= 60 && h < 120) {
+        r = x; g = c; b = 0;
+      } else if (h >= 120 && h < 180) {
+        r = 0; g = c; b = x;
+      } else if (h >= 180 && h < 240) {
+        r = 0; g = x; b = c;
+      } else if (h >= 240 && h < 300) {
+        r = x; g = 0; b = c;
+      } else if (h >= 300 && h < 360) {
+        r = c; g = 0; b = x;
+      }
+
+      let rHex = Math.round((r + m) * 255).toString(16).padStart(2, '0');
+      let gHex = Math.round((g + m) * 255).toString(16).padStart(2, '0');
+      let bHex = Math.round((b + m) * 255).toString(16).padStart(2, '0');
+
+      return `#${rHex}${gHex}${bHex}`;
+    }
+  }
+
+  // Wait until DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    // ----------------------------------------------------
+    // 1. Elements Cache
+    // ----------------------------------------------------
+    const canvas = document.getElementById('editor-canvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const presetColors = document.getElementById('preset-colors');
+    const customColorToggle = document.getElementById('custom-color-toggle');
+    const customColorPreview = document.getElementById('custom-color-preview');
+    const colorHexLabel = document.getElementById('color-hex-label');
+    const swatchGridPanel = document.getElementById('swatch-grid-panel');
+    const swatchGrid = document.getElementById('swatch-grid');
+    const bgSelector = document.getElementById('bg-selector');
+    const bgColorPickerContainer = document.getElementById('bg-color-picker-container');
+    const bgCustomColorToggle = document.getElementById('bg-custom-color-toggle');
+    const bgCustomColorPreview = document.getElementById('bg-custom-color-preview');
+    const bgColorHexLabel = document.getElementById('bg-color-hex-label');
+    const bgSwatchGridPanel = document.getElementById('bg-swatch-grid-panel');
+    const bgSwatchGrid = document.getElementById('bg-swatch-grid');
+    const sampleDesigns = document.getElementById('sample-designs');
+    const scaleSlider = document.getElementById('scale-slider');
+    const scaleVal = document.getElementById('scale-val');
+    const rotateSlider = document.getElementById('rotate-slider');
+    const rotateVal = document.getElementById('rotate-val');
+    const opacitySlider = document.getElementById('opacity-slider');
+    const opacityVal = document.getElementById('opacity-val');
+    const blendRealistic = document.getElementById('blend-realistic');
+    const blendFlat = document.getElementById('blend-flat');
+    const shadowDepthSlider = document.getElementById('shadow-depth-slider');
+    const shadowDepthVal = document.getElementById('shadow-depth-val');
+    const highlightShineSlider = document.getElementById('highlight-shine-slider');
+    const highlightShineVal = document.getElementById('highlight-shine-val');
+    const alignTop = document.getElementById('align-top');
+    const alignCenter = document.getElementById('align-center');
+    const alignBottom = document.getElementById('align-bottom');
+    const downloadBtn = document.getElementById('download-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const canvasHint = document.getElementById('canvas-hint');
+    const garmentSelector = document.getElementById('garment-selector');
+    const canvasLoading = document.getElementById('canvas-loading');
+
+    // ----------------------------------------------------
+    // 2. Editor State & Presets Configuration
+    // ----------------------------------------------------
+    const garmentConfigs = {
+      'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230 },
+      'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225 },
+      'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225 },
+      'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230 },
+      'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230 },
+      'sweatshirt': { chestY: 410, centerY: 480, bellyY: 570, defaultScale: 0.33, path: '/assets/processed/tshirt_sweatshirt.png', yFlat: 235 },
+      'vneck': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.35, path: '/assets/processed/tshirt_vneck.png', yFlat: 225 },
+      'tanktop': { chestY: 380, centerY: 460, bellyY: 550, defaultScale: 0.35, path: '/assets/processed/tshirt_tanktop.png', yFlat: 235 }
+    };
+
+    const propConfigs = {
+      'plant': { path: '/assets/props/prop_plant.png', x: 40, y: 40, w: 200, h: 200, rotation: 0, loaded: false, img: null },
+      'hat': { path: '/assets/props/prop_hat.png', x: 610, y: 100, w: 330, h: 330, rotation: 0, loaded: false, img: null },
+      'shoes': { path: '/assets/props/prop_shoes.png', x: 50, y: 600, w: 330, h: 330, rotation: 0, loaded: false, img: null },
+      'sunglasses': { path: '/assets/props/prop_sunglasses.png', x: 740, y: 400, w: 180, h: 72, rotation: 0, loaded: false, img: null },
+      'jeans': { path: '/assets/props/prop_jeans.png', x: 630, y: 520, w: 300, h: 375, rotation: 0, loaded: false, img: null }
+    };
+
+    let activeProps = {
+      'plant': false,
+      'hat': false,
+      'shoes': false,
+      'sunglasses': false,
+      'jeans': false
+    };
+
+    let draggedPropType = null;
+    let hoveredPropType = null;
+
+    // Selection & Resize State for Design and Props
+    let selectedElement = 'design'; // 'design', 'plant', 'hat', etc., or null
+    let isScalingProp = false;
+    let isRotatingProp = false;
+    let startPropWidth = 0;
+    let startPropHeight = 0;
+    let startPropX = 0;
+    let startPropY = 0;
+    let startPropAspect = 1.0;
+
+    let activeGarmentType = 'crewneck';
+    let shirtColor = '#212121';
+    let designImage = null;
+    let designSrc = '/assets/designs/minimal_rose.png';
+    let isDesignTransparent = false; // flag to skip keying if upload is pre-transparent
+    
+    // Design Transformation State
+    let designPos = { x: 500, y: 420 }; // default positioned over chest area of crewneck
+    let designScale = 0.35; // size multiplier relative to canvas
+    let designRotation = 0; // in radians
+    let designOpacity = 1.0;
+    let useRealisticBlending = true;
+    let shadowDepth = 0.60;
+    let highlightShine = 0.15;
+    let activeBgType = 'wood-white'; // solid-picker, transparent, wood-white, wood-brown
+    let customBgColor = '#121318';
+    let userHasManuallyScaled = false; // tracks if user manually adjusted design scale
+
+    // Interaction Modes
+    let isDragging = false;
+    let isScaling = false;
+    let isRotating = false;
+    let dragStartOffset = { x: 0, y: 0 };
+    let startScale = 0.35;
+    let startRotation = 0;
+    let startAngleOffset = 0;
+    let startDistFromCenter = 0;
+    let activeScaleCorner = ''; // 'tl', 'tr', 'br', 'bl'
+
+    // Offscreen Canvas buffers for image processing
+    let processedShirtMask = null;
+    let processedShirtShadows = null;
+    let processedShirtHighlights = null;
+    let processedDesignBuffer = null;
+
+    // Loading State
+    let isShirtLoaded = false;
+    let rawShirtImage = new Image();
+
+    // ----------------------------------------------------
+    // 3. Image Pre-processing Logic
+    // ----------------------------------------------------
+    
+    // Hot-swapping Garment Templates Helper
+    function loadGarment(type) {
+      const config = garmentConfigs[type];
+      if (!config) return;
+
+      activeGarmentType = type;
+      isShirtLoaded = false;
+      
+      // Show loading spinner
+      if (canvasLoading) canvasLoading.style.display = 'flex';
+
+      rawShirtImage = new Image();
+      rawShirtImage.crossOrigin = 'anonymous';
+      rawShirtImage.src = config.path;
+      rawShirtImage.onload = () => {
+        preProcessShirt();
+        isShirtLoaded = true;
+        
+        // Hide loading spinner
+        if (canvasLoading) canvasLoading.style.display = 'none';
+
+        // Set layout variables based on garment config (if scale was not manually adjusted)
+        if (!userHasManuallyScaled) {
+          designScale = config.defaultScale;
+          scaleSlider.value = Math.round(designScale * 100);
+          scaleVal.innerText = Math.round(designScale * 100) + '%';
+        }
+
+        designPos.x = 500;
+        designPos.y = config.chestY; // default to chest placement
+
+        // If design is already loaded, re-render, otherwise load it
+        if (designImage) {
+          render();
+        } else {
+          loadActiveDesign();
+        }
+      };
+    }
+
+    function loadProp(type) {
+      const config = propConfigs[type];
+      if (!config || config.loaded) return Promise.resolve();
+
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = config.path + '?v=' + Date.now();
+        img.onload = () => {
+          config.img = img;
+          config.loaded = true;
+          resolve();
+        };
+      });
+    }
+
+    // Initial load
+    loadGarment('crewneck');
+
+    let woodWhiteImg = null;
+    let woodBrownImg = null;
+
+    const woodWhiteRaw = new Image();
+    woodWhiteRaw.crossOrigin = 'anonymous';
+    woodWhiteRaw.src = '/assets/wood_white.png';
+    woodWhiteRaw.onload = () => {
+      woodWhiteImg = woodWhiteRaw;
+      if (isShirtLoaded) render();
+    };
+
+    const woodBrownRaw = new Image();
+    woodBrownRaw.crossOrigin = 'anonymous';
+    woodBrownRaw.src = '/assets/wood_brown.png';
+    woodBrownRaw.onload = () => {
+      woodBrownImg = woodBrownRaw;
+      if (isShirtLoaded) render();
+    };
+
+    // ----------------------------------------------------
+    // Swatch Color Grid Data Generation (120 colors)
+    // ----------------------------------------------------
+    const swatchColors = [];
+
+    // Row 1: Grayscale (12 shades)
+    const graysList = [
+      '#000000', '#151515', '#2a2a2a', '#404040', '#565656', '#707070', 
+      '#8c8c8c', '#a6a6a6', '#c0c0c0', '#dcdcdc', '#eeeeee', '#ffffff'
+    ];
+    swatchColors.push(...graysList);
+
+    // Rows 2 to 10: Spectrum
+    const hueSpectrum = [0, 20, 35, 55, 95, 130, 170, 200, 225, 265, 295, 330];
+    const lightLevels = [92, 83, 72, 60, 50, 40, 30, 20, 10];
+    const satLevels = [85, 90, 95, 100, 100, 95, 90, 85, 80];
+
+    for (let r = 0; r < 9; r++) {
+      const l = lightLevels[r];
+      const s = satLevels[r];
+      for (let c = 0; c < 12; c++) {
+        const h = hueSpectrum[c];
+        swatchColors.push(`hsl(${h}, ${s}%, ${l}%)`);
+      }
+    }
+
+    // Helper to check if color is "light" (for checkmark contrast)
+    function isColorLight(hslString, idx) {
+      if (idx < 12) return idx >= 8; // light gray / white in first row
+      const matches = hslString.match(/,\s*(\d+)%\)$/);
+      if (matches) {
+        return parseInt(matches[1]) >= 70;
+      }
+      return false;
+    }
+
+    // Normalized Canvas Color to Hex Helper
+    function getNormalizedHex(colorVal) {
+      const tempCtx = document.createElement('canvas').getContext('2d');
+      tempCtx.fillStyle = colorVal;
+      return tempCtx.fillStyle;
+    }
+
+    // Build grid cells programmatically
+    function buildSwatchGrid(gridContainer, onSelect, activeColor) {
+      gridContainer.innerHTML = '';
+      swatchColors.forEach((color, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'swatch-cell';
+        cell.style.backgroundColor = color;
+        
+        const isLight = isColorLight(color, idx);
+        if (isLight) cell.classList.add('light-cell');
+
+        const cellHex = getNormalizedHex(color);
+        const activeHex = getNormalizedHex(activeColor);
+        if (cellHex === activeHex) {
+          cell.classList.add('active');
+        }
+
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation(); // prevent closing grid instantly
+          gridContainer.querySelectorAll('.swatch-cell').forEach(c => c.classList.remove('active'));
+          cell.classList.add('active');
+          onSelect(color, cellHex);
+        });
+
+        gridContainer.appendChild(cell);
+      });
+    }
+
+    // ----------------------------------------------------
+    // Initialize Custom Color Pickers
+    // ----------------------------------------------------
+    const fabricColorPicker = new CustomColorPicker({
+      slContainer: document.getElementById('fabric-sl-container'),
+      slCanvas: document.querySelector('#fabric-sl-container .sl-canvas'),
+      slMarker: document.getElementById('fabric-sl-marker'),
+      hueContainer: document.getElementById('fabric-hue-container'),
+      hueCanvas: document.querySelector('#fabric-hue-container .hue-canvas'),
+      hueMarker: document.getElementById('fabric-hue-marker'),
+      hexInput: document.getElementById('fabric-hex-input'),
+      hexPreview: document.getElementById('fabric-hex-preview'),
+      eyedropperBtn: document.getElementById('fabric-eyedropper-btn'),
+      initialColor: shirtColor,
+      onChange: (hex) => {
+        shirtColor = hex;
+        colorHexLabel.innerText = hex.toUpperCase();
+        customColorPreview.style.backgroundColor = hex;
+        presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        
+        // update preset cell highlights if matching
+        swatchGrid.querySelectorAll('.swatch-cell').forEach(cell => {
+          if (getNormalizedHex(cell.style.backgroundColor) === getNormalizedHex(hex)) {
+            cell.classList.add('active');
+          } else {
+            cell.classList.remove('active');
+          }
+        });
+        render();
+      }
+    });
+
+    const bgColorPicker = new CustomColorPicker({
+      slContainer: document.getElementById('bg-sl-container'),
+      slCanvas: document.querySelector('#bg-sl-container .sl-canvas'),
+      slMarker: document.getElementById('bg-sl-marker'),
+      hueContainer: document.getElementById('bg-hue-container'),
+      hueCanvas: document.querySelector('#bg-hue-container .hue-canvas'),
+      hueMarker: document.getElementById('bg-hue-marker'),
+      hexInput: document.getElementById('bg-hex-input'),
+      hexPreview: document.getElementById('bg-hex-preview'),
+      eyedropperBtn: document.getElementById('bg-eyedropper-btn'),
+      initialColor: customBgColor,
+      onChange: (hex) => {
+        customBgColor = hex;
+        bgColorHexLabel.innerText = hex.toUpperCase();
+        bgCustomColorPreview.style.backgroundColor = hex;
+        
+        // update bg preset cell highlights if matching
+        bgSwatchGrid.querySelectorAll('.swatch-cell').forEach(cell => {
+          if (getNormalizedHex(cell.style.backgroundColor) === getNormalizedHex(hex)) {
+            cell.classList.add('active');
+          } else {
+            cell.classList.remove('active');
+          }
+        });
+        render();
+      }
+    });
+
+    // Tab Switching setup helper
+    function setupTabSwitching(tabContainerId, presetsContentId, customContentId, onTabShow) {
+      const tabContainer = document.getElementById(tabContainerId);
+      const tabs = tabContainer.querySelectorAll('.swatch-tab');
+      const presetsContent = document.getElementById(presetsContentId);
+      const customContent = document.getElementById(customContentId);
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          e.stopPropagation();
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+
+          const mode = tab.dataset.tab;
+          if (mode === 'presets') {
+            presetsContent.style.display = 'block';
+            customContent.style.display = 'none';
+          } else {
+            presetsContent.style.display = 'none';
+            customContent.style.display = 'block';
+            if (onTabShow) onTabShow();
+          }
+        });
+      });
+    }
+
+    setupTabSwitching('fabric-swatch-tabs', 'fabric-presets-content', 'fabric-custom-content', () => {
+      fabricColorPicker.drawSlGradient();
+      fabricColorPicker.updateMarkerPositions();
+    });
+
+    setupTabSwitching('bg-swatch-tabs', 'bg-presets-content', 'bg-custom-content', () => {
+      bgColorPicker.drawSlGradient();
+      bgColorPicker.updateMarkerPositions();
+    });
+
+    // Initialize grids
+    buildSwatchGrid(swatchGrid, (color, hex) => {
+      shirtColor = color;
+      colorHexLabel.innerText = hex;
+      customColorPreview.style.backgroundColor = hex;
+      presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+      fabricColorPicker.setColor(hex, false);
+      render();
+    }, shirtColor);
+
+    buildSwatchGrid(bgSwatchGrid, (color, hex) => {
+      customBgColor = color;
+      bgColorHexLabel.innerText = hex;
+      bgCustomColorPreview.style.backgroundColor = hex;
+      bgColorPicker.setColor(hex, false);
+      render();
+    }, customBgColor);
+
+    // key out background and extract shadow/highlight maps using BFS border flood fill
+    function preProcessShirt() {
+      const w = rawShirtImage.width;
+      const h = rawShirtImage.height;
+
+      // 1. Create canvases
+      processedShirtMask = document.createElement('canvas');
+      processedShirtMask.width = w;
+      processedShirtMask.height = h;
+      const maskCtx = processedShirtMask.getContext('2d');
+      maskCtx.drawImage(rawShirtImage, 0, 0);
+
+      processedShirtShadows = document.createElement('canvas');
+      processedShirtShadows.width = w;
+      processedShirtShadows.height = h;
+      const shadowCtx = processedShirtShadows.getContext('2d');
+
+      processedShirtHighlights = document.createElement('canvas');
+      processedShirtHighlights.width = w;
+      processedShirtHighlights.height = h;
+      const highlightCtx = processedShirtHighlights.getContext('2d');
+
+      // 2. Read pixels
+      const maskData = maskCtx.getImageData(0, 0, w, h);
+      const mPixels = maskData.data;
+
+      const shadowData = shadowCtx.createImageData(w, h);
+      const sPixels = shadowData.data;
+
+      const highlightData = highlightCtx.createImageData(w, h);
+      const hPixels = highlightData.data;
+
+      // No BFS background removal needed on the client side since rawShirtImage is already pre-cropped and transparent!
+
+      const config = garmentConfigs[activeGarmentType];
+      const Y_FLAT = config ? (config.yFlat || 215) : 215; // flat fabric baseline for white shirt
+
+      // 3. Process remaining non-background pixels to build full intensity wrinkle & shine maps
+      for (let idx = 0; idx < w * h; idx++) {
+        const rIdx = idx * 4;
+        const alpha = mPixels[rIdx + 3];
+
+        if (alpha === 0) {
+          // background
+          sPixels[rIdx] = 255;
+          sPixels[rIdx + 1] = 255;
+          sPixels[rIdx + 2] = 255;
+          sPixels[rIdx + 3] = 0;
+
+          hPixels[rIdx] = 0;
+          hPixels[rIdx + 1] = 0;
+          hPixels[rIdx + 2] = 0;
+          hPixels[rIdx + 3] = 0;
+          continue;
+        }
+
+        const r = mPixels[rIdx];
+        const g = mPixels[rIdx + 1];
+        const b = mPixels[rIdx + 2];
+
+        const Y = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        // A. Shadow (creases): values below Y_FLAT represent folds with contrast-enhancing gamma curve
+        let sVal = 255;
+        if (Y < Y_FLAT) {
+          sVal = Math.max(0, Math.min(255, Math.round(255 * Math.pow(Y / Y_FLAT, 1.8))));
+        }
+
+        // FADE OUT SHADOWS ON SEMI-TRANSPARENT EDGES TO PREVENT JAGGED DARK OUTLINES
+        if (alpha < 255) {
+          const factor = alpha / 255;
+          sVal = Math.round(sVal * factor + 255 * (1 - factor));
+        }
+
+        sPixels[rIdx] = sVal;
+        sPixels[rIdx + 1] = sVal;
+        sPixels[rIdx + 2] = sVal;
+        sPixels[rIdx + 3] = alpha;
+
+        // B. Highlights (sheen): values above Y_FLAT represent shines
+        let hVal = 0;
+        if (Y > Y_FLAT) {
+          hVal = Math.max(0, Math.min(255, Math.round(255 * ((Y - Y_FLAT) / (255 - Y_FLAT)))));
+        }
+        hPixels[rIdx] = 255;
+        hPixels[rIdx + 1] = 255;
+        hPixels[rIdx + 2] = 255;
+        hPixels[rIdx + 3] = Math.round(hVal * (alpha / 255));
+      }
+
+      // Write processed canvases
+      maskCtx.putImageData(maskData, 0, 0);
+      shadowCtx.putImageData(shadowData, 0, 0);
+      highlightCtx.putImageData(highlightData, 0, 0);
+    }
+
+    // Load active design graphic and apply background removal if needed
+    function loadActiveDesign() {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = designSrc;
+      img.onload = () => {
+        designImage = img;
+        preProcessDesign();
+        render();
+      };
+    }
+
+    // Removes black background from logo using a BFS flood-fill boundary detector
+    function preProcessDesign() {
+      if (!designImage) return;
+
+      const w = designImage.width;
+      const h = designImage.height;
+
+      processedDesignBuffer = document.createElement('canvas');
+      processedDesignBuffer.width = w;
+      processedDesignBuffer.height = h;
+      const dCtx = processedDesignBuffer.getContext('2d');
+      dCtx.drawImage(designImage, 0, 0);
+
+      // Check if image already has transparent pixels.
+      // If it does, we skip keying to avoid corrupting professional transparent PNGs.
+      const dData = dCtx.getImageData(0, 0, w, h);
+      const pixels = dData.data;
+      
+      let hasTransparency = false;
+      for (let i = 3; i < pixels.length; i += 4) {
+        if (pixels[i] < 240) {
+          hasTransparency = true;
+          break;
+        }
+      }
+
+      if (hasTransparency) {
+        // Just keep the original design as is
+        isDesignTransparent = true;
+        return;
+      }
+
+      isDesignTransparent = false;
+
+      // Run Flood-Fill keyer starting from borders to extract outer black background
+      const visited = new Uint8Array(w * h);
+      const queue = [];
+
+      function enqueue(x, y) {
+        if (x >= 0 && x < w && y >= 0 && y < h) {
+          const idx = y * w + x;
+          if (!visited[idx]) {
+            visited[idx] = 1;
+            queue.push(idx);
+          }
+        }
+      }
+
+      // Enqueue all boundary pixels
+      for (let x = 0; x < w; x++) {
+        enqueue(x, 0);
+        enqueue(x, h - 1);
+      }
+      for (let y = 0; y < h; y++) {
+        enqueue(0, y);
+        enqueue(w - 1, y);
+      }
+
+      while (queue.length > 0) {
+        const idx = queue.shift();
+        const px = idx % w;
+        const py = Math.floor(idx / w);
+        const rIdx = idx * 4;
+        
+        const r = pixels[rIdx];
+        const g = pixels[rIdx + 1];
+        const b = pixels[rIdx + 2];
+
+        // Key threshold: pixel is dark (r,g,b < 35)
+        if (r < 35 && g < 35 && b < 35) {
+          pixels[rIdx + 3] = 0; // Make transparent
+
+          // Add 4-connected neighbors
+          enqueue(px + 1, py);
+          enqueue(px - 1, py);
+          enqueue(px, py + 1);
+          enqueue(px, py - 1);
+        }
+      }
+
+      // Smooth transition edges of keyed image
+      for (let idx = 0; idx < w * h; idx++) {
+        if (visited[idx]) continue;
+        
+        const rIdx = idx * 4;
+        const px = idx % w;
+        const py = Math.floor(idx / w);
+        
+        // If not background, check if adjacent to transparent background
+        const r = pixels[rIdx];
+        const g = pixels[rIdx + 1];
+        const b = pixels[rIdx + 2];
+        const isDark = (r < 60 && g < 60 && b < 60);
+
+        if (isDark) {
+          let hasBgNeighbor = false;
+          // check 4 directions
+          const neighbors = [
+            (py > 0) ? (py - 1) * w + px : -1,
+            (py < h - 1) ? (py + 1) * w + px : -1,
+            (px > 0) ? py * w + (px - 1) : -1,
+            (px < w - 1) ? py * w + (px + 1) : -1
+          ];
+          
+          for (let n of neighbors) {
+            if (n !== -1 && visited[n]) {
+              hasBgNeighbor = true;
+              break;
+            }
+          }
+
+          if (hasBgNeighbor) {
+            // Anti-alias edge
+            const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+            pixels[rIdx + 3] = Math.round(255 * (brightness / 60));
+          }
+        }
+      }
+
+      dCtx.putImageData(dData, 0, 0);
+    }
+
+    // ----------------------------------------------------
+    // 4. Custom Background Rendering Helpers
+    // ----------------------------------------------------
+    function drawBackground(ctxTarget, w, h, isExport = false) {
+      switch (activeBgType) {
+        case 'transparent':
+          ctxTarget.clearRect(0, 0, w, h);
+          break;
+          
+        case 'solid-picker':
+          ctxTarget.fillStyle = customBgColor;
+          ctxTarget.fillRect(0, 0, w, h);
+          break;
+
+        case 'wood-white':
+          if (woodWhiteImg) {
+            ctxTarget.drawImage(woodWhiteImg, 0, 0, w, h);
+          } else {
+            ctxTarget.fillStyle = '#e8e8e6';
+            ctxTarget.fillRect(0, 0, w, h);
+          }
+          break;
+
+        case 'wood-brown':
+          if (woodBrownImg) {
+            ctxTarget.drawImage(woodBrownImg, 0, 0, w, h);
+          } else {
+            ctxTarget.fillStyle = '#563e2a';
+            ctxTarget.fillRect(0, 0, w, h);
+          }
+          break;
+
+        default:
+          ctxTarget.fillStyle = customBgColor;
+          ctxTarget.fillRect(0, 0, w, h);
+          break;
+      }
+    }
+
+    function drawProps(ctxTarget, scale = 1) {
+      Object.keys(activeProps).forEach(type => {
+        if (activeProps[type]) {
+          const config = propConfigs[type];
+          if (config.loaded && config.img) {
+            ctxTarget.save();
+            
+            // Translate to center of prop in scaled space
+            const cx = (config.x + config.w / 2) * scale;
+            const cy = (config.y + config.h / 2) * scale;
+            ctxTarget.translate(cx, cy);
+            
+            // Rotate
+            const rot = config.rotation || 0;
+            ctxTarget.rotate(rot);
+            
+            // Fixed screen shadow offset (down & right)
+            const cos = Math.cos(rot);
+            const sin = Math.sin(rot);
+            const shadowX = 8 * cos + 12 * sin;
+            const shadowY = 12 * cos - 8 * sin;
+
+            ctxTarget.shadowColor = 'rgba(0, 0, 0, 0.45)';
+            ctxTarget.shadowBlur = 18 * scale;
+            ctxTarget.shadowOffsetX = shadowX * scale;
+            ctxTarget.shadowOffsetY = shadowY * scale;
+            
+            // Draw image centered at origin
+            ctxTarget.drawImage(
+              config.img, 
+              -config.w / 2 * scale, 
+              -config.h / 2 * scale, 
+              config.w * scale, 
+              config.h * scale
+            );
+            ctxTarget.restore();
+          }
+        }
+      });
+    }
+
+    // ----------------------------------------------------
+    // 5. Canvas Compositing & Drawing Loop
+    // ----------------------------------------------------
+    function drawScene(targetCtx, w, h, scale = 1, isExport = false) {
+      // 1. Draw Backdrop
+      drawBackground(targetCtx, w, h, isExport);
+
+      // 2. Render T-Shirt + Design offscreen to handle masking correctly
+      const tshirtOffscreen = document.createElement('canvas');
+      tshirtOffscreen.width = w;
+      tshirtOffscreen.height = h;
+      const offCtx = tshirtOffscreen.getContext('2d');
+
+      // A. Draw the transparent silhouette mask
+      offCtx.drawImage(processedShirtMask, 0, 0, w, h);
+
+      // B. Mask with T-shirt base color
+      offCtx.globalCompositeOperation = 'source-in';
+      offCtx.fillStyle = shirtColor;
+      offCtx.fillRect(0, 0, w, h);
+
+      // C. Draw graphic design layer on top
+      if (designImage) {
+        offCtx.globalCompositeOperation = 'source-atop';
+        offCtx.save();
+        offCtx.translate(designPos.x * scale, designPos.y * scale);
+        offCtx.rotate(designRotation);
+        
+        // Calculate graphic size
+        const baseSize = 500 * scale; // base bounding size
+        const dAspect = designImage.width / designImage.height;
+        let dW = baseSize * designScale;
+        let dH = baseSize * designScale;
+        if (dAspect > 1) {
+          dH = dW / dAspect;
+        } else {
+          dW = dH * dAspect;
+        }
+
+        offCtx.globalAlpha = designOpacity;
+        
+        const sourceGraphic = isDesignTransparent ? designImage : processedDesignBuffer;
+        offCtx.drawImage(sourceGraphic, -dW / 2, -dH / 2, dW, dH);
+        offCtx.restore();
+      }
+
+      // D. Apply fabric shadow and highlight overlays
+      if (useRealisticBlending) {
+        // Multiply creases on top of colored shirt + logo
+        offCtx.globalCompositeOperation = 'source-atop';
+        offCtx.save();
+        offCtx.globalAlpha = shadowDepth;
+        offCtx.globalCompositeOperation = 'multiply';
+        offCtx.drawImage(processedShirtShadows, 0, 0, w, h);
+        offCtx.restore();
+
+        // Screen/Overlay highlights on top
+        offCtx.globalCompositeOperation = 'source-atop';
+        offCtx.save();
+        offCtx.globalAlpha = highlightShine;
+        offCtx.globalCompositeOperation = 'screen';
+        offCtx.drawImage(processedShirtHighlights, 0, 0, w, h);
+        offCtx.restore();
+      }
+
+      // E. Draw finished offscreen mockup onto main viewport canvas
+      targetCtx.save();
+      if (activeBgType !== 'transparent') {
+        targetCtx.shadowColor = 'rgba(0, 0, 0, 0.20)';
+        targetCtx.shadowBlur = 32 * scale;
+        targetCtx.shadowOffsetY = 16 * scale;
+      }
+      targetCtx.drawImage(tshirtOffscreen, 0, 0);
+      targetCtx.restore();
+
+      // F. Draw active aesthetic props with realistic drop shadows
+      drawProps(targetCtx, scale);
+    }
+
+    function render(showHandles = true) {
+      if (!isShirtLoaded) return;
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Draw scene at 1x scale
+      drawScene(ctx, w, h, 1, false);
+
+      // 3. Draw Editor Interactive Handles (if requested)
+      if (showHandles) {
+        if (designImage && selectedElement === 'design') {
+          drawEditorHandles();
+        }
+        drawPropHandles();
+      }
+    }
+
+    // Draws bounding box outline, scale corners, and rotation handle
+    function drawEditorHandles() {
+      const baseSize = 500;
+      const dAspect = designImage.width / designImage.height;
+      let dW = baseSize * designScale;
+      let dH = baseSize * designScale;
+      if (dAspect > 1) {
+        dH = dW / dAspect;
+      } else {
+        dW = dH * dAspect;
+      }
+
+      ctx.save();
+      ctx.translate(designPos.x, designPos.y);
+      ctx.rotate(designRotation);
+
+      // Draw Dashed Bounding Box Outline
+      ctx.strokeStyle = '#00b4e6';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(-dW / 2, -dH / 2, dW, dH);
+
+      // Draw Center Position dot
+      ctx.fillStyle = '#00b4e6';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI*2);
+      ctx.fill();
+
+      // Draw Corner Handles (Scale)
+      ctx.setLineDash([]); // solid lines
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#00b4e6';
+      const hSize = 12; // handle size
+
+      const corners = [
+        { x: -dW / 2, y: -dH / 2 }, // Top Left
+        { x: dW / 2, y: -dH / 2 },  // Top Right
+        { x: dW / 2, y: dH / 2 },   // Bottom Right
+        { x: -dW / 2, y: dH / 2 }   // Bottom Left
+      ];
+
+      corners.forEach(c => {
+        ctx.fillRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
+        ctx.strokeRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
+      });
+
+      // Draw Rotation Handle (Line upwards + Circle handle)
+      const rotY = -dH / 2 - 35;
+      ctx.beginPath();
+      ctx.moveTo(0, -dH / 2);
+      ctx.lineTo(0, rotY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, rotY, hSize/1.5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function getPropTransformMetrics(type) {
+      const config = propConfigs[type];
+      if (!config) return null;
+
+      const w = config.w;
+      const h = config.h;
+      const rotation = config.rotation || 0;
+      const centerX = config.x + w / 2;
+      const centerY = config.y + h / 2;
+
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+
+      function localToGlobal(lx, ly) {
+        return {
+          x: lx * cos - ly * sin + centerX,
+          y: lx * sin + ly * cos + centerY
+        };
+      }
+
+      return {
+        width: w,
+        height: h,
+        center: { x: centerX, y: centerY },
+        corners: {
+          tl: localToGlobal(-w / 2, -h / 2),
+          tr: localToGlobal(w / 2, -h / 2),
+          br: localToGlobal(w / 2, h / 2),
+          bl: localToGlobal(-w / 2, h / 2)
+        },
+        rot: localToGlobal(0, -h / 2 - 35)
+      };
+    }
+
+    function isPointInsidePropBox(type, cx, cy) {
+      const config = propConfigs[type];
+      if (!config) return false;
+      const metrics = getPropTransformMetrics(type);
+      if (!metrics) return false;
+
+      const centerX = config.x + config.w / 2;
+      const centerY = config.y + config.h / 2;
+      const rotation = config.rotation || 0;
+
+      const tx = cx - centerX;
+      const ty = cy - centerY;
+
+      const ux = tx * Math.cos(-rotation) - ty * Math.sin(-rotation);
+      const uy = tx * Math.sin(-rotation) + ty * Math.cos(-rotation);
+
+      return (
+        ux >= -metrics.width / 2 &&
+        ux <= metrics.width / 2 &&
+        uy >= -metrics.height / 2 &&
+        uy <= metrics.height / 2
+      );
+    }
+
+    function checkHitProps(cx, cy) {
+      const propTypes = Object.keys(activeProps);
+      for (let i = propTypes.length - 1; i >= 0; i--) {
+        const type = propTypes[i];
+        if (activeProps[type]) {
+          const config = propConfigs[type];
+          if (config.loaded && config.img) {
+            if (isPointInsidePropBox(type, cx, cy)) {
+              return type;
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    function checkHitPropHandles(type, cx, cy) {
+      const metrics = getPropTransformMetrics(type);
+      if (!metrics) return null;
+      
+      const clickRadius = 25; // hit area in canvas pixels
+      
+      // Check rotation handle
+      if (Math.hypot(metrics.rot.x - cx, metrics.rot.y - cy) < clickRadius) {
+        return { type: 'rotate' };
+      }
+      
+      // Check scale corner handles
+      for (const [corner, pt] of Object.entries(metrics.corners)) {
+        if (Math.hypot(pt.x - cx, pt.y - cy) < clickRadius) {
+          return { type: 'scale', corner: corner };
+        }
+      }
+      return null;
+    }
+
+    function drawPropHandles() {
+      // 1. Draw selection box & handles for selected prop
+      if (selectedElement && selectedElement !== 'design' && activeProps[selectedElement]) {
+        const config = propConfigs[selectedElement];
+        if (config.loaded && config.img) {
+          const metrics = getPropTransformMetrics(selectedElement);
+          if (metrics) {
+            ctx.save();
+            ctx.translate(metrics.center.x, metrics.center.y);
+            ctx.rotate(config.rotation || 0);
+
+            // Dashed Bounding Box Outline
+            ctx.strokeStyle = '#00b4e6';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
+
+            // Draw Center Position dot
+            ctx.fillStyle = '#00b4e6';
+            ctx.beginPath();
+            ctx.arc(0, 0, 4, 0, Math.PI*2);
+            ctx.fill();
+
+            // Draw Corner Handles (Scale)
+            ctx.setLineDash([]); // solid lines
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#00b4e6';
+            const hSize = 12; // handle size
+
+            const corners = [
+              { x: -metrics.width / 2, y: -metrics.height / 2 },
+              { x: metrics.width / 2, y: -metrics.height / 2 },
+              { x: metrics.width / 2, y: metrics.height / 2 },
+              { x: -metrics.width / 2, y: metrics.height / 2 }
+            ];
+
+            corners.forEach(c => {
+              ctx.fillRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
+              ctx.strokeRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
+            });
+
+            // Draw Rotation Handle (Line upwards + Circle handle)
+            const rotY = -metrics.height / 2 - 35;
+            ctx.beginPath();
+            ctx.moveTo(0, -metrics.height / 2);
+            ctx.lineTo(0, rotY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, rotY, hSize/1.5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+          }
+        }
+      }
+
+      // 2. Draw hover outline for hovered prop (only if it's not the selected one)
+      if (hoveredPropType && hoveredPropType !== selectedElement && activeProps[hoveredPropType]) {
+        const config = propConfigs[hoveredPropType];
+        if (config.loaded && config.img) {
+          const metrics = getPropTransformMetrics(hoveredPropType);
+          if (metrics) {
+            ctx.save();
+            ctx.translate(metrics.center.x, metrics.center.y);
+            ctx.rotate(config.rotation || 0);
+            ctx.strokeStyle = 'rgba(0, 180, 230, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
+            ctx.restore();
+          }
+        }
+      }
+
+      // 3. Draw dragged prop indicator
+      if (draggedPropType) {
+        const config = propConfigs[draggedPropType];
+        const metrics = getPropTransformMetrics(draggedPropType);
+        if (metrics) {
+          ctx.save();
+          ctx.translate(metrics.center.x, metrics.center.y);
+          ctx.rotate(config.rotation || 0);
+          ctx.strokeStyle = '#008ab3';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
+          ctx.restore();
+        }
+      }
+    }
+
+    // ----------------------------------------------------
+    // 6. Interactive Click/Drag Bounding Box Math
+    // ----------------------------------------------------
+    
+    // Calculates coordinates of handles in global canvas space
+    function getTransformMetrics() {
+      const baseSize = 500;
+      const dAspect = designImage.width / designImage.height;
+      let dW = baseSize * designScale;
+      let dH = baseSize * designScale;
+      if (dAspect > 1) {
+        dH = dW / dAspect;
+      } else {
+        dW = dH * dAspect;
+      }
+
+      const cos = Math.cos(designRotation);
+      const sin = Math.sin(designRotation);
+
+      function localToGlobal(lx, ly) {
+        return {
+          x: lx * cos - ly * sin + designPos.x,
+          y: lx * sin + ly * cos + designPos.y
+        };
+      }
+
+      return {
+        width: dW,
+        height: dH,
+        center: designPos,
+        corners: {
+          tl: localToGlobal(-dW / 2, -dH / 2),
+          tr: localToGlobal(dW / 2, -dH / 2),
+          br: localToGlobal(dW / 2, dH / 2),
+          bl: localToGlobal(-dW / 2, dH / 2)
+        },
+        rot: localToGlobal(0, -dH / 2 - 35)
+      };
+    }
+
+    // Checks if canvas click falls inside rotated bounding box
+    function isPointInsideBox(cx, cy) {
+      if (!designImage) return false;
+      const metrics = getTransformMetrics();
+      
+      // Translate to origin
+      const tx = cx - designPos.x;
+      const ty = cy - designPos.y;
+
+      // Rotate point inversely to match bounding box alignment
+      const ux = tx * Math.cos(-designRotation) - ty * Math.sin(-designRotation);
+      const uy = tx * Math.sin(-designRotation) + ty * Math.cos(-designRotation);
+
+      return (
+        ux >= -metrics.width / 2 && 
+        ux <= metrics.width / 2 && 
+        uy >= -metrics.height / 2 && 
+        uy <= metrics.height / 2
+      );
+    }
+
+    // Checks distance to interactive handles
+    function checkHitHandles(cx, cy) {
+      if (!designImage) return null;
+      const metrics = getTransformMetrics();
+      const clickRadius = 25; // hit area in canvas pixels
+
+      function getDist(p1, p2) {
+        return Math.sqrt(Math.pow(p1.x - p2, 2) + Math.pow(p1.y - cy, 2));
+      }
+
+      // Check rotation handle
+      if (Math.hypot(metrics.rot.x - cx, metrics.rot.y - cy) < clickRadius) {
+        return { type: 'rotate' };
+      }
+
+      // Check scale corner handles
+      for (const [corner, pt] of Object.entries(metrics.corners)) {
+        if (Math.hypot(pt.x - cx, pt.y - cy) < clickRadius) {
+          return { type: 'scale', corner: corner };
+        }
+      }
+
+      // Check center body drag
+      if (isPointInsideBox(cx, cy)) {
+        return { type: 'drag' };
+      }
+
+      return null;
+    }
+
+    // ----------------------------------------------------
+    // 7. Mouse/Touch Event Handlers
+    // ----------------------------------------------------
+    
+    // Convert screen coordinates to canvas pixels
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    function handleStart(coords) {
+      // 1. Check if they clicked on the active selected prop's corner handles or rotation handle
+      if (selectedElement && selectedElement !== 'design') {
+        const hitPropHandle = checkHitPropHandles(selectedElement, coords.x, coords.y);
+        if (hitPropHandle) {
+          if (hitPropHandle.type === 'scale') {
+            isScalingProp = true;
+            activeScaleCorner = hitPropHandle.corner;
+            const config = propConfigs[selectedElement];
+            startPropWidth = config.w;
+            startPropHeight = config.h;
+            startPropX = config.x;
+            startPropY = config.y;
+            startPropAspect = config.w / config.h;
+            
+            const centerX = config.x + config.w / 2;
+            const centerY = config.y + config.h / 2;
+            startDistFromCenter = Math.hypot(coords.x - centerX, coords.y - centerY);
+            canvas.style.cursor = 'nwse-resize';
+          } else if (hitPropHandle.type === 'rotate') {
+            isRotatingProp = true;
+            const config = propConfigs[selectedElement];
+            startRotation = config.rotation || 0;
+            const centerX = config.x + config.w / 2;
+            const centerY = config.y + config.h / 2;
+            startAngleOffset = Math.atan2(coords.y - centerY, coords.x - centerX);
+            canvas.style.cursor = 'grabbing';
+          }
+          return;
+        }
+      }
+
+      // 2. Check if they clicked on any active prop to select & drag it
+      const hitProp = checkHitProps(coords.x, coords.y);
+      if (hitProp) {
+        selectedElement = hitProp;
+        draggedPropType = hitProp;
+        const config = propConfigs[hitProp];
+        dragStartOffset.x = coords.x - config.x;
+        dragStartOffset.y = coords.y - config.y;
+        canvas.style.cursor = 'grabbing';
+        render();
+        return;
+      }
+
+      // 3. Otherwise, check if they clicked on the design handles (or the design itself)
+      const hit = checkHitHandles(coords.x, coords.y);
+      if (hit) {
+        selectedElement = 'design';
+        if (hit.type === 'drag') {
+          isDragging = true;
+          dragStartOffset.x = coords.x - designPos.x;
+          dragStartOffset.y = coords.y - designPos.y;
+          canvas.style.cursor = 'grabbing';
+        } else if (hit.type === 'scale') {
+          isScaling = true;
+          activeScaleCorner = hit.corner;
+          startScale = designScale;
+          startDistFromCenter = Math.hypot(coords.x - designPos.x, coords.y - designPos.y);
+          canvas.style.cursor = 'nwse-resize';
+        } else if (hit.type === 'rotate') {
+          isRotating = true;
+          startRotation = designRotation;
+          startAngleOffset = Math.atan2(coords.y - designPos.y, coords.x - designPos.x);
+          canvas.style.cursor = 'grabbing';
+        }
+        render();
+        return;
+      }
+
+      // 4. Clicked on empty canvas space -> deselect all!
+      selectedElement = null;
+      isDragging = false;
+      isScaling = false;
+      isRotating = false;
+      isScalingProp = false;
+      isRotatingProp = false;
+      draggedPropType = null;
+      render();
+      canvas.style.cursor = 'default';
+    }
+
+    function handleMove(coords) {
+      // 1. If scaling a selected prop
+      if (isScalingProp && selectedElement) {
+        const config = propConfigs[selectedElement];
+        const centerX = config.x + config.w / 2;
+        const centerY = config.y + config.h / 2;
+        const currentDist = Math.hypot(coords.x - centerX, coords.y - centerY);
+        const ratio = currentDist / startDistFromCenter;
+
+        // Maintain aspect ratio, enforce limits (50px to 600px width)
+        let newW = Math.max(50, Math.min(600, startPropWidth * ratio));
+        let newH = newW / startPropAspect;
+
+        config.x = centerX - newW / 2;
+        config.y = centerY - newH / 2;
+        config.w = newW;
+        config.h = newH;
+        render();
+        return;
+      }
+
+      // 1b. If rotating a selected prop
+      if (isRotatingProp && selectedElement) {
+        const config = propConfigs[selectedElement];
+        const centerX = config.x + config.w / 2;
+        const centerY = config.y + config.h / 2;
+        const currentAngle = Math.atan2(coords.y - centerY, coords.x - centerX);
+        let angleDelta = currentAngle - startAngleOffset;
+        let newRotation = startRotation + angleDelta;
+        let deg = Math.round(newRotation * (180 / Math.PI));
+        if (deg > 180) deg -= 360;
+        if (deg < -180) deg += 360;
+        config.rotation = deg * (Math.PI / 180);
+        render();
+        return;
+      }
+
+      // 2. If dragging a prop
+      if (draggedPropType) {
+        const config = propConfigs[draggedPropType];
+        config.x = Math.max(-config.w / 2, Math.min(1000 - config.w / 2, coords.x - dragStartOffset.x));
+        config.y = Math.max(-config.h / 2, Math.min(1000 - config.h / 2, coords.y - dragStartOffset.y));
+        render();
+        return;
+      }
+
+      // 3. Update cursor style & handle hover states if no drag/scale is active
+      if (!isDragging && !isScaling && !isRotating && !draggedPropType && !isScalingProp && !isRotatingProp) {
+        // First check if hovering over selected prop's corner handles or rotation handle
+        if (selectedElement && selectedElement !== 'design') {
+          const hitPropHandle = checkHitPropHandles(selectedElement, coords.x, coords.y);
+          if (hitPropHandle) {
+            if (hitPropHandle.type === 'scale') {
+              canvas.style.cursor = 'nwse-resize';
+            } else if (hitPropHandle.type === 'rotate') {
+              canvas.style.cursor = 'alias';
+            }
+            return;
+          }
+        }
+
+        // Then check if hovering over any prop body
+        const hitProp = checkHitProps(coords.x, coords.y);
+        if (hitProp) {
+          hoveredPropType = hitProp;
+          canvas.style.cursor = 'grab';
+          render();
+          return;
+        } else if (hoveredPropType) {
+          hoveredPropType = null;
+          canvas.style.cursor = 'default';
+          render();
+        }
+
+        // Then check if hovering over design handles
+        const hit = checkHitHandles(coords.x, coords.y);
+        if (hit) {
+          if (hit.type === 'drag') canvas.style.cursor = 'grab';
+          else if (hit.type === 'scale') canvas.style.cursor = 'nwse-resize';
+          else if (hit.type === 'rotate') canvas.style.cursor = 'alias';
+        } else {
+          canvas.style.cursor = 'default';
+        }
+        return;
+      }
+
+      if (!designImage) return;
+
+      // 4. Drag logo
+      if (isDragging) {
+        designPos.x = Math.max(100, Math.min(900, coords.x - dragStartOffset.x));
+        designPos.y = Math.max(100, Math.min(900, coords.y - dragStartOffset.y));
+      }
+
+      // 5. Scale logo
+      if (isScaling) {
+        const currentDist = Math.hypot(coords.x - designPos.x, coords.y - designPos.y);
+        let ratio = currentDist / startDistFromCenter;
+        let newScale = Math.max(0.1, Math.min(0.9, startScale * ratio));
+        designScale = newScale;
+        scaleSlider.value = Math.round(newScale * 100);
+        scaleVal.innerText = Math.round(newScale * 100) + '%';
+        userHasManuallyScaled = true;
+      }
+
+      // 6. Rotate logo
+      if (isRotating) {
+        const currentAngle = Math.atan2(coords.y - designPos.y, coords.x - designPos.x);
+        let angleDelta = currentAngle - startAngleOffset;
+        let newRotation = startRotation + angleDelta;
+        let deg = Math.round(newRotation * (180 / Math.PI));
+        if (deg > 180) deg -= 360;
+        if (deg < -180) deg += 360;
+        designRotation = deg * (Math.PI / 180);
+        rotateSlider.value = deg;
+        rotateVal.innerText = deg + '°';
+      }
+
+      render();
+    }
+
+    function handleEnd() {
+      isDragging = false;
+      isScaling = false;
+      isRotating = false;
+      isScalingProp = false;
+      draggedPropType = null;
+      canvas.style.cursor = 'default';
+      render();
+    }
+
+    // Attach Mouse Events
+    canvas.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      handleStart(getCanvasCoords(e));
+    });
+    window.addEventListener('mousemove', (e) => {
+      handleMove(getCanvasCoords(e));
+    });
+    window.addEventListener('mouseup', () => {
+      handleEnd();
+    });
+
+    // Attach Touch Mobile Events
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        handleStart(getCanvasCoords(e));
+      }
+    });
+    window.addEventListener('touchmove', (e) => {
+      if (isDragging || isScaling || isRotating || draggedPropType || isScalingProp || isRotatingProp) {
+        handleMove(getCanvasCoords(e));
+      }
+    }, { passive: false });
+    window.addEventListener('touchend', () => {
+      handleEnd();
+    });
+
+    // Global click/touch listener to clear selection when clicking outside
+    const handleOutsideClick = (e) => {
+      if (canvas && !canvas.contains(e.target) &&
+          !e.target.closest('.sidebar') &&
+          !e.target.closest('.viewport-export-panel') &&
+          !e.target.closest('.swatch-panel')) {
+        selectedElement = null;
+        render();
+      }
+    };
+    window.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('touchstart', handleOutsideClick);
+
+    // ----------------------------------------------------
+    // 8. Sidebar Controls Event Bindings
+    // ----------------------------------------------------
+
+    // T-shirt Presets Colors
+    presetColors.addEventListener('click', (e) => {
+      const btn = e.target.closest('.color-btn');
+      if (!btn) return;
+
+      // Toggle active states
+      presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      shirtColor = btn.dataset.color;
+      customColorPreview.style.backgroundColor = shirtColor;
+      colorHexLabel.innerText = shirtColor;
+      
+      fabricColorPicker.setColor(shirtColor, false);
+
+      buildSwatchGrid(swatchGrid, (color, hex) => {
+        shirtColor = color;
+        colorHexLabel.innerText = hex;
+        customColorPreview.style.backgroundColor = hex;
+        presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        fabricColorPicker.setColor(hex, false);
+        render();
+      }, shirtColor);
+      render();
+    });
+
+    // Custom Color Swatch dropdown toggle
+    customColorToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const show = swatchGridPanel.style.display === 'none';
+      swatchGridPanel.style.display = show ? 'block' : 'none';
+      bgSwatchGridPanel.style.display = 'none';
+    });
+
+    // Background selection
+    bgSelector.addEventListener('click', (e) => {
+      const btn = e.target.closest('.texture-btn');
+      if (!btn) return;
+
+      bgSelector.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      activeBgType = btn.dataset.bg;
+      if (activeBgType === 'solid-picker') {
+        bgColorPickerContainer.style.display = 'flex';
+      } else {
+        bgColorPickerContainer.style.display = 'none';
+      }
+
+      if (activeBgType === 'transparent') {
+        container.classList.add('transparent-active');
+      } else {
+        container.classList.remove('transparent-active');
+      }
+      render();
+    });
+
+    // Custom BG Color Swatch dropdown toggle
+    bgCustomColorToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const show = bgSwatchGridPanel.style.display === 'none';
+      bgSwatchGridPanel.style.display = show ? 'block' : 'none';
+      swatchGridPanel.style.display = 'none';
+    });
+
+    // Click outside swatch grids to close them
+    window.addEventListener('click', () => {
+      swatchGridPanel.style.display = 'none';
+      bgSwatchGridPanel.style.display = 'none';
+    });
+
+    swatchGridPanel.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    bgSwatchGridPanel.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    // Preset Sample Designs Select
+    sampleDesigns.addEventListener('click', (e) => {
+      const thumb = e.target.closest('.design-thumb');
+      if (!thumb) return;
+
+      sampleDesigns.querySelectorAll('.design-thumb').forEach(t => t.classList.remove('active'));
+      thumb.classList.add('active');
+
+      designSrc = thumb.dataset.src;
+      loadActiveDesign();
+    });
+
+    // File Upload Zone interaction
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // Drag-over styling
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--primary)';
+      dropZone.style.background = 'var(--primary-glow)';
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.borderColor = 'hsla(225, 20%, 25%, 0.4)';
+      dropZone.style.background = 'var(--bg-card)';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'hsla(225, 20%, 25%, 0.4)';
+      dropZone.style.background = 'var(--bg-card)';
+      
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleUploadedFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleUploadedFile(e.target.files[0]);
+      }
+    });
+
+    function handleUploadedFile(file) {
+      if (!file.type.match('image.*')) {
+        alert('Please upload an image file (PNG/JPG/SVG).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        // Remove active state from preset designs
+        sampleDesigns.querySelectorAll('.design-thumb').forEach(t => t.classList.remove('active'));
+        
+        designSrc = e.target.result;
+        loadActiveDesign();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Props Selector Interaction
+    const propsSelector = document.getElementById('props-selector');
+    propsSelector.addEventListener('click', async (e) => {
+      const card = e.target.closest('.prop-card');
+      if (!card) return;
+
+      const propType = card.dataset.prop;
+      activeProps[propType] = !activeProps[propType];
+
+      if (activeProps[propType]) {
+        card.classList.add('active');
+        if (canvasLoading) canvasLoading.style.display = 'flex';
+        await loadProp(propType);
+        if (canvasLoading) canvasLoading.style.display = 'none';
+      } else {
+        card.classList.remove('active');
+      }
+
+      render();
+    });
+
+    // Garment Selector Interaction
+    garmentSelector.addEventListener('click', (e) => {
+      const card = e.target.closest('.garment-card');
+      if (!card) return;
+
+      garmentSelector.querySelectorAll('.garment-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+
+      const garmentType = card.dataset.garment;
+      loadGarment(garmentType);
+    });
+
+    // Align actions
+    alignTop.addEventListener('click', () => {
+      designPos.y = garmentConfigs[activeGarmentType].chestY; // Chest area height
+      render();
+    });
+
+    alignCenter.addEventListener('click', () => {
+      designPos.x = 500;
+      designPos.y = garmentConfigs[activeGarmentType].centerY; // center shirt layout
+      render();
+    });
+
+    alignBottom.addEventListener('click', () => {
+      designPos.y = garmentConfigs[activeGarmentType].bellyY; // stomach height
+      render();
+    });
+
+    // Size Slider
+    scaleSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      designScale = val / 100;
+      scaleVal.innerText = val + '%';
+      userHasManuallyScaled = true;
+      render();
+    });
+
+    // Rotation Slider
+    rotateSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      designRotation = val * (Math.PI / 180);
+      rotateVal.innerText = val + '°';
+      render();
+    });
+
+    // Opacity Slider
+    opacitySlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      designOpacity = val / 100;
+      opacityVal.innerText = val + '%';
+      render();
+    });
+
+    // Shadow Depth Slider
+    shadowDepthSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      shadowDepth = val / 100;
+      shadowDepthVal.innerText = val + '%';
+      render();
+    });
+
+    // Highlight Shine Slider
+    highlightShineSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      highlightShine = val / 100;
+      highlightShineVal.innerText = val + '%';
+      render();
+    });
+
+    // Fabric Integration Blend settings
+    blendRealistic.addEventListener('click', () => {
+      blendRealistic.classList.add('active');
+      blendFlat.classList.remove('active');
+      useRealisticBlending = true;
+      render();
+    });
+
+    blendFlat.addEventListener('click', () => {
+      blendFlat.classList.add('active');
+      blendRealistic.classList.remove('active');
+      useRealisticBlending = false;
+      render();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      shirtColor = '#212121';
+      designRotation = 0;
+      designOpacity = 1.0;
+      useRealisticBlending = true;
+      shadowDepth = 0.60;
+      highlightShine = 0.15;
+      activeBgType = 'wood-white';
+      customBgColor = '#121318';
+
+      // Reset garment active selection card
+      garmentSelector.querySelectorAll('.garment-card').forEach(c => c.classList.remove('active'));
+      const defaultCard = garmentSelector.querySelector('[data-garment="crewneck"]');
+      if (defaultCard) defaultCard.classList.add('active');
+      userHasManuallyScaled = false;
+      loadGarment('crewneck');
+
+      selectedElement = 'design';
+
+      const defaultPropConfigs = {
+        'plant': { x: 40, y: 40, w: 200, h: 200 },
+        'hat': { x: 610, y: 100, w: 330, h: 330 },
+        'shoes': { x: 50, y: 600, w: 330, h: 330 },
+        'sunglasses': { x: 740, y: 400, w: 180, h: 72 },
+        'jeans': { x: 630, y: 520, w: 300, h: 375 }
+      };
+
+      Object.keys(activeProps).forEach(type => {
+        activeProps[type] = false;
+        if (propConfigs[type] && defaultPropConfigs[type]) {
+          propConfigs[type].x = defaultPropConfigs[type].x;
+          propConfigs[type].y = defaultPropConfigs[type].y;
+          propConfigs[type].w = defaultPropConfigs[type].w;
+          propConfigs[type].h = defaultPropConfigs[type].h;
+          propConfigs[type].rotation = 0;
+        }
+      });
+      propsSelector.querySelectorAll('.prop-card').forEach(c => c.classList.remove('active'));
+
+      // Reset DOM elements
+      scaleSlider.value = 35;
+      scaleVal.innerText = '35%';
+      rotateSlider.value = 0;
+      rotateVal.innerText = '0°';
+      opacitySlider.value = 100;
+      opacityVal.innerText = '100%';
+      shadowDepthSlider.value = 60;
+      shadowDepthVal.innerText = '60%';
+      highlightShineSlider.value = 15;
+      highlightShineVal.innerText = '15%';
+      
+      presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+      presetColors.querySelector('[data-color="#212121"]').classList.add('active');
+      customColorPreview.style.backgroundColor = '#212121';
+      colorHexLabel.innerText = '#212121';
+
+      bgSelector.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
+      bgSelector.querySelector('[data-bg="wood-white"]').classList.add('active');
+      bgColorPickerContainer.style.display = 'none';
+      bgCustomColorPreview.style.backgroundColor = '#121318';
+      bgColorHexLabel.innerText = '#121318';
+
+      // Rebuild swatch grids to move checkmarks back to defaults
+      buildSwatchGrid(swatchGrid, (color, hex) => {
+        shirtColor = color;
+        colorHexLabel.innerText = hex;
+        customColorPreview.style.backgroundColor = hex;
+        presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        fabricColorPicker.setColor(hex, false);
+        render();
+      }, shirtColor);
+
+      buildSwatchGrid(bgSwatchGrid, (color, hex) => {
+        customBgColor = color;
+        bgColorHexLabel.innerText = hex;
+        bgCustomColorPreview.style.backgroundColor = hex;
+        bgColorPicker.setColor(hex, false);
+        render();
+      }, customBgColor);
+
+      fabricColorPicker.setColor('#212121', false);
+      bgColorPicker.setColor('#121318', false);
+
+      // Reset tabs back to "Presets"
+      document.querySelectorAll('.swatch-tabs').forEach(tabsContainer => {
+        const tabs = tabsContainer.querySelectorAll('.swatch-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        tabs[0].classList.add('active');
+      });
+      document.getElementById('fabric-presets-content').style.display = 'block';
+      document.getElementById('fabric-custom-content').style.display = 'none';
+      document.getElementById('bg-presets-content').style.display = 'block';
+      document.getElementById('bg-custom-content').style.display = 'none';
+      container.classList.remove('transparent-active');
+
+      sampleDesigns.querySelectorAll('.design-thumb').forEach(t => t.classList.remove('active'));
+      sampleDesigns.querySelector('[data-src="/assets/designs/minimal_rose.png"]').classList.add('active');
+      
+      blendRealistic.classList.add('active');
+      blendFlat.classList.remove('active');
+
+      designSrc = '/assets/designs/minimal_rose.png';
+      loadActiveDesign();
+
+      // Reset mobile active tab back to "design"
+      const appContainer = document.querySelector('.app-container');
+      if (appContainer && mobileNavBar) {
+        appContainer.setAttribute('data-mobile-tab', 'design');
+        const mobileNavButtons = mobileNavBar.querySelectorAll('.mobile-nav-btn');
+        mobileNavButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        const defaultTabBtn = mobileNavBar.querySelector('[data-target="design"]');
+        if (defaultTabBtn) {
+          defaultTabBtn.classList.add('active');
+          defaultTabBtn.setAttribute('aria-selected', 'true');
+        }
+      }
+    });
+
+    // ----------------------------------------------------
+    // 9. High-Quality Export/Download Handler
+    // ----------------------------------------------------
+    downloadBtn.addEventListener('click', () => {
+      // 1. Create offscreen 2000x2000px canvas for high-quality export
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = 2000;
+      exportCanvas.height = 2000;
+      const exportCtx = exportCanvas.getContext('2d');
+
+      // Show loading spinner during high-res rendering
+      if (canvasLoading) canvasLoading.style.display = 'flex';
+
+      setTimeout(() => {
+        // 2. Render high-res mockup at 2x scale (2000x2000px)
+        drawScene(exportCtx, 2000, 2000, 2, true);
+
+        // 3. Extract high-res data URL
+        const imageURL = exportCanvas.toDataURL('image/png');
+
+        // 4. Trigger download
+        const downloadLink = document.createElement('a');
+        downloadLink.href = imageURL;
+        const colorClean = shirtColor.replace('#', '');
+        downloadLink.download = `tshirt-mockup-${colorClean}-${Date.now()}.png`;
+        
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+
+        // Hide loading spinner
+        if (canvasLoading) canvasLoading.style.display = 'none';
+      }, 50);
+    });
+
+    // ----------------------------------------------------
+    // 10. Mobile Tab Switching Handler
+    // ----------------------------------------------------
+    const mobileNavBar = document.getElementById('mobile-nav-bar');
+    if (mobileNavBar) {
+      const mobileNavButtons = mobileNavBar.querySelectorAll('.mobile-nav-btn');
+      const appContainer = document.querySelector('.app-container');
+      
+      mobileNavButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const target = btn.dataset.target;
+          appContainer.setAttribute('data-mobile-tab', target);
+          
+          mobileNavButtons.forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+          });
+          btn.classList.add('active');
+          btn.setAttribute('aria-selected', 'true');
+        });
+      });
+    }
+
+  });
+</script>

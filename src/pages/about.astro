@@ -1,0 +1,102 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="About Us"
+  description="Learn about Mockup Studio — the free online t-shirt mockup generator built for indie designers, Etsy sellers, and print-on-demand creators. No Photoshop, no signup."
+  canonical="https://mockupstudio.app/about"
+>
+
+  <!-- Page Hero -->
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">About Us</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">🎨</span>
+      <h1>Built for creators,<br /><span class="gradient-text">by creators</span></h1>
+      <p class="page-hero-sub">Mockup Studio was born out of one frustration — paying $20/month for Photoshop just to slap a design on a shirt. So we built the alternative: free, instant, and browser-based.</p>
+    </div>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="page-content-wide">
+    <div class="about-stats" aria-label="Product statistics">
+      <div class="about-stat">
+        <span class="about-stat-num">8</span>
+        <span class="about-stat-label">Garment Types</span>
+      </div>
+      <div class="about-stat">
+        <span class="about-stat-num">1000px</span>
+        <span class="about-stat-label">Export Resolution</span>
+      </div>
+      <div class="about-stat">
+        <span class="about-stat-num">120+</span>
+        <span class="about-stat-label">Color Presets</span>
+      </div>
+      <div class="about-stat">
+        <span class="about-stat-num">Free</span>
+        <span class="about-stat-label">Always &amp; Forever</span>
+      </div>
+    </div>
+
+    <!-- Mission -->
+    <div class="prose" style="max-width: 720px; margin: 0 auto 0;">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Our Mission
+      </h2>
+      <p>We believe that every creator — whether you're launching your first Etsy shop or running a full print-on-demand business — deserves access to professional-quality mockup tools without a subscription fee or steep learning curve.</p>
+      <p>Mockup Studio runs entirely in your browser. No installation, no account, no credit card. Just open it and start designing.</p>
+
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        How It Works
+      </h2>
+      <p>Under the hood, Mockup Studio uses a canvas-based 3D fabric fold engine. When you select a garment, the system loads a professionally photographed flatlay image and extracts two separate maps:</p>
+      <ul>
+        <li><strong>Shadow Map</strong> — the dark crease and fold areas of the fabric</li>
+        <li><strong>Highlight Map</strong> — the light-catching raised areas of the fabric</li>
+      </ul>
+      <p>Your uploaded design is composited beneath these maps using multiply and screen blending modes — the same technique used in professional Photoshop mockup templates. The result is a design that looks printed and sewn into the fabric, not pasted on top.</p>
+    </div>
+
+    <!-- Feature Cards -->
+    <div class="about-grid">
+      <div class="about-card">
+        <span class="about-card-icon" aria-hidden="true">🔒</span>
+        <h3>Privacy First</h3>
+        <p>Your designs never leave your device. Everything runs locally via the HTML5 Canvas API — nothing is uploaded to our servers.</p>
+      </div>
+      <div class="about-card">
+        <span class="about-card-icon" aria-hidden="true">⚡</span>
+        <h3>Instant Results</h3>
+        <p>No queues, no cloud processing. The entire rendering pipeline runs in real-time at 60fps in your browser — results are instant.</p>
+      </div>
+      <div class="about-card">
+        <span class="about-card-icon" aria-hidden="true">🎨</span>
+        <h3>True-to-Life Colors</h3>
+        <p>Our HSV color engine applies your chosen color as a pixel-level tint over the garment silhouette — every shade renders accurately.</p>
+      </div>
+      <div class="about-card">
+        <span class="about-card-icon" aria-hidden="true">📦</span>
+        <h3>POD Ready Exports</h3>
+        <p>1000×1000px PNG exports with no watermarks — compatible with Etsy, Shopify, Printful, Printify, Redbubble, and Merch by Amazon.</p>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="about-cta-block">
+      <h2>Ready to try it?</h2>
+      <p>It takes less than 60 seconds to create your first mockup — completely free.</p>
+      <a href="/editor" class="btn-hero-primary" id="about-cta-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Open the Free Mockup Generator
+      </a>
+    </div>
+  </div>
+
+</PageLayout>

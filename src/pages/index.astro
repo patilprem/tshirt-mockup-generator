@@ -1,0 +1,636 @@
+---
+import '../styles/global.css';
+import '../styles/landing.css';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary SEO -->
+    <title>Free T-Shirt Mockup Generator Online — Mockup Studio</title>
+    <meta name="description" content="The best free t-shirt mockup generator online. Upload your design, pick any color, and download a 1000px print-ready PNG — no signup, no watermark. AI-powered 3D fabric fold engine. Try it free now." />
+    <link rel="canonical" href="https://mockupstudio.app/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mockupstudio.app/" />
+    <meta property="og:title" content="Free T-Shirt Mockup Generator Online — Mockup Studio" />
+    <meta property="og:description" content="The best free tshirt mockup generator online. Upload your design, choose a garment, pick any color — download a high-res PNG instantly. No signup needed." />
+    <meta property="og:image" content="https://mockupstudio.app/og-image.png" />
+    <meta property="og:site_name" content="Mockup Studio" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Free T-Shirt Mockup Generator Online — Mockup Studio" />
+    <meta name="twitter:description" content="Best free tshirt mockup generator online. AI 3D fabric folds. No signup, no watermark. 1000px PNG free." />
+    <meta name="twitter:image" content="https://mockupstudio.app/og-image.png" />
+
+    <!-- SEO -->
+    <meta name="robots" content="index, follow" />
+    <meta name="keywords" content="free tshirt mockup generator, tshirt mockup generator, ai tshirt mockup generator, tshirt mockup generator online, free tshirt mockup generator online, best free tshirt mockup generator, tshirt mockup generator free" />
+    <meta name="author" content="Mockup Studio" />
+
+    <!-- JSON-LD: SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Mockup Studio",
+      "operatingSystem": "Web",
+      "applicationCategory": "DesignApplication",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "description": "The best free tshirt mockup generator online. Upload your design, pick a color, and download a 1000px PNG — no signup, no watermark. AI 3D fabric fold engine, 8 garment types.",
+      "url": "https://mockupstudio.app/",
+      "featureList": [
+        "Free tshirt mockup generator — no signup required",
+        "AI tshirt mockup generator with 3D fabric fold shading",
+        "Tshirt mockup generator online — runs in your browser",
+        "8 garment types: crewneck, hoodie, polo, long sleeve, sweatshirt, V-neck, ladies tee, tank top",
+        "120 color presets + full HSV color picker",
+        "Drag, scale, rotate design placement",
+        "Flatlay aesthetic props",
+        "1000×1000px PNG export, no watermark"
+      ]
+    }
+    </script>
+
+    <!-- JSON-LD: FAQPage -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is this really a free tshirt mockup generator?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes — 100% free, no account, no watermark. Create and download as many mockups as you need at zero cost." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this an AI tshirt mockup generator?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Our AI-powered 3D fabric fold engine extracts real wrinkle maps from garment photos and blends your design beneath them — making your graphic look printed and sewn into the fabric." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to remove my design background before uploading?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. The editor automatically strips solid black backgrounds. Already-transparent PNGs are used as-is." }
+        },
+        {
+          "@type": "Question",
+          "name": "What resolution does this free tshirt mockup generator export?",
+          "acceptedAnswer": { "@type": "Answer", "text": "1000×1000px PNG, no watermark — print-ready for Etsy, Shopify, Printful, Printify, Redbubble, and Merch by Amazon." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I change the t-shirt color?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pick from 12 preset colors or open the full-spectrum HSV picker to dial in any hex code. The canvas updates live." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use the mockups commercially?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every mockup you generate is yours — sell on Etsy, use in ads, or submit to print-on-demand. No attribution required." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does this tshirt mockup generator work on mobile?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes — fully touch-responsive. Drag, scale, and rotate with touch gestures on any smartphone or tablet." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is my design safe? Does it get uploaded to a server?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Your design never leaves your device. Everything runs in-browser via the HTML5 Canvas API — nothing is uploaded or stored." }
+        }
+      ]
+    }
+    </script>
+  </head>
+
+  <body class="landing-body">
+
+    <!-- NAV -->
+    <nav class="landing-nav" aria-label="Main navigation">
+      <div class="nav-inner">
+        <a href="/" class="nav-logo" aria-label="Mockup Studio home">
+          <img src="/favicon-96x96.png" class="logo-icon" alt="" aria-hidden="true" />
+          <span class="logo-text">Mockup Studio</span>
+          <span class="logo-badge">Free</span>
+        </a>
+        <ul class="nav-links" role="list">
+          <li><a href="#how-it-works">How it Works</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+        <a href="/editor" class="nav-cta" id="nav-launch-btn">Launch Editor →</a>
+        <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+      <div class="nav-mobile-menu" id="nav-mobile-menu" aria-hidden="true">
+        <a href="#how-it-works">How it Works</a>
+        <a href="#faq">FAQ</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+        <a href="/editor" class="nav-cta-mobile">Launch Editor →</a>
+      </div>
+    </nav>
+
+    <main id="main-content">
+
+      <!-- ─── HERO ─── -->
+      <section class="hero" aria-labelledby="hero-headline">
+        <div class="hero-blob hero-blob-1" aria-hidden="true"></div>
+        <div class="hero-blob hero-blob-2" aria-hidden="true"></div>
+        <div class="hero-blob hero-blob-3" aria-hidden="true"></div>
+
+        <div class="hero-content">
+          <div class="hero-badge" aria-hidden="true">
+            <span class="badge-dot"></span>
+            Free · No signup · No watermark · Instant download
+          </div>
+
+          <h1 id="hero-headline" class="hero-headline">
+            The Best Free T-Shirt<br />
+            <span class="gradient-text">Mockup Generator Online</span>
+          </h1>
+
+          <p class="hero-sub">
+            Upload your artwork, choose from 8 garments, pick any color — our AI-powered 3D fabric fold engine makes your design look printed and sewn in. Download a 1000px PNG free, instantly.
+          </p>
+
+          <div class="hero-actions">
+            <a href="/editor" class="btn-hero-primary" id="hero-cta-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Start Designing — It's Free
+            </a>
+            <a href="#how-it-works" class="btn-hero-secondary" id="hero-how-btn">
+              See how it works
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </a>
+          </div>
+
+          <div class="hero-proof" aria-label="Product stats">
+            <div class="proof-item">
+              <span class="proof-num">8</span>
+              <span class="proof-label">Garments</span>
+            </div>
+            <div class="proof-divider" aria-hidden="true"></div>
+            <div class="proof-item">
+              <span class="proof-num">1000px</span>
+              <span class="proof-label">PNG Export</span>
+            </div>
+            <div class="proof-divider" aria-hidden="true"></div>
+            <div class="proof-item">
+              <span class="proof-num">120+</span>
+              <span class="proof-label">Colors</span>
+            </div>
+            <div class="proof-divider" aria-hidden="true"></div>
+            <div class="proof-item">
+              <span class="proof-num">Free</span>
+              <span class="proof-label">No Signup</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero visual: Interactive Flatlay Mockup Scene -->
+        <div class="hero-visual" aria-hidden="true">
+          <div class="hero-flatlay-container" id="hero-flatlay-scene">
+            <div class="flatlay-mockup-wrap">
+              <canvas id="hero-shirt-canvas" width="600" height="600"></canvas>
+            </div>
+            <div class="flatlay-prop prop-plant" id="hero-prop-plant">
+              <img src="/assets/props/prop_plant.png" class="prop-img-float-1" alt="" />
+            </div>
+            <div class="flatlay-prop prop-sunglasses" id="hero-prop-sunglasses">
+              <div style="transform: rotate(-10deg);">
+                <img src="/assets/props/prop_sunglasses.png" class="prop-img-float-2" alt="" />
+              </div>
+            </div>
+            <div class="flatlay-prop prop-shoes" id="hero-prop-shoes">
+              <img src="/assets/props/prop_shoes.png" class="prop-img-float-3" alt="" />
+            </div>
+            <div class="flatlay-prop prop-jeans" id="hero-prop-jeans">
+              <img src="/assets/props/prop_jeans.png" class="prop-img-float-4" alt="" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── HOW IT WORKS ─── -->
+      <section class="section how-section" id="how-it-works" aria-labelledby="how-heading">
+        <div class="section-inner how-inner">
+          <div class="how-header">
+            <div class="section-tag">How it Works</div>
+            <h2 id="how-heading" class="section-title">From blank to mockup<br /><span class="gradient-text">in under 60 seconds</span></h2>
+          </div>
+          <ol class="steps-list" aria-label="Steps to create a mockup">
+            <li class="step-item">
+              <div class="step-content">
+                <div class="step-number" aria-hidden="true">01</div>
+                <div class="step-icon" aria-hidden="true">👕</div>
+                <h3>Choose Your Garment</h3>
+                <p>Pick from 8 professionally photographed garments — crewneck, hoodie, polo, long sleeve, sweatshirt, V-neck, ladies tee, or tank top.</p>
+              </div>
+              <div class="step-arrow" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </div>
+            </li>
+            <li class="step-item">
+              <div class="step-content">
+                <div class="step-number" aria-hidden="true">02</div>
+                <div class="step-icon" aria-hidden="true">🎨</div>
+                <h3>Upload &amp; Position Design</h3>
+                <p>Drag-and-drop your PNG or JPG. Reposition with drag, resize with corner handles, rotate freely — background auto-removed.</p>
+              </div>
+              <div class="step-arrow" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </div>
+            </li>
+            <li class="step-item">
+              <div class="step-content">
+                <div class="step-number" aria-hidden="true">03</div>
+                <div class="step-icon" aria-hidden="true">📥</div>
+                <h3>Download Mockup</h3>
+                <p>Hit Download — get a 1000×1000px PNG instantly. No email, no login, no waiting. Ready for Etsy, Shopify, or social media.</p>
+              </div>
+            </li>
+          </ol>
+          <div class="how-cta">
+            <a href="/editor" class="btn-hero-primary" id="how-cta-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Try It Now — It's Free
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── FAQ ─── -->
+      <section class="section faq-section" id="faq" aria-labelledby="faq-heading">
+        <div class="section-inner">
+          <div class="faq-top">
+            <div>
+              <div class="section-tag">FAQ</div>
+              <h2 id="faq-heading" class="section-title">Common questions<br /><span class="gradient-text">answered</span></h2>
+              <p class="faq-side-sub">Everything you need to know before you start creating your free t-shirt mockup.</p>
+              <a href="/editor" class="btn-hero-primary faq-side-cta" id="faq-cta-btn">
+                Open the Editor →
+              </a>
+            </div>
+            <div class="faq-list" role="list">
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Is this really a free tshirt mockup generator — no hidden costs?</summary>
+                <p class="faq-answer">100% free. No account, no payment, no watermark — ever. Everything runs in your browser. We don't upload or store any of your images.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Is it an AI tshirt mockup generator?</summary>
+                <p class="faq-answer">Yes. Our AI-powered 3D fabric fold engine extracts real wrinkle maps from professional garment photos and composites your design beneath them — making your artwork look naturally printed and sewn in, not just pasted on top.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Do I need to remove my design background before uploading?</summary>
+                <p class="faq-answer">No. The editor auto-strips solid black backgrounds via a BFS boundary algorithm. Just upload your PNG or JPG. Already-transparent PNGs are used as-is with no processing needed.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Can I change the t-shirt color to any color?</summary>
+                <p class="faq-answer">Yes. Choose from 12 quick presets (White, Black, Navy, Forest Green, Maroon, Sand…) or open the full-spectrum HSV picker and type in any hex code. The canvas updates live.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">What resolution does it export?</summary>
+                <p class="faq-answer">1000×1000px PNG, no watermark — print-ready for Etsy, Shopify, Printful, Printify, Redbubble, Merch by Amazon, and social media.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Can I use mockups commercially — Etsy, Shopify, ads?</summary>
+                <p class="faq-answer">Yes. Every mockup you generate is yours to use for any commercial or personal purpose. Sell on Etsy, run paid ads, post to Instagram — no attribution required.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Is my design safe? Does it get uploaded anywhere?</summary>
+                <p class="faq-answer">Your design never leaves your device. Mockup Studio runs 100% in-browser using the HTML5 Canvas API. Nothing is uploaded to any server, ever.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Does it work on mobile?</summary>
+                <p class="faq-answer">Yes — fully touch-responsive. Drag, scale, and rotate your design using touch gestures on any smartphone or tablet.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Can I switch garments without losing my design?</summary>
+                <p class="faq-answer">Yes. Tapping a different garment card hot-swaps the template while keeping your design, color, and size settings. The graphic auto-repositions to the chest area of the new garment.</p>
+              </details>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="landing-footer landing-footer-full" aria-label="Site footer">
+      <div class="footer-full-inner">
+        <div class="footer-col footer-col-brand">
+          <div class="footer-brand">
+            <img src="/favicon-96x96.png" class="logo-icon" alt="" aria-hidden="true" />
+            <span class="logo-text">Mockup Studio</span>
+          </div>
+          <p class="footer-tagline">The best free t-shirt mockup generator online. AI-powered 3D fabric folds, 8 garments, instant PNG download — no signup.</p>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Product</h4>
+          <nav aria-label="Product links">
+            <a href="/">Home</a>
+            <a href="/editor">Editor</a>
+            <a href="/#how-it-works">How it Works</a>
+            <a href="/#faq">FAQ</a>
+          </nav>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Company</h4>
+          <nav aria-label="Company links">
+            <a href="/about">About Us</a>
+            <a href="/contact">Contact Us</a>
+          </nav>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Legal</h4>
+          <nav aria-label="Legal links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms &amp; Conditions</a>
+          </nav>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2025 Mockup Studio — Free T-Shirt Mockup Generator Online. All mockups generated in-browser. No data stored.</p>
+      </div>
+    </footer>
+
+    <script>
+      // Smooth scroll
+      document.querySelectorAll('a[href^="#"]').forEach(link => {
+        link.addEventListener('click', e => {
+          const target = document.querySelector(link.getAttribute('href'));
+          if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        });
+      });
+
+      // Mobile nav
+      const hamburger = document.getElementById('nav-hamburger');
+      const mobileMenu = document.getElementById('nav-mobile-menu');
+      hamburger?.addEventListener('click', () => {
+        const isOpen = mobileMenu.classList.toggle('open');
+        hamburger.setAttribute('aria-expanded', isOpen.toString());
+        mobileMenu.setAttribute('aria-hidden', (!isOpen).toString());
+      });
+      mobileMenu?.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+          mobileMenu.classList.remove('open');
+          hamburger?.setAttribute('aria-expanded', 'false');
+          mobileMenu.setAttribute('aria-hidden', 'true');
+        });
+      });
+
+      // Sticky nav
+      const nav = document.querySelector('.landing-nav');
+      window.addEventListener('scroll', () => {
+        nav?.classList.toggle('scrolled', window.scrollY > 40);
+      }, { passive: true });
+
+      // Scroll reveal
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+      document.querySelectorAll('.step-item, .faq-item').forEach(el => observer.observe(el));
+
+      // ─── HERO FLATLAY INTERACTIVE LOGIC ───
+      // 1. Render Black T-Shirt with Rose Design on load
+      function renderHeroMockup() {
+        const canvas = document.getElementById('hero-shirt-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        const shirtImg = new Image();
+        const logoImg = new Image();
+
+        let loadedCount = 0;
+        const onImgLoad = () => {
+          loadedCount++;
+          if (loadedCount === 2) {
+            drawMockup();
+          }
+        };
+
+        shirtImg.onload = onImgLoad;
+        logoImg.onload = onImgLoad;
+
+        shirtImg.src = '/assets/processed/tshirt_flatlay.png';
+        logoImg.src = '/assets/designs/minimal_rose.png';
+
+        function drawMockup() {
+          const w = canvas.width;
+          const h = canvas.height;
+
+          // Create offscreen canvases for masking, shadows, highlights
+          const maskCanvas = document.createElement('canvas');
+          maskCanvas.width = w;
+          maskCanvas.height = h;
+          const maskCtx = maskCanvas.getContext('2d');
+          maskCtx.drawImage(shirtImg, 0, 0, w, h);
+
+          const shadowCanvas = document.createElement('canvas');
+          shadowCanvas.width = w;
+          shadowCanvas.height = h;
+          const shadowCtx = shadowCanvas.getContext('2d');
+
+          const highlightCanvas = document.createElement('canvas');
+          highlightCanvas.width = w;
+          highlightCanvas.height = h;
+          const highlightCtx = highlightCanvas.getContext('2d');
+
+          const maskData = maskCtx.getImageData(0, 0, w, h);
+          const mPixels = maskData.data;
+
+          const shadowData = shadowCtx.createImageData(w, h);
+          const sPixels = shadowData.data;
+
+          const highlightData = highlightCtx.createImageData(w, h);
+          const hPixels = highlightData.data;
+
+          const Y_FLAT = 230; // Crewneck Y_FLAT baseline
+
+          for (let idx = 0; idx < w * h; idx++) {
+            const rIdx = idx * 4;
+            const alpha = mPixels[rIdx + 3];
+
+            if (alpha === 0) {
+              sPixels[rIdx] = 255; sPixels[rIdx + 1] = 255; sPixels[rIdx + 2] = 255; sPixels[rIdx + 3] = 0;
+              hPixels[rIdx] = 0; hPixels[rIdx + 1] = 0; hPixels[rIdx + 2] = 0; hPixels[rIdx + 3] = 0;
+              continue;
+            }
+
+            const r = mPixels[rIdx];
+            const g = mPixels[rIdx + 1];
+            const b = mPixels[rIdx + 2];
+            const Y = 0.299 * r + 0.587 * g + 0.114 * b;
+
+            // Shadow creases
+            let sVal = 255;
+            if (Y < Y_FLAT) {
+              sVal = Math.max(0, Math.min(255, Math.round(255 * Math.pow(Y / Y_FLAT, 1.8))));
+            }
+            if (alpha < 255) {
+              const factor = alpha / 255;
+              sVal = Math.round(sVal * factor + 255 * (1 - factor));
+            }
+            sPixels[rIdx] = sVal; sPixels[rIdx + 1] = sVal; sPixels[rIdx + 2] = sVal; sPixels[rIdx + 3] = alpha;
+
+            // Highlights sheen
+            let hVal = 0;
+            if (Y > Y_FLAT) {
+              hVal = Math.max(0, Math.min(255, Math.round(255 * ((Y - Y_FLAT) / (255 - Y_FLAT)))));
+            }
+            hPixels[rIdx] = 255; hPixels[rIdx + 1] = 255; hPixels[rIdx + 2] = 255; hPixels[rIdx + 3] = Math.round(hVal * (alpha / 255));
+          }
+
+          shadowCtx.putImageData(shadowData, 0, 0);
+          highlightCtx.putImageData(highlightData, 0, 0);
+
+          // Now assemble mockup scene in offscreen canvas
+          const offscreen = document.createElement('canvas');
+          offscreen.width = w;
+          offscreen.height = h;
+          const offCtx = offscreen.getContext('2d');
+
+          // A. Draw shirt silhouette
+          offCtx.drawImage(maskCanvas, 0, 0);
+
+          // B. Multiply T-shirt base color (Vintage Black)
+          offCtx.globalCompositeOperation = 'source-in';
+          offCtx.fillStyle = '#212121';
+          offCtx.fillRect(0, 0, w, h);
+
+          // C. Draw logo chest print
+          offCtx.globalCompositeOperation = 'source-atop';
+          offCtx.save();
+          offCtx.translate(300, 275);
+          
+          // Draw minimal rose logo size:
+          const logoW = 150;
+          const logoH = 150;
+          offCtx.drawImage(logoImg, -logoW / 2, -logoH / 2, logoW, logoH);
+          offCtx.restore();
+
+          // D. Blend wrinkles shadow (multiply)
+          offCtx.globalCompositeOperation = 'source-atop';
+          offCtx.save();
+          offCtx.globalAlpha = 0.6; // 60% shadow depth
+          offCtx.globalCompositeOperation = 'multiply';
+          offCtx.drawImage(shadowCanvas, 0, 0);
+          offCtx.restore();
+
+          // E. Blend highlights shine (screen)
+          offCtx.globalCompositeOperation = 'source-atop';
+          offCtx.save();
+          offCtx.globalAlpha = 0.15; // 15% fabric shine
+          offCtx.globalCompositeOperation = 'screen';
+          offCtx.drawImage(highlightCanvas, 0, 0);
+          offCtx.restore();
+
+          // Draw active bounding box & transform handles
+          offCtx.globalCompositeOperation = 'source-over'; // Draw on top
+          offCtx.strokeStyle = '#00b4e6';
+          offCtx.lineWidth = 1.5;
+          offCtx.setLineDash([4, 3]);
+          offCtx.strokeRect(180, 205, 240, 140);
+          offCtx.setLineDash([]); // Reset
+
+          // Corner handles
+          const handleSize = 6;
+          const drawHandle = (hx, hy) => {
+            offCtx.fillStyle = '#ffffff';
+            offCtx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+            offCtx.strokeStyle = '#00b4e6';
+            offCtx.lineWidth = 1.5;
+            offCtx.strokeRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+          };
+          drawHandle(180, 205);
+          drawHandle(420, 205);
+          drawHandle(180, 345);
+          drawHandle(420, 345);
+
+          // Rotation handle line
+          offCtx.beginPath();
+          offCtx.moveTo(300, 205);
+          offCtx.lineTo(300, 180);
+          offCtx.strokeStyle = '#00b4e6';
+          offCtx.lineWidth = 1.5;
+          offCtx.stroke();
+
+          // Rotation handle circle
+          offCtx.beginPath();
+          offCtx.arc(300, 180, 3.5, 0, 2 * Math.PI);
+          offCtx.fillStyle = '#ffffff';
+          offCtx.fill();
+          offCtx.strokeStyle = '#00b4e6';
+          offCtx.lineWidth = 1.5;
+          offCtx.stroke();
+
+          // F. Draw final result onto main canvas
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(offscreen, 0, 0);
+        }
+      }
+
+      // Initialize mockup render
+      renderHeroMockup();
+
+      // 2. Parallax Mouse Movement
+      const container = document.getElementById('hero-flatlay-scene');
+      const props = {
+        plant: document.getElementById('hero-prop-plant'),
+        sunglasses: document.getElementById('hero-prop-sunglasses'),
+        shoes: document.getElementById('hero-prop-shoes'),
+        jeans: document.getElementById('hero-prop-jeans')
+      };
+
+      if (container) {
+        container.addEventListener('mousemove', (e) => {
+          const rect = container.getBoundingClientRect();
+          const x = e.clientX - rect.left - rect.width / 2;
+          const y = e.clientY - rect.top - rect.height / 2;
+          const dx = x / (rect.width / 2);
+          const dy = y / (rect.height / 2);
+
+          // Apply subtle parallax translations
+          if (props.plant) props.plant.style.transform = `translate(${dx * -12}px, ${dy * -12}px)`;
+          if (props.sunglasses) props.sunglasses.style.transform = `translate(${dx * -20}px, ${dy * -20}px)`;
+          if (props.shoes) props.shoes.style.transform = `translate(${dx * -15}px, ${dy * -15}px)`;
+          if (props.jeans) props.jeans.style.transform = `translate(${dx * -10}px, ${dy * -10}px)`;
+        });
+
+        container.addEventListener('mouseleave', () => {
+          // Smoothly reset positions
+          for (const key in props) {
+            if (props[key]) {
+              props[key].style.transform = 'translate(0, 0)';
+            }
+          }
+        });
+      }
+    </script>
+
+  </body>
+</html>
