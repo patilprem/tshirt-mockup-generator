@@ -980,6 +980,11 @@ input[type="range"]:focus-visible,
     overflow-y: auto;
   }
 
+  .app-header {
+    background: hsl(215, 25%, 10%) !important;
+    backdrop-filter: none !important;
+  }
+
   .app-container {
     display: flex;
     flex-direction: column;
@@ -996,6 +1001,8 @@ input[type="range"]:focus-visible,
     position: sticky;
     top: 64px; /* Pins it directly under the 64px app-header */
     z-index: 100;
+    background: hsl(215, 25%, 10%) !important; /* Solid opaque background to prevent bleed-through */
+    backdrop-filter: none !important;
   }
 
   /* Canvas viewport area */
