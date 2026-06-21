@@ -71,7 +71,9 @@ body {
   background: var(--bg-sidebar);
   border-bottom: 1px solid var(--border-glass);
   backdrop-filter: blur(16px);
-  z-index: 100;
+  z-index: 200;
+  position: sticky;
+  top: 0;
 }
 
 .logo-container {
@@ -971,12 +973,20 @@ input[type="range"]:focus-visible,
 
 /* Responsive collapse points (Tablet & Mobile viewport system) */
 @media (max-width: 1024px) {
+  body {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
   .app-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 64px);
-    height: calc(100dvh - 64px);
-    overflow: hidden;
+    height: auto;
+    min-height: calc(100vh - 64px);
+    min-height: calc(100dvh - 64px);
+    overflow: visible;
   }
 
   /* Show mobile nav bar */
@@ -1042,13 +1052,13 @@ input[type="range"]:focus-visible,
 
   /* Sidebar styling on mobile */
   .sidebar {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     width: 100%;
     background: var(--bg-sidebar);
     backdrop-filter: blur(20px);
-    padding: 16px 16px 80px 16px; /* padding-bottom offsets fixed export panel */
+    padding: 16px 16px 96px 16px; /* padding-bottom offsets fixed export panel */
     gap: 16px;
-    overflow-y: auto;
+    overflow-y: visible;
     border: none !important;
     display: none !important; /* hidden by default, toggled by mobile-tab rules */
     order: 3;
@@ -1105,8 +1115,9 @@ input[type="range"]:focus-visible,
     height: 56px;
   }
   .app-container {
-    height: calc(100vh - 56px);
-    height: calc(100dvh - 56px);
+    height: auto;
+    min-height: calc(100vh - 56px);
+    min-height: calc(100dvh - 56px);
   }
 }
 
