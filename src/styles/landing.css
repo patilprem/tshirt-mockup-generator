@@ -267,7 +267,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 48px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
   animation: fade-slide-up 0.6s 0.3s ease-out both;
 }
@@ -311,6 +311,29 @@
 
 .btn-hero-secondary:hover {
   color: var(--text-primary);
+}
+
+.hero-cta-checklist {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 48px;
+  animation: fade-slide-up 0.6s 0.35s ease-out both;
+  flex-wrap: wrap;
+}
+
+.checklist-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.checklist-item .check-icon {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 /* Hero proof bar */
