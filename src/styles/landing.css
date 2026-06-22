@@ -379,7 +379,7 @@
 .hero-flatlay-container {
   position: relative;
   width: 100%;
-  max-width: 480px;
+  max-width: 540px;
   aspect-ratio: 1;
   margin: 0 auto;
   display: flex;
@@ -450,30 +450,30 @@
   filter: drop-shadow(10px 15px 18px rgba(0, 0, 0, 0.55));
 }
 
-/* Very subtle float animations for child images */
+/* Floating animations for child images */
 .prop-img-float-1 { animation: prop-float-1 7s ease-in-out infinite; }
 .prop-img-float-2 { animation: prop-float-2 9s ease-in-out infinite; }
 .prop-img-float-3 { animation: prop-float-3 8s ease-in-out infinite; }
 .prop-img-float-4 { animation: prop-float-4 10s ease-in-out infinite; }
 
 @keyframes prop-float-1 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50% { transform: translate(-3px, 2px) rotate(-0.8deg); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(-1.5deg); }
 }
 
 @keyframes prop-float-2 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50% { transform: translate(3px, -3px) rotate(1deg); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
 }
 
 @keyframes prop-float-3 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50% { transform: translate(-2px, -4px) rotate(-1.2deg); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-2deg); }
 }
 
 @keyframes prop-float-4 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50% { transform: translate(2px, 3px) rotate(0.6deg); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1.2deg); }
 }
 
 /* ─── SECTIONS SHARED ─── */

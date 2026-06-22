@@ -586,39 +586,7 @@ import '../styles/landing.css';
       // Initialize mockup render
       renderHeroMockup();
 
-      // 2. Parallax Mouse Movement
-      const container = document.getElementById('hero-flatlay-scene');
-      const props = {
-        plant: document.getElementById('hero-prop-plant'),
-        sunglasses: document.getElementById('hero-prop-sunglasses'),
-        shoes: document.getElementById('hero-prop-shoes'),
-        jeans: document.getElementById('hero-prop-jeans')
-      };
-
-      if (container) {
-        container.addEventListener('mousemove', (e) => {
-          const rect = container.getBoundingClientRect();
-          const x = e.clientX - rect.left - rect.width / 2;
-          const y = e.clientY - rect.top - rect.height / 2;
-          const dx = x / (rect.width / 2);
-          const dy = y / (rect.height / 2);
-
-          // Apply subtle parallax translations
-          if (props.plant) props.plant.style.transform = `translate(${dx * -12}px, ${dy * -12}px)`;
-          if (props.sunglasses) props.sunglasses.style.transform = `translate(${dx * -20}px, ${dy * -20}px)`;
-          if (props.shoes) props.shoes.style.transform = `translate(${dx * -15}px, ${dy * -15}px)`;
-          if (props.jeans) props.jeans.style.transform = `translate(${dx * -10}px, ${dy * -10}px)`;
-        });
-
-        container.addEventListener('mouseleave', () => {
-          // Smoothly reset positions
-          for (const key in props) {
-            if (props[key]) {
-              props[key].style.transform = 'translate(0, 0)';
-            }
-          }
-        });
-      }
+      // Parallax mouse displacement removed to let props float via CSS animations only
     </script>
 
   </body>
