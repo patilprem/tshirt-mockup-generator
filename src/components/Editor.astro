@@ -251,57 +251,60 @@
     <!-- Section 4: Adjust Design -->
     <div class="panel-section" id="design-adjustment-panel" style="padding-bottom: 24px;">
       <h3 class="panel-title">Adjust Design</h3>
-      
-      <div class="control-group">
-        <label class="control-label">Alignment</label>
-        <div class="align-btn-grid" role="group" aria-label="Alignment presets">
-          <button class="align-btn" id="align-top">Chest</button>
-          <button class="align-btn" id="align-center">Center</button>
-          <button class="align-btn" id="align-bottom">Belly</button>
-        </div>
-      </div>
 
       <div class="control-group">
-        <label class="control-label" for="scale-slider">
-          Size <span id="scale-val">35%</span>
-        </label>
+        <div class="control-label-row">
+          <label class="control-label-text" for="scale-slider">Size</label>
+          <div class="manual-input-container">
+            <input type="number" id="scale-manual" class="control-manual-input" min="10" max="90" value="35" />
+            <span class="manual-unit">%</span>
+          </div>
+        </div>
         <input type="range" id="scale-slider" min="10" max="90" value="35" />
       </div>
 
       <div class="control-group">
-        <label class="control-label" for="rotate-slider">
-          Rotation <span id="rotate-val">0°</span>
-        </label>
+        <div class="control-label-row">
+          <label class="control-label-text" for="rotate-slider">Rotation</label>
+          <div class="manual-input-container">
+            <input type="number" id="rotate-manual" class="control-manual-input" min="-180" max="180" value="0" />
+            <span class="manual-unit">°</span>
+          </div>
+        </div>
         <input type="range" id="rotate-slider" min="-180" max="180" value="0" />
       </div>
 
       <div class="control-group">
-        <label class="control-label" for="opacity-slider">
-          Opacity <span id="opacity-val">100%</span>
-        </label>
+        <div class="control-label-row">
+          <label class="control-label-text" for="opacity-slider">Opacity</label>
+          <div class="manual-input-container">
+            <input type="number" id="opacity-manual" class="control-manual-input" min="10" max="100" value="100" />
+            <span class="manual-unit">%</span>
+          </div>
+        </div>
         <input type="range" id="opacity-slider" min="10" max="100" value="100" />
       </div>
 
       <div class="control-group">
-        <label class="control-label" for="shadow-depth-slider">
-          Fold Shadows <span id="shadow-depth-val">60%</span>
-        </label>
+        <div class="control-label-row">
+          <label class="control-label-text" for="shadow-depth-slider">Fold Shadows</label>
+          <div class="manual-input-container">
+            <input type="number" id="shadow-depth-manual" class="control-manual-input" min="10" max="100" value="60" />
+            <span class="manual-unit">%</span>
+          </div>
+        </div>
         <input type="range" id="shadow-depth-slider" min="10" max="100" value="60" />
       </div>
 
       <div class="control-group">
-        <label class="control-label" for="highlight-shine-slider">
-          Fabric Shine <span id="highlight-shine-val">15%</span>
-        </label>
-        <input type="range" id="highlight-shine-slider" min="0" max="60" value="15" />
-      </div>
-
-      <div class="control-group">
-        <label class="control-label">Fabric Integration</label>
-        <div class="texture-grid" style="grid-template-columns: 1fr 1fr;" role="group" aria-label="Fabric integration mode">
-          <button class="texture-btn active" id="blend-realistic">Realistic (3D Folds)</button>
-          <button class="texture-btn" id="blend-flat">Flat Overlay</button>
+        <div class="control-label-row">
+          <label class="control-label-text" for="highlight-shine-slider">Fabric Shine</label>
+          <div class="manual-input-container">
+            <input type="number" id="highlight-shine-manual" class="control-manual-input" min="0" max="60" value="15" />
+            <span class="manual-unit">%</span>
+          </div>
         </div>
+        <input type="range" id="highlight-shine-slider" min="0" max="60" value="15" />
       </div>
     </div>
 
@@ -334,6 +337,44 @@
       </div>
     </div>
   </aside>
+
+  <!-- Download Quality Options Modal -->
+  <div class="download-modal-overlay" id="download-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="download-modal-title">
+    <div class="download-modal-card">
+      <h3 id="download-modal-title" class="modal-title">Select Download Quality</h3>
+      
+      <div class="modal-options">
+        <label class="modal-option-card active" id="option-high-card">
+          <input type="radio" name="download-quality" value="high" checked style="display: none;" />
+          <div class="option-details">
+            <span class="option-label">High Quality</span>
+            <span class="option-sub">lower file size - 1000x1000px</span>
+          </div>
+          <span class="radio-indicator"></span>
+        </label>
+        
+        <label class="modal-option-card" id="option-extra-high-card">
+          <input type="radio" name="download-quality" value="extra-high" style="display: none;" />
+          <div class="option-details">
+            <span class="option-label">Extra High Quality</span>
+            <span class="option-sub">higher file size - 2000x2000px</span>
+          </div>
+          <span class="radio-indicator"></span>
+        </label>
+      </div>
+      
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="modal-cancel-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Cancel
+        </button>
+        <button class="btn btn-primary" id="modal-download-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Client-side script handling all interactivity and Canvas operations -->
@@ -651,20 +692,15 @@
     const bgSwatchGrid = document.getElementById('bg-swatch-grid');
     const sampleDesigns = document.getElementById('sample-designs');
     const scaleSlider = document.getElementById('scale-slider');
-    const scaleVal = document.getElementById('scale-val');
+    const scaleManual = document.getElementById('scale-manual');
     const rotateSlider = document.getElementById('rotate-slider');
-    const rotateVal = document.getElementById('rotate-val');
+    const rotateManual = document.getElementById('rotate-manual');
     const opacitySlider = document.getElementById('opacity-slider');
-    const opacityVal = document.getElementById('opacity-val');
-    const blendRealistic = document.getElementById('blend-realistic');
-    const blendFlat = document.getElementById('blend-flat');
+    const opacityManual = document.getElementById('opacity-manual');
     const shadowDepthSlider = document.getElementById('shadow-depth-slider');
-    const shadowDepthVal = document.getElementById('shadow-depth-val');
+    const shadowDepthManual = document.getElementById('shadow-depth-manual');
     const highlightShineSlider = document.getElementById('highlight-shine-slider');
-    const highlightShineVal = document.getElementById('highlight-shine-val');
-    const alignTop = document.getElementById('align-top');
-    const alignCenter = document.getElementById('align-center');
-    const alignBottom = document.getElementById('align-bottom');
+    const highlightShineManual = document.getElementById('highlight-shine-manual');
     const downloadBtn = document.getElementById('download-btn');
     const resetBtn = document.getElementById('reset-btn');
     const canvasHint = document.getElementById('canvas-hint');
@@ -782,7 +818,7 @@
         if (!userHasManuallyScaled) {
           designScale = config.defaultScale;
           scaleSlider.value = Math.round(designScale * 100);
-          scaleVal.innerText = Math.round(designScale * 100) + '%';
+          scaleManual.value = Math.round(designScale * 100);
         }
 
         designPos.x = 500;
@@ -1968,7 +2004,7 @@
         let newScale = Math.max(0.1, Math.min(0.9, startScale * ratio));
         designScale = newScale;
         scaleSlider.value = Math.round(newScale * 100);
-        scaleVal.innerText = Math.round(newScale * 100) + '%';
+        scaleManual.value = Math.round(newScale * 100);
         userHasManuallyScaled = true;
       }
 
@@ -1982,7 +2018,7 @@
         if (deg < -180) deg += 360;
         designRotation = deg * (Math.PI / 180);
         rotateSlider.value = deg;
-        rotateVal.innerText = deg + '°';
+        rotateManual.value = deg;
       }
 
       render();
@@ -2217,76 +2253,57 @@
       loadGarment(garmentType);
     });
 
-    // Align actions
-    alignTop.addEventListener('click', () => {
-      designPos.y = garmentConfigs[activeGarmentType].chestY; // Chest area height
-      render();
-    });
+    // Helper function for bidirectional binding between sliders and manual inputs
+    function setupSliderBinding(slider, manualInput, minVal, maxVal, divisor, onUpdate) {
+      slider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        manualInput.value = val;
+        onUpdate(val / divisor);
+      });
 
-    alignCenter.addEventListener('click', () => {
-      designPos.x = 500;
-      designPos.y = garmentConfigs[activeGarmentType].centerY; // center shirt layout
-      render();
-    });
+      manualInput.addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val)) return;
+        if (val >= minVal && val <= maxVal) {
+          slider.value = val;
+        }
+        onUpdate(val / divisor);
+      });
 
-    alignBottom.addEventListener('click', () => {
-      designPos.y = garmentConfigs[activeGarmentType].bellyY; // stomach height
-      render();
-    });
+      manualInput.addEventListener('blur', () => {
+        let val = parseInt(manualInput.value);
+        if (isNaN(val)) val = minVal;
+        if (val < minVal) val = minVal;
+        if (val > maxVal) val = maxVal;
+        manualInput.value = val;
+        slider.value = val;
+        onUpdate(val / divisor);
+      });
+    }
 
-    // Size Slider
-    scaleSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      designScale = val / 100;
-      scaleVal.innerText = val + '%';
+    setupSliderBinding(scaleSlider, scaleManual, 10, 90, 100, (val) => {
+      designScale = val;
       userHasManuallyScaled = true;
       render();
     });
 
-    // Rotation Slider
-    rotateSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
+    setupSliderBinding(rotateSlider, rotateManual, -180, 180, 1, (val) => {
       designRotation = val * (Math.PI / 180);
-      rotateVal.innerText = val + '°';
       render();
     });
 
-    // Opacity Slider
-    opacitySlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      designOpacity = val / 100;
-      opacityVal.innerText = val + '%';
+    setupSliderBinding(opacitySlider, opacityManual, 10, 100, 100, (val) => {
+      designOpacity = val;
       render();
     });
 
-    // Shadow Depth Slider
-    shadowDepthSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      shadowDepth = val / 100;
-      shadowDepthVal.innerText = val + '%';
+    setupSliderBinding(shadowDepthSlider, shadowDepthManual, 10, 100, 100, (val) => {
+      shadowDepth = val;
       render();
     });
 
-    // Highlight Shine Slider
-    highlightShineSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      highlightShine = val / 100;
-      highlightShineVal.innerText = val + '%';
-      render();
-    });
-
-    // Fabric Integration Blend settings
-    blendRealistic.addEventListener('click', () => {
-      blendRealistic.classList.add('active');
-      blendFlat.classList.remove('active');
-      useRealisticBlending = true;
-      render();
-    });
-
-    blendFlat.addEventListener('click', () => {
-      blendFlat.classList.add('active');
-      blendRealistic.classList.remove('active');
-      useRealisticBlending = false;
+    setupSliderBinding(highlightShineSlider, highlightShineManual, 0, 60, 100, (val) => {
+      highlightShine = val;
       render();
     });
 
@@ -2331,15 +2348,15 @@
 
       // Reset DOM elements
       scaleSlider.value = 35;
-      scaleVal.innerText = '35%';
+      scaleManual.value = 35;
       rotateSlider.value = 0;
-      rotateVal.innerText = '0°';
+      rotateManual.value = 0;
       opacitySlider.value = 100;
-      opacityVal.innerText = '100%';
+      opacityManual.value = 100;
       shadowDepthSlider.value = 60;
-      shadowDepthVal.innerText = '60%';
+      shadowDepthManual.value = 60;
       highlightShineSlider.value = 15;
-      highlightShineVal.innerText = '15%';
+      highlightShineManual.value = 15;
       
       presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
       presetColors.querySelector('[data-color="#212121"]').classList.add('active');
@@ -2388,8 +2405,7 @@
       sampleDesigns.querySelectorAll('.design-thumb').forEach(t => t.classList.remove('active'));
       sampleDesigns.querySelector('[data-src="/assets/designs/minimal_rose.png"]').classList.add('active');
       
-      blendRealistic.classList.add('active');
-      blendFlat.classList.remove('active');
+      // Blend modes are removed from UI, realistic active by default
 
       designSrc = '/assets/designs/minimal_rose.png';
       loadActiveDesign();
@@ -2412,39 +2428,105 @@
     });
 
     // ----------------------------------------------------
-    // 9. High-Quality Export/Download Handler
+    // 9. Download Options Modal & Quality Export Handler
     // ----------------------------------------------------
+    const downloadModal = document.getElementById('download-modal');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalDownloadBtn = document.getElementById('modal-download-btn');
+    const optionHighCard = document.getElementById('option-high-card');
+    const optionExtraHighCard = document.getElementById('option-extra-high-card');
+
+    // Show modal on download button click
     downloadBtn.addEventListener('click', () => {
-      // 1. Create offscreen 2000x2000px canvas for high-quality export
-      const exportCanvas = document.createElement('canvas');
-      exportCanvas.width = 2000;
-      exportCanvas.height = 2000;
-      const exportCtx = exportCanvas.getContext('2d');
-
-      // Show loading spinner during high-res rendering
-      if (canvasLoading) canvasLoading.style.display = 'flex';
-
-      setTimeout(() => {
-        // 2. Render high-res mockup at 2x scale (2000x2000px)
-        drawScene(exportCtx, 2000, 2000, 2, true);
-
-        // 3. Extract high-res data URL
-        const imageURL = exportCanvas.toDataURL('image/png');
-
-        // 4. Trigger download
-        const downloadLink = document.createElement('a');
-        downloadLink.href = imageURL;
-        const colorClean = shirtColor.replace('#', '');
-        downloadLink.download = `tshirt-mockup-${colorClean}-${Date.now()}.png`;
-        
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
-
-        // Hide loading spinner
-        if (canvasLoading) canvasLoading.style.display = 'none';
-      }, 50);
+      if (downloadModal) {
+        downloadModal.style.display = 'flex';
+      }
     });
+
+    // Close modal function
+    const closeDownloadModal = () => {
+      if (downloadModal) {
+        downloadModal.style.display = 'none';
+      }
+    };
+
+    // Close modal triggers
+    if (modalCancelBtn) {
+      modalCancelBtn.addEventListener('click', closeDownloadModal);
+    }
+    if (downloadModal) {
+      downloadModal.addEventListener('click', (e) => {
+        if (e.target === downloadModal) {
+          closeDownloadModal();
+        }
+      });
+    }
+
+    // Toggle active state for Quality Option Cards
+    if (optionHighCard && optionExtraHighCard) {
+      const radioHigh = optionHighCard.querySelector('input[type="radio"]');
+      const radioExtraHigh = optionExtraHighCard.querySelector('input[type="radio"]');
+
+      optionHighCard.addEventListener('click', () => {
+        optionHighCard.classList.add('active');
+        optionExtraHighCard.classList.remove('active');
+        if (radioHigh) radioHigh.checked = true;
+      });
+
+      optionExtraHighCard.addEventListener('click', () => {
+        optionExtraHighCard.classList.add('active');
+        optionHighCard.classList.remove('active');
+        if (radioExtraHigh) radioExtraHigh.checked = true;
+      });
+    }
+
+    // Perform download based on selected quality option
+    if (modalDownloadBtn) {
+      modalDownloadBtn.addEventListener('click', () => {
+        // Close modal first
+        closeDownloadModal();
+
+        // Check selected quality
+        const selectedRadio = downloadModal ? downloadModal.querySelector('input[name="download-quality"]:checked') : null;
+        const quality = selectedRadio ? selectedRadio.value : 'high';
+
+        // 1. Determine canvas settings based on selection
+        const isExtraHigh = (quality === 'extra-high');
+        const exportWidth = isExtraHigh ? 2000 : 1000;
+        const exportHeight = isExtraHigh ? 2000 : 1000;
+        const scaleFactor = isExtraHigh ? 2 : 1;
+
+        // 2. Create offscreen canvas for quality export
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = exportWidth;
+        exportCanvas.height = exportHeight;
+        const exportCtx = exportCanvas.getContext('2d');
+
+        // Show loading spinner during rendering
+        if (canvasLoading) canvasLoading.style.display = 'flex';
+
+        setTimeout(() => {
+          // 3. Render mockup at selected scale/dimension
+          drawScene(exportCtx, exportWidth, exportHeight, scaleFactor, true);
+
+          // 4. Extract data URL
+          const imageURL = exportCanvas.toDataURL('image/png');
+
+          // 5. Trigger download
+          const downloadLink = document.createElement('a');
+          downloadLink.href = imageURL;
+          const colorClean = shirtColor.replace('#', '');
+          downloadLink.download = `tshirt-mockup-${colorClean}-${Date.now()}.png`;
+          
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+
+          // Hide loading spinner
+          if (canvasLoading) canvasLoading.style.display = 'none';
+        }, 50);
+      });
+    }
 
     // ----------------------------------------------------
     // 10. Mobile Tab Switching Handler
