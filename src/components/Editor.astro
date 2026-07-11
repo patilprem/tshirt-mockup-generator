@@ -849,8 +849,22 @@
       });
     }
 
-    // Initial load
-    loadGarment('crewneck');
+    // Initial load — honor ?garment= deep links from the landing pages
+    const validGarments = ['crewneck', 'ladies', 'polo', 'longsleeve', 'hoodie', 'sweatshirt', 'vneck', 'tanktop'];
+    let initialGarment = 'crewneck';
+    try {
+      const requested = new URLSearchParams(window.location.search).get('garment');
+      if (requested && validGarments.includes(requested)) {
+        initialGarment = requested;
+      }
+    } catch (e) { /* no-op: fall back to crewneck */ }
+
+    if (initialGarment !== 'crewneck') {
+      garmentSelector.querySelectorAll('.garment-card').forEach(c => c.classList.remove('active'));
+      const requestedCard = garmentSelector.querySelector('[data-garment="' + initialGarment + '"]');
+      if (requestedCard) requestedCard.classList.add('active');
+    }
+    loadGarment(initialGarment);
 
     let woodWhiteImg = null;
     let woodBrownImg = null;

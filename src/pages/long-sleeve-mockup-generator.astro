@@ -1,0 +1,132 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free Long Sleeve Mockup Generator",
+  "url": "https://freeteemockup.com/long-sleeve-mockup-generator",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "Make free long sleeve shirt mockups online. Add your design, download a no-watermark PNG. No signup, private in-browser, commercial use OK.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Long Sleeve Mockup Generator",
+      "item": "https://freeteemockup.com/long-sleeve-mockup-generator"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can I place a design on the sleeve?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The template focuses on a front chest print; center placement works best."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is commercial use allowed?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — use the mockups for any store or platform."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the download size?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A watermark-free 1000×1000 PNG."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free Long Sleeve Mockup Generator (No Watermark)"
+  description="Make free long sleeve shirt mockups online. Add your design, download a no-watermark PNG. No signup, private in-browser, commercial use OK."
+  canonical="https://freeteemockup.com/long-sleeve-mockup-generator"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">Long Sleeve Mockup Generator</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">🧥</span>
+      <h1>Free Long Sleeve Shirt Mockup Generator</h1>
+      <p class="page-hero-sub">Create a free long sleeve shirt mockup for your designs — ideal for fall and winter collections. Upload, position, and download a 1000×1000 PNG with no watermark and no account required.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor?garment=longsleeve" class="btn-hero-primary">Launch the long sleeve shirt editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 720px; margin: 0 auto;">
+      <h2>Why use this long sleeve shirt mockup generator</h2>
+      <ul>
+        <li>Full-length sleeve template for seasonal and layered drops.</li>
+        <li>Zero watermark, zero cost, no signup.</li>
+        <li>Private, browser-based processing of your artwork.</li>
+      </ul>
+
+      <h2>How to make a long sleeve shirt mockup</h2>
+      <p>It takes under a minute and needs no design software:</p>
+      <ul>
+        <li><strong>Upload your design</strong> — add your PNG artwork. It stays in your browser.</li>
+        <li><strong>Position it</strong> — drag to place and resize your design on the long sleeve shirt.</li>
+        <li><strong>Download the PNG</strong> — export a 1000×1000 mockup, watermark-free and ready to sell.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Can I place a design on the sleeve?</h3>
+      <p>The template focuses on a front chest print; center placement works best.</p>
+      <h3>Is commercial use allowed?</h3>
+      <p>Yes — use the mockups for any store or platform.</p>
+      <h3>What is the download size?</h3>
+      <p>A watermark-free 1000×1000 PNG.</p>
+
+      <h2>More free mockup generators</h2>
+      <p><a href="/hoodie-mockup-generator">Hoodie</a> · <a href="/sweatshirt-mockup-generator">Sweatshirt</a> · <a href="/tank-top-mockup-generator">Tank Top</a> · <a href="/v-neck-mockup-generator">V-Neck Tee</a> · <a href="/polo-shirt-mockup-generator">Polo Shirt</a> · <a href="/ladies-tee-mockup-generator">Ladies Tee</a> · <a href="/crewneck-mockup-generator">Crewneck Tee</a></p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Ready to make your long sleeve shirt mockup?</h2>
+      <p>It takes less than 60 seconds — completely free, no signup, no watermark.</p>
+      <a href="/editor?garment=longsleeve" class="btn-hero-primary" id="longsleeve-cta-btn">
+        Open the Free long sleeve shirt Mockup Generator
+      </a>
+    </div>
+  </div>
+</PageLayout>
