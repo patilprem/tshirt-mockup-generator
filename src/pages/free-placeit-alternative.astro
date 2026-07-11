@@ -76,21 +76,23 @@ const faqLd = {
     <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
   </Fragment>
 
-  <div class="page-hero">
-    <div class="page-hero-inner">
-      <nav class="page-breadcrumb" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
-        <span aria-current="page">Free Placeit Alternative</span>
-      </nav>
-      <span class="page-hero-icon" aria-hidden="true">🆚</span>
-      <h1>Free Placeit Alternative — No Watermark, No Subscription</h1>
-      <p class="page-hero-sub">Placeit is a solid tool, but its free previews are watermarked and full downloads require a paid subscription. FreeTeeMockup gives you clean, watermark-free t-shirt mockups with no signup and no monthly fee.</p>
-      <div style="margin-top: 1.75rem;">
-        <a href="/editor" class="btn-hero-primary">Open the free editor →</a>
+  <div class="hero-wrap">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <span aria-current="page">Free Placeit Alternative</span>
+    </nav>
+    <section class="hero-banner">
+      <div class="hb-left">
+        <span class="hb-eyebrow">Free · No subscription · No watermark</span>
+        <h1 class="hb-title">Free Placeit <span class="hb-grad">Alternative</span></h1>
+        <p class="hb-tag">Placeit is a solid tool, but its free previews are watermarked and full downloads require a paid subscription. FreeTeeMockup gives you clean, watermark-free t-shirt mockups with no signup and no monthly fee.</p>
+        <a class="hb-cta" href="/editor">Open the free editor →</a>
       </div>
-      <img class="page-hero-banner is-photo" src="/assets/gallery/mockup_creative.jpg" width="500" height="500" loading="lazy" decoding="async" alt="Example t-shirt mockup created free with FreeTeeMockup" />
-    </div>
+      <div class="hb-right">
+        <img src="/assets/banner/hoodie_mock.jpg" width="680" height="680" loading="eager" fetchpriority="high" alt="Example t-shirt mockup created free with FreeTeeMockup, shown on a white wood background" />
+      </div>
+    </section>
   </div>
 
   <div class="page-content-wide">

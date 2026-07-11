@@ -76,21 +76,23 @@ const faqLd = {
     <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
   </Fragment>
 
-  <div class="page-hero">
-    <div class="page-hero-inner">
-      <nav class="page-breadcrumb" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
-        <span aria-current="page">Tank Top Mockup Generator</span>
-      </nav>
-      <span class="page-hero-icon" aria-hidden="true">🎽</span>
-      <h1>Free Tank Top Mockup Generator</h1>
-      <p class="page-hero-sub">Make a free tank top mockup in seconds — perfect for summer apparel, gym, and fitness designs. Drop in your artwork, position it on the tank, and download a no-watermark PNG with no signup.</p>
-      <div style="margin-top: 1.75rem;">
-        <a href="/editor?garment=tanktop" class="btn-hero-primary">Launch the tank top editor →</a>
+  <div class="hero-wrap">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <span aria-current="page">Tank Top Mockup Generator</span>
+    </nav>
+    <section class="hero-banner">
+      <div class="hb-left">
+        <span class="hb-eyebrow">Free · No watermark · No signup</span>
+        <h1 class="hb-title">Free Tank Top <span class="hb-grad">Mockup Generator</span></h1>
+        <p class="hb-tag">Make a free tank top mockup in seconds — perfect for summer apparel, gym, and fitness designs. Drop in your artwork, position it on the tank, and download a no-watermark PNG with no signup.</p>
+        <a class="hb-cta" href="/editor?garment=tanktop">Launch the tank top editor →</a>
       </div>
-      <img class="page-hero-banner" src="/assets/processed/tshirt_tanktop.png" width="500" height="500" loading="lazy" decoding="async" alt="Blank tank top template used by the free tank top mockup generator" />
-    </div>
+      <div class="hb-right">
+        <img src="/assets/banner/tanktop_mock.jpg" width="680" height="680" loading="eager" fetchpriority="high" alt="Free tank top mockup with a sample design on a white wood background" />
+      </div>
+    </section>
   </div>
 
   <div class="page-content-wide">
