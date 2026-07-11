@@ -9,10 +9,13 @@ interface Props {
   description: string;
   canonical?: string;
   noindex?: boolean;
+  /** Root-relative path (e.g. /assets/banner/hoodie_mock.jpg); falls back to the site-wide OG image. */
+  ogImage?: string;
 }
 
-const { title, description, canonical, noindex = false } = Astro.props;
+const { title, description, canonical, noindex = false, ogImage } = Astro.props;
 const fullTitle = `${title} — TeeMockup`;
+const ogImageUrl = `https://freeteemockup.com${ogImage ?? '/og-image.png'}`;
 ---
 
 <!DOCTYPE html>
@@ -53,13 +56,13 @@ const fullTitle = `${title} — TeeMockup`;
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content="TeeMockup" />
-    <meta property="og:image" content="https://freeteemockup.com/og-image.png" />
+    <meta property="og:image" content={ogImageUrl} />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content="https://freeteemockup.com/og-image.png" />
+    <meta name="twitter:image" content={ogImageUrl} />
 
     <!-- Per-page head extras (e.g. JSON-LD structured data) -->
     <slot name="head" />

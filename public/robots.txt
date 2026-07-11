@@ -3,4 +3,4 @@ Allow: /
 Disallow: /404
 Disallow: /500
 
-Sitemap: https://freeteemockup.com/sitemap.xml
+Sitemap: https://freeteemockup.com/sitemap-index.xml
