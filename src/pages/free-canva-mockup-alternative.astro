@@ -1,0 +1,131 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free Canva Mockup Alternative — No Account Needed",
+  "url": "https://freeteemockup.com/free-canva-mockup-alternative",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "A free Canva mockup alternative for t-shirts: no account, no watermark, no premium assets. Upload, place, and download an instant 1000×1000 PNG.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Free Canva Mockup Alternative",
+      "item": "https://freeteemockup.com/free-canva-mockup-alternative"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Do I need an account like Canva?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. FreeTeeMockup needs no account and no email — just open it and start."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it completely free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, with no watermark and no premium-locked mockup assets."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use the mockups to sell products?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, commercial use is permitted."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free Canva Mockup Alternative (No Account)"
+  description="A free Canva mockup alternative for t-shirts: no account, no watermark, no premium assets. Upload, place, and download an instant 1000×1000 PNG."
+  canonical="https://freeteemockup.com/free-canva-mockup-alternative"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">Free Canva Mockup Alternative</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">🆚</span>
+      <h1>Free Canva Mockup Alternative — No Account Needed</h1>
+      <p class="page-hero-sub">Canva is a great all-round design tool, but it needs an account and some mockup assets are premium. FreeTeeMockup is a dedicated t-shirt mockup generator you can use instantly, with no account and no paywalled assets.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor" class="btn-hero-primary">Open the free editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 760px; margin: 0 auto;">
+      <h2>FreeTeeMockup vs Canva at a glance</h2>
+      <table style="width:100%;border-collapse:collapse;margin:1rem 0;font-size:0.92rem;">
+      <thead><tr><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">&nbsp;</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">FreeTeeMockup</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">Canva</th></tr></thead>
+      <tbody>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Account required</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">No</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Yes</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Cost</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Free</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Free plan; some assets are premium</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Focus</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Dedicated apparel mockups</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">General-purpose design suite</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Watermark</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">None</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Varies by asset/plan</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Files stay in your browser</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Yes</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Cloud-based</td></tr>
+      </tbody></table>
+      <h2>Which should you use?</h2>
+      <p>If you already design in Canva and want everything in one place, its built-in mockups are convenient. If you just need a quick, clean t-shirt mockup without logging in or hitting a premium asset, FreeTeeMockup gets you there in under a minute.</p>
+      <h2>Make a mockup with no account</h2>
+      <ul>
+      <li>Choose your garment — <a href="/crewneck-mockup-generator">crewneck</a>, <a href="/v-neck-mockup-generator">V-neck</a>, <a href="/polo-shirt-mockup-generator">polo</a>, and more.</li>
+      <li>Upload and position your design.</li>
+      <li>Download a watermark-free 1000×1000 PNG for commercial use.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Do I need an account like Canva?</h3>
+      <p>No. FreeTeeMockup needs no account and no email — just open it and start.</p>
+      <h3>Is it completely free?</h3>
+      <p>Yes, with no watermark and no premium-locked mockup assets.</p>
+      <h3>Can I use the mockups to sell products?</h3>
+      <p>Yes, commercial use is permitted.</p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Start making free mockups</h2>
+      <p>No signup, no watermark, commercial use — in under a minute.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>

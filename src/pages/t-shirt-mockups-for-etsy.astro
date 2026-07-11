@@ -1,0 +1,128 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free T-Shirt Mockups for Etsy",
+  "url": "https://freeteemockup.com/t-shirt-mockups-for-etsy",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "Create free t-shirt mockups for your Etsy listings — no watermark, no signup. Square 1000×1000 PNGs that fit Etsy’s grid and boost clicks.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "T-Shirt Mockups for Etsy",
+      "item": "https://freeteemockup.com/t-shirt-mockups-for-etsy"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is it against Etsy’s rules to use mockups?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No — mockups are widely used and allowed for print-on-demand and made-to-order apparel. Just represent your product accurately."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do these mockups have a watermark?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Downloads are watermark-free and cleared for commercial use."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What size images does Etsy want?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Square images work best; the 1000×1000 PNG export fits Etsy’s grid cleanly."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free T-Shirt Mockups for Etsy Listings"
+  description="Create free t-shirt mockups for your Etsy listings — no watermark, no signup. Square 1000×1000 PNGs that fit Etsy’s grid and boost clicks."
+  canonical="https://freeteemockup.com/t-shirt-mockups-for-etsy"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">T-Shirt Mockups for Etsy</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">🛍️</span>
+      <h1>Free T-Shirt Mockups for Etsy</h1>
+      <p class="page-hero-sub">On Etsy your thumbnail is your storefront. Make clean, watermark-free t-shirt mockups that fit Etsy’s square grid and help your listings earn the click — free, and with no signup.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor" class="btn-hero-primary">Open the free editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 760px; margin: 0 auto;">
+      <h2>Why mockups matter on Etsy</h2>
+      <p>Etsy search is a dense grid of thumbnails, and shoppers decide in about a second. A design shown on an actual tee stands out where a flat file disappears. Etsy also lets you upload up to 10 images per listing — mockups are the cheapest way to fill those slots with something that sells.</p>
+      <h2>How to make Etsy-ready listing images</h2>
+      <ul>
+      <li><strong>Start with a strong thumbnail</strong> — center your design on a <a href="/crewneck-mockup-generator">crewneck tee</a> and keep it bright and simple.</li>
+      <li><strong>Show range</strong> with more garments — a <a href="/hoodie-mockup-generator">hoodie</a>, a <a href="/ladies-tee-mockup-generator">ladies tee</a>, a <a href="/tank-top-mockup-generator">tank top</a> — using your remaining image slots.</li>
+      <li><strong>Export square PNGs</strong> — the 1000×1000 output fits Etsy’s grid without awkward cropping.</li>
+      <li><strong>Keep originals private</strong> — files are processed in your browser, so your artwork never leaves your device.</li>
+      </ul>
+      <h2>Tips that pair with good mockups</h2>
+      <ul>
+      <li>Lead with the garment that converts best for your niche.</li>
+      <li>Keep a consistent style across a product line so your shop looks cohesive in search.</li>
+      <li>Refresh a stalled listing’s primary image — it is the fastest test you can run.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Is it against Etsy’s rules to use mockups?</h3>
+      <p>No — mockups are widely used and allowed for print-on-demand and made-to-order apparel. Just represent your product accurately.</p>
+      <h3>Do these mockups have a watermark?</h3>
+      <p>No. Downloads are watermark-free and cleared for commercial use.</p>
+      <h3>What size images does Etsy want?</h3>
+      <p>Square images work best; the 1000×1000 PNG export fits Etsy’s grid cleanly.</p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Start making free mockups</h2>
+      <p>No signup, no watermark, commercial use — in under a minute.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>

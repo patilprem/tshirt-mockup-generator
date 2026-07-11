@@ -1,0 +1,124 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free T-Shirt Mockups for Shopify",
+  "url": "https://freeteemockup.com/t-shirt-mockups-for-shopify",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "Create free, watermark-free t-shirt mockups for your Shopify product pages. No signup, instant 1000×1000 PNGs, consistent product imagery.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "T-Shirt Mockups for Shopify",
+      "item": "https://freeteemockup.com/t-shirt-mockups-for-shopify"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can I use these mockups on my Shopify store?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — they are free and cleared for commercial use on product pages and collections."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is there a watermark or signup?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Neither. No watermark and no account required."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What format are the downloads?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Watermark-free 1000×1000 PNGs."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free T-Shirt Mockups for Shopify Stores"
+  description="Create free, watermark-free t-shirt mockups for your Shopify product pages. No signup, instant 1000×1000 PNGs, consistent product imagery."
+  canonical="https://freeteemockup.com/t-shirt-mockups-for-shopify"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">T-Shirt Mockups for Shopify</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">🛒</span>
+      <h1>Free T-Shirt Mockups for Shopify</h1>
+      <p class="page-hero-sub">Consistent, clean product images make a Shopify store look professional. Generate watermark-free t-shirt mockups for your product pages — free, no signup, ready to upload.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor" class="btn-hero-primary">Open the free editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 760px; margin: 0 auto;">
+      <h2>Why consistent mockups help your store</h2>
+      <p>On a Shopify product page and in collection grids, mismatched or low-quality images undercut trust. Using the same clean mockup style across every product makes your catalog look cohesive and credible — which supports conversions.</p>
+      <h2>Build your product images</h2>
+      <ul>
+      <li><strong>Pick a garment</strong> — <a href="/crewneck-mockup-generator">crewneck</a>, <a href="/hoodie-mockup-generator">hoodie</a>, <a href="/sweatshirt-mockup-generator">sweatshirt</a>, and more.</li>
+      <li><strong>Place your design</strong> and export a 1000×1000 PNG for each product.</li>
+      <li><strong>Keep the style consistent</strong> across the catalog for a professional grid.</li>
+      <li><strong>No signup, no watermark</strong> — and your files are processed locally in the browser.</li>
+      </ul>
+      <h2>Works with your POD workflow</h2>
+      <p>Selling through Printful, Printify, or another print-on-demand app? These mockups are cleared for commercial use, so they slot straight into your listings alongside your fulfillment provider’s images. See the <a href="/print-on-demand-mockups">print-on-demand mockup guide</a> for more.</p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Can I use these mockups on my Shopify store?</h3>
+      <p>Yes — they are free and cleared for commercial use on product pages and collections.</p>
+      <h3>Is there a watermark or signup?</h3>
+      <p>Neither. No watermark and no account required.</p>
+      <h3>What format are the downloads?</h3>
+      <p>Watermark-free 1000×1000 PNGs.</p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Start making free mockups</h2>
+      <p>No signup, no watermark, commercial use — in under a minute.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>

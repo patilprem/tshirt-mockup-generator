@@ -1,0 +1,131 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free Mockey.ai Alternative — No Signup, Private in Your Browser",
+  "url": "https://freeteemockup.com/mockey-alternative",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "A free Mockey.ai alternative for t-shirt mockups: no signup, processed privately in your browser, no watermark. 8 garments, instant PNG, commercial use.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Free Mockey.ai Alternative",
+      "item": "https://freeteemockup.com/mockey-alternative"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is FreeTeeMockup free like Mockey.ai?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — it is free with no watermark. It also requires no signup and processes your files locally in the browser."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why choose FreeTeeMockup over Mockey.ai?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "For speed and privacy: no account, and your design files never leave your browser. Mockey.ai offers a much larger multi-category template library if you need breadth."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use the mockups commercially?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, mockups are cleared for commercial use."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free Mockey.ai Alternative (No Signup)"
+  description="A free Mockey.ai alternative for t-shirt mockups: no signup, processed privately in your browser, no watermark. 8 garments, instant PNG, commercial use."
+  canonical="https://freeteemockup.com/mockey-alternative"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">Free Mockey.ai Alternative</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">🆚</span>
+      <h1>Free Mockey.ai Alternative — No Signup, Private in Your Browser</h1>
+      <p class="page-hero-sub">Mockey.ai is a capable free mockup platform. If you want something even simpler — no account, and your design files never leaving your browser — FreeTeeMockup is a lightweight alternative focused on t-shirt and apparel mockups.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor" class="btn-hero-primary">Open the free editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 760px; margin: 0 auto;">
+      <h2>FreeTeeMockup vs Mockey.ai at a glance</h2>
+      <table style="width:100%;border-collapse:collapse;margin:1rem 0;font-size:0.92rem;">
+      <thead><tr><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">&nbsp;</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">FreeTeeMockup</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">Mockey.ai</th></tr></thead>
+      <tbody>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Price</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Free</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Free tier available</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Signup</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Not required</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Optional / account-based features</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Processing</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">In your browser — files stay local</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Cloud-based</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Template breadth</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">8 focused apparel garments</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Very large multi-category library</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Watermark</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">None</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">None on many templates</td></tr>
+      </tbody></table>
+      <h2>Which should you use?</h2>
+      <p>Mockey.ai is excellent when you want a huge variety of templates across many product categories. FreeTeeMockup is the quicker pick when you specifically need a clean t-shirt or apparel mockup, with no account and full in-browser privacy.</p>
+      <h2>Make a private, no-signup mockup</h2>
+      <ul>
+      <li>Pick a garment — <a href="/hoodie-mockup-generator">hoodie</a>, <a href="/sweatshirt-mockup-generator">sweatshirt</a>, <a href="/ladies-tee-mockup-generator">ladies tee</a>, and more.</li>
+      <li>Upload your art; it is never sent to a server.</li>
+      <li>Download a watermark-free 1000×1000 PNG.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Is FreeTeeMockup free like Mockey.ai?</h3>
+      <p>Yes — it is free with no watermark. It also requires no signup and processes your files locally in the browser.</p>
+      <h3>Why choose FreeTeeMockup over Mockey.ai?</h3>
+      <p>For speed and privacy: no account, and your design files never leave your browser. Mockey.ai offers a much larger multi-category template library if you need breadth.</p>
+      <h3>Can I use the mockups commercially?</h3>
+      <p>Yes, mockups are cleared for commercial use.</p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Start making free mockups</h2>
+      <p>No signup, no watermark, commercial use — in under a minute.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>

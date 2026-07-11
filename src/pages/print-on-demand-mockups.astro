@@ -1,0 +1,125 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free Print-on-Demand Mockup Generator",
+  "url": "https://freeteemockup.com/print-on-demand-mockups",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "A free print-on-demand mockup generator — no watermark, no signup. Make t-shirt, hoodie, and apparel mockups for Etsy, Shopify, Redbubble & Amazon Merch.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Print-on-Demand Mockups",
+      "item": "https://freeteemockup.com/print-on-demand-mockups"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is this print-on-demand mockup generator free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — completely free, with no watermark and no signup."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which platforms do the mockups work for?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Any — Etsy, Shopify, Redbubble, Amazon Merch, and more. Downloads are standard 1000×1000 PNGs cleared for commercial use."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are my designs kept private?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Everything is processed in your browser, so your files are never uploaded to a server."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free Print-on-Demand Mockup Generator"
+  description="A free print-on-demand mockup generator — no watermark, no signup. Make t-shirt, hoodie, and apparel mockups for Etsy, Shopify, Redbubble &amp; Amazon Merch."
+  canonical="https://freeteemockup.com/print-on-demand-mockups"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">Print-on-Demand Mockups</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">📦</span>
+      <h1>Free Print-on-Demand Mockup Generator</h1>
+      <p class="page-hero-sub">Print-on-demand sellers live and die by their product images. Make clean, watermark-free apparel mockups for every platform — free, no signup, and private in your browser.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor" class="btn-hero-primary">Open the free editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 760px; margin: 0 auto;">
+      <h2>Built for POD sellers</h2>
+      <p>Whether you sell on Etsy, Shopify, Redbubble, or Amazon Merch, you need consistent product images without paying for a photo shoot. This free mockup generator turns your design into professional apparel mockups in seconds — no watermark, no account, no upload of your files to a server.</p>
+      <h2>Every garment your store needs</h2>
+      <p>Generate the same design across garments to fill out your catalog fast:
+      <a href="/crewneck-mockup-generator">crewneck</a>, <a href="/hoodie-mockup-generator">hoodie</a>, <a href="/sweatshirt-mockup-generator">sweatshirt</a>, <a href="/tank-top-mockup-generator">tank top</a>, <a href="/v-neck-mockup-generator">V-neck</a>, <a href="/long-sleeve-mockup-generator">long sleeve</a>, <a href="/polo-shirt-mockup-generator">polo</a>, and <a href="/ladies-tee-mockup-generator">ladies tee</a>.</p>
+      <h2>Platform-ready in three steps</h2>
+      <ul>
+      <li><strong>Upload</strong> your PNG design.</li>
+      <li><strong>Position</strong> it on the garment and pick a color.</li>
+      <li><strong>Download</strong> a 1000×1000 PNG — watermark-free, commercial use OK.</li>
+      </ul>
+      <p>Selling on a specific platform? See the guides for <a href="/t-shirt-mockups-for-etsy">Etsy</a> and <a href="/t-shirt-mockups-for-shopify">Shopify</a>.</p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Is this print-on-demand mockup generator free?</h3>
+      <p>Yes — completely free, with no watermark and no signup.</p>
+      <h3>Which platforms do the mockups work for?</h3>
+      <p>Any — Etsy, Shopify, Redbubble, Amazon Merch, and more. Downloads are standard 1000×1000 PNGs cleared for commercial use.</p>
+      <h3>Are my designs kept private?</h3>
+      <p>Yes. Everything is processed in your browser, so your files are never uploaded to a server.</p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Start making free mockups</h2>
+      <p>No signup, no watermark, commercial use — in under a minute.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>
