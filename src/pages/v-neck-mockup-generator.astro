@@ -1,0 +1,132 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free V-Neck T-Shirt Mockup Generator",
+  "url": "https://freeteemockup.com/v-neck-mockup-generator",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "Free V-neck t-shirt mockup generator. Upload art, position it, download a no-watermark 1000×1000 PNG. No signup, private, commercial use OK.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "V-Neck Mockup Generator",
+      "item": "https://freeteemockup.com/v-neck-mockup-generator"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does the V-neck neckline affect design placement?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Slightly — keep artwork below the collar line and drag to adjust."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it really free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, with no hidden paywall at download."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need an account?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No account or email is required."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free V-Neck T-Shirt Mockup Generator (No Watermark)"
+  description="Free V-neck t-shirt mockup generator. Upload art, position it, download a no-watermark 1000×1000 PNG. No signup, private, commercial use OK."
+  canonical="https://freeteemockup.com/v-neck-mockup-generator"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">V-Neck Mockup Generator</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">👕</span>
+      <h1>Free V-Neck T-Shirt Mockup Generator</h1>
+      <p class="page-hero-sub">Preview your design on a V-neck t-shirt for free. Upload your artwork, place it on the V-neck template, and download a clean PNG — no watermark, no login, and no upload of your files to a server.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor?garment=vneck" class="btn-hero-primary">Launch the V-neck tee editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 720px; margin: 0 auto;">
+      <h2>Why use this V-neck tee mockup generator</h2>
+      <ul>
+        <li>Flattering V-neck cut for a more premium product look.</li>
+        <li>Free, watermark-free downloads with nothing to install.</li>
+        <li>Runs locally in your browser for full privacy.</li>
+      </ul>
+
+      <h2>How to make a V-neck tee mockup</h2>
+      <p>It takes under a minute and needs no design software:</p>
+      <ul>
+        <li><strong>Upload your design</strong> — add your PNG artwork. It stays in your browser.</li>
+        <li><strong>Position it</strong> — drag to place and resize your design on the V-neck tee.</li>
+        <li><strong>Download the PNG</strong> — export a 1000×1000 mockup, watermark-free and ready to sell.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Does the V-neck neckline affect design placement?</h3>
+      <p>Slightly — keep artwork below the collar line and drag to adjust.</p>
+      <h3>Is it really free?</h3>
+      <p>Yes, with no hidden paywall at download.</p>
+      <h3>Do I need an account?</h3>
+      <p>No account or email is required.</p>
+
+      <h2>More free mockup generators</h2>
+      <p><a href="/hoodie-mockup-generator">Hoodie</a> · <a href="/sweatshirt-mockup-generator">Sweatshirt</a> · <a href="/tank-top-mockup-generator">Tank Top</a> · <a href="/long-sleeve-mockup-generator">Long Sleeve Shirt</a> · <a href="/polo-shirt-mockup-generator">Polo Shirt</a> · <a href="/ladies-tee-mockup-generator">Ladies Tee</a> · <a href="/crewneck-mockup-generator">Crewneck Tee</a></p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Ready to make your V-neck tee mockup?</h2>
+      <p>It takes less than 60 seconds — completely free, no signup, no watermark.</p>
+      <a href="/editor?garment=vneck" class="btn-hero-primary" id="vneck-cta-btn">
+        Open the Free V-neck tee Mockup Generator
+      </a>
+    </div>
+  </div>
+</PageLayout>

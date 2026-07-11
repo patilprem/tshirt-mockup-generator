@@ -60,6 +60,9 @@ const fullTitle = `${title} — TeeMockup`;
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content="https://freeteemockup.com/og-image.png" />
+
+    <!-- Per-page head extras (e.g. JSON-LD structured data) -->
+    <slot name="head" />
   </head>
 
   <body class="landing-body inner-page">
@@ -114,6 +117,19 @@ const fullTitle = `${title} — TeeMockup`;
             <a href="/editor">Editor</a>
             <a href="/#how-it-works">How it Works</a>
             <a href="/#faq">FAQ</a>
+          </nav>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Mockup Types</h4>
+          <nav aria-label="Mockup type links">
+            <a href="/crewneck-mockup-generator">Crewneck Tee</a>
+            <a href="/hoodie-mockup-generator">Hoodie</a>
+            <a href="/sweatshirt-mockup-generator">Sweatshirt</a>
+            <a href="/tank-top-mockup-generator">Tank Top</a>
+            <a href="/v-neck-mockup-generator">V-Neck Tee</a>
+            <a href="/long-sleeve-mockup-generator">Long Sleeve</a>
+            <a href="/polo-shirt-mockup-generator">Polo Shirt</a>
+            <a href="/ladies-tee-mockup-generator">Ladies Tee</a>
           </nav>
         </div>
         <div class="footer-col">

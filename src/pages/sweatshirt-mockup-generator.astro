@@ -1,0 +1,132 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free Sweatshirt Mockup Generator",
+  "url": "https://freeteemockup.com/sweatshirt-mockup-generator",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "Design free crewneck sweatshirt mockups online. Upload art, place it, download a no-watermark PNG. No signup, private in-browser, commercial use OK.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Sweatshirt Mockup Generator",
+      "item": "https://freeteemockup.com/sweatshirt-mockup-generator"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is the difference between the sweatshirt and hoodie mockup?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The sweatshirt is a crewneck with no hood; the hoodie has a hood and front pocket."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need Photoshop?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No — everything runs in your browser with automatic fold and crease blending."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is signup required?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Never. There is no account, email, or watermark."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free Sweatshirt Mockup Generator (No Watermark)"
+  description="Design free crewneck sweatshirt mockups online. Upload art, place it, download a no-watermark PNG. No signup, private in-browser, commercial use OK."
+  canonical="https://freeteemockup.com/sweatshirt-mockup-generator"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">Sweatshirt Mockup Generator</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">👕</span>
+      <h1>Free Sweatshirt Mockup Generator</h1>
+      <p class="page-hero-sub">Turn your artwork into a clean crewneck sweatshirt mockup for free. Position your design, preview it instantly with realistic fabric shading, and download a watermark-free 1000×1000 PNG — no account and no software needed.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor?garment=sweatshirt" class="btn-hero-primary">Launch the sweatshirt editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 720px; margin: 0 auto;">
+      <h2>Why use this sweatshirt mockup generator</h2>
+      <ul>
+        <li>Cozy crewneck sweatshirt base, ideal for cold-weather drops.</li>
+        <li>100% free with zero watermark and no signup.</li>
+        <li>Instant in-browser preview and PNG download.</li>
+      </ul>
+
+      <h2>How to make a sweatshirt mockup</h2>
+      <p>It takes under a minute and needs no design software:</p>
+      <ul>
+        <li><strong>Upload your design</strong> — add your PNG artwork. It stays in your browser.</li>
+        <li><strong>Position it</strong> — drag to place and resize your design on the sweatshirt.</li>
+        <li><strong>Download the PNG</strong> — export a 1000×1000 mockup, watermark-free and ready to sell.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <h3>What is the difference between the sweatshirt and hoodie mockup?</h3>
+      <p>The sweatshirt is a crewneck with no hood; the hoodie has a hood and front pocket.</p>
+      <h3>Do I need Photoshop?</h3>
+      <p>No — everything runs in your browser with automatic fold and crease blending.</p>
+      <h3>Is signup required?</h3>
+      <p>Never. There is no account, email, or watermark.</p>
+
+      <h2>More free mockup generators</h2>
+      <p><a href="/hoodie-mockup-generator">Hoodie</a> · <a href="/tank-top-mockup-generator">Tank Top</a> · <a href="/v-neck-mockup-generator">V-Neck Tee</a> · <a href="/long-sleeve-mockup-generator">Long Sleeve Shirt</a> · <a href="/polo-shirt-mockup-generator">Polo Shirt</a> · <a href="/ladies-tee-mockup-generator">Ladies Tee</a> · <a href="/crewneck-mockup-generator">Crewneck Tee</a></p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Ready to make your sweatshirt mockup?</h2>
+      <p>It takes less than 60 seconds — completely free, no signup, no watermark.</p>
+      <a href="/editor?garment=sweatshirt" class="btn-hero-primary" id="sweatshirt-cta-btn">
+        Open the Free sweatshirt Mockup Generator
+      </a>
+    </div>
+  </div>
+</PageLayout>
