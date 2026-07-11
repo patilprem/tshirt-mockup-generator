@@ -2,6 +2,19 @@
 
 Working plan for https://freeteemockup.com. Work happens in batches on `seo/*` branches, merged to `main` via PR. Update this doc as phases complete.
 
+## Owner to-do list (things only you can do)
+
+Everything below requires account access or publishing under your identity, so Claude prepares but you execute. Roughly in priority order:
+
+- [ ] **Merge open `seo/*` PRs** as they appear — nothing goes live until merged and deployed.
+- [ ] **Google Search Console** (highest priority): verify `freeteemockup.com` as a *domain property* at https://search.google.com/search-console — add the TXT record it gives you to your DNS. Then Sitemaps → submit `sitemap-index.xml`. Takes ~10 minutes; unblocks all of Phase 5.
+- [ ] **Bing Webmaster Tools**: sign in at https://www.bing.com/webmasters and use "Import from Google Search Console" — fastest path once GSC is verified.
+- [ ] **Check GA4 is receiving data** (property `G-X8VXX3PN94`): confirm real traffic shows up and set the landing-page CTA clicks as a conversion event, so we can tell which pages actually convert.
+- [ ] **Product Hunt launch**: create/claim a maker account and schedule the launch (Tue–Thu mornings US time perform best). Ask Claude first — the tagline, description, gallery images, and first-comment draft should be prepared before you schedule.
+- [ ] **Directory submissions** (each ~5 min, backlink value adds up): AlternativeTo (list FreeTeeMockup as an alternative to Placeit/Smartmockups/Mockey), free-tool directories (e.g. toolify.ai, insanelycooltools.com, futurepedia if AI-angle fits). Claude drafts the copy; you create the listings.
+- [ ] **Community sharing**: once the first blog guides exist, share them where POD sellers hang out — r/printondemand, r/Etsy (mind self-promo rules — contribute, don't just drop links), Etsy seller Facebook groups, Printful/Printify community forums. Claude drafts per-channel posts on request.
+- [ ] **After 4–6 weeks of GSC data**: export the Search results report (queries + pages) and share it in a session so Phase 5 iteration can be data-driven rather than guesswork.
+
 ## Shipped so far
 
 - 8 garment landing pages (crewneck, hoodie, sweatshirt, tank top, v-neck, long sleeve, polo, ladies tee) with WebApplication + Breadcrumb + FAQ JSON-LD, canonicals, and deep links into the editor (`/editor?garment=…`)
@@ -14,7 +27,7 @@ Working plan for https://freeteemockup.com. Work happens in batches on `seo/*` b
 - [x] Schema audit: every landing page has all 3 JSON-LD blocks (verified 2026-07-12)
 - [x] Per-page OG/Twitter images: `ogImage` prop on PageLayout, each landing page shares its hero banner image instead of the generic `og-image.png`
 - [x] Automated sitemap: set `site` in `astro.config.mjs` + `@astrojs/sitemap` (pinned 3.1.6 — newer versions need Astro 5), retired the hand-maintained `public/sitemap.xml`, robots.txt points at `sitemap-index.xml`
-- [ ] **Owner action — Google Search Console:** verify the `freeteemockup.com` domain at https://search.google.com/search-console (DNS TXT record is the easiest for a domain property), then submit `sitemap-index.xml`. Do the same at https://www.bing.com/webmasters (can import from GSC). All Phase 5 prioritization depends on this data.
+- [ ] Search Console + Bing verification and sitemap submission → see the owner to-do list above
 
 ## Phase 2 — Content depth (blog/guides)
 
