@@ -1,0 +1,131 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Free Placeit Alternative — No Watermark, No Subscription",
+  "url": "https://freeteemockup.com/free-placeit-alternative",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "A free Placeit alternative for t-shirt mockups: no watermark, no subscription, no signup. 8 garments, instant 1000×1000 PNG, commercial use OK.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Free Placeit Alternative",
+      "item": "https://freeteemockup.com/free-placeit-alternative"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is FreeTeeMockup really a free Placeit alternative?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — it is free with no watermark and no subscription. You can download and use mockups commercially without an account."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Placeit have a free plan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Placeit offers free previews, but they are watermarked and full downloads require a paid subscription."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does FreeTeeMockup not do that Placeit does?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Placeit has a large library of on-model lifestyle scenes. FreeTeeMockup focuses on fast, clean flatlay-style garment mockups."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Free Placeit Alternative (No Watermark)"
+  description="A free Placeit alternative for t-shirt mockups: no watermark, no subscription, no signup. 8 garments, instant 1000×1000 PNG, commercial use OK."
+  canonical="https://freeteemockup.com/free-placeit-alternative"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <nav class="page-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">Free Placeit Alternative</span>
+      </nav>
+      <span class="page-hero-icon" aria-hidden="true">🆚</span>
+      <h1>Free Placeit Alternative — No Watermark, No Subscription</h1>
+      <p class="page-hero-sub">Placeit is a solid tool, but its free previews are watermarked and full downloads require a paid subscription. FreeTeeMockup gives you clean, watermark-free t-shirt mockups with no signup and no monthly fee.</p>
+      <div style="margin-top: 1.75rem;">
+        <a href="/editor" class="btn-hero-primary">Open the free editor →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 760px; margin: 0 auto;">
+      <h2>FreeTeeMockup vs Placeit at a glance</h2>
+      <table style="width:100%;border-collapse:collapse;margin:1rem 0;font-size:0.92rem;">
+      <thead><tr><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">&nbsp;</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">FreeTeeMockup</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">Placeit</th></tr></thead>
+      <tbody>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Price</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Free</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Subscription for full use</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Watermark on free download</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">None</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Yes, on free previews</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Signup required</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">No</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Yes</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Runs in your browser (files stay local)</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Yes</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Cloud-based</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">On-model lifestyle scenes</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Flatlay-style mockups</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Large lifestyle library</td></tr>
+      </tbody></table>
+      <h2>Which should you use?</h2>
+      <p>If you need polished on-model, lifestyle photography-style mockups and a huge template library, Placeit is worth its subscription. If you want a fast, clean, watermark-free t-shirt mockup for a listing image without paying or signing up, FreeTeeMockup is the simpler choice.</p>
+      <h2>How to make a free mockup instead</h2>
+      <ul>
+      <li><strong>Open the editor</strong> and pick from 8 garments — <a href="/crewneck-mockup-generator">crewneck</a>, <a href="/hoodie-mockup-generator">hoodie</a>, <a href="/tank-top-mockup-generator">tank top</a> and more.</li>
+      <li><strong>Upload and position</strong> your design — it stays in your browser.</li>
+      <li><strong>Download</strong> a watermark-free 1000×1000 PNG, ready for commercial use.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Is FreeTeeMockup really a free Placeit alternative?</h3>
+      <p>Yes — it is free with no watermark and no subscription. You can download and use mockups commercially without an account.</p>
+      <h3>Does Placeit have a free plan?</h3>
+      <p>Placeit offers free previews, but they are watermarked and full downloads require a paid subscription.</p>
+      <h3>What does FreeTeeMockup not do that Placeit does?</h3>
+      <p>Placeit has a large library of on-model lifestyle scenes. FreeTeeMockup focuses on fast, clean flatlay-style garment mockups.</p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Start making free mockups</h2>
+      <p>No signup, no watermark, commercial use — in under a minute.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>
