@@ -37,7 +37,9 @@ Landing pages capture "mockup generator" intent; a `/blog` captures the informat
 2. [x] T-shirt design placement & size guide (evergreen, link-worthy) — shipped 2026-07-12
 3. [x] Best free t-shirt mockup generators in 2026 (comparison listicle) — shipped 2026-07-12
 4. [x] How to create Etsy listing photos for print-on-demand shirts — shipped 2026-07-12
-5. [ ] Mockup vs. product photography: what converts better
+5. [x] Mockup vs. product photography: what converts better — shipped 2026-07-12
+
+**Phase 2 complete** — all five planned posts live. Future posts: add to `src/pages/blog/`, list in the hub's `posts` array, generate a contextual banner with a `scratch/generate_*_banner.cjs` script.
 
 Each post deep-links to the relevant garment and use-case pages.
 
