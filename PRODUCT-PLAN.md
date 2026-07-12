@@ -1,0 +1,90 @@
+# FreeTeeMockup Product Plan — Beating Competitors on Features
+
+Companion to [SEO-PLAN.md](SEO-PLAN.md). The SEO plan brings sellers in; this plan makes the tool
+they land on clearly better than the alternatives. Update as features ship.
+
+## The wedge (don't break it)
+
+Every decision filters through the one advantage no big competitor can copy without destroying
+their business model: **truly free, no signup, no watermark, files never leave the browser.**
+Placeit can't stop charging; Canva can't drop accounts; Mockey can't stop upselling. Features
+below are chosen to *widen* that wedge, not dilute it — anything requiring a server, account, or
+per-use cost needs a very good reason.
+
+## What we have today (v1 inventory)
+
+- 8 garments, deep-linkable (`/editor?garment=hoodie`)
+- Fabric color: 12 presets + full custom picker + eyedropper
+- Backgrounds: wood white/brown, solid custom color, transparent
+- Design controls: drag / scale / rotate / opacity, fold-shadow + fabric-shine sliders
+- 5 toggleable props (plant, hat, shoes, sunglasses, jeans)
+- Export: 1000×1000 or 2000×2000 PNG, client-side only
+
+## Competitor gap map
+
+| Competitor | Their moat | Their structural weakness | How we attack |
+|---|---|---|---|
+| Placeit | Huge on-model + video library | Everything behind $$/mo; watermarked previews | Free video mockups (P2), on-model scenes (P3) |
+| Canva/Smartmockups | Brand ecosystem, templates | Generic tool; mockups are a side feature; account wall | Depth: placement presets, batch variants, realism sliders |
+| Mockey.ai | Big AI catalog, many categories | Upsell-heavy; bulk is paid; quality varies | Free batch export (P1) — their #1 paid feature, free |
+| Printful/Printify | Catalog-accurate, integrated | Only their garments, only their pipeline | Platform-preset exports + provider-accurate garment specs |
+
+## Priority 1 — Quick wins (days each, pure client-side)
+
+1. **Batch variant export.** One design → selected garments × selected colors → ZIP of PNGs
+   (JSZip, all client-side). Mockey charges for bulk; Placeit meters downloads. This is the
+   single highest-leverage feature for POD sellers, who always need 5–10 variant images per
+   listing. SEO: "bulk t-shirt mockup generator" landing page.
+2. **Placement presets with guides.** One-click Center Chest / Left Chest / Oversized / Pocket
+   positions using the real measurements from the placement guide post, with optional overlay
+   guides (collar offset, max width) while dragging. No competitor does standards-accurate
+   placement. SEO: strengthens the placement guide's link magnet; demo GIFs for social.
+3. **Platform export presets.** Etsy (2700×2025, 4:3 safe-crop preview), square 2000, Instagram
+   post/story, Amazon Merch. Removes the "will it crop right?" anxiety the Etsy blog post
+   documents. SEO: pairs with each marketplace landing page.
+4. **More backgrounds + custom upload.** Marble, concrete, linen, kraft; upload-your-own
+   background image (stays local, consistent with privacy story).
+5. **Multi-design session + local library.** Keep recent designs in IndexedDB (still
+   device-only), place multiple designs on one garment (front graphic + small logo).
+
+## Priority 2 — Differentiators (1–3 weeks each)
+
+6. **Background removal for uploads.** Most user PNGs have white boxes — the #1 quality killer.
+   Run U²-Net/rembg-class model in-browser via WASM/ONNX; zero server, keeps privacy promise.
+   "Free background remover" is also its own SEO keyword universe.
+7. **Video mockups.** Slow zoom/pan or garment color-cycle rendered client-side to WebM/MP4
+   (canvas + MediaRecorder). Placeit's video mockups are a flagship *paid* feature; free video
+   mockups have almost no supply and real search volume. Exports directly usable as Etsy video.
+8. **Back print + sleeve print.** Second print area per garment (needs back-side garment photos —
+   generate with the same asset pipeline as the banners). Unlocks "front and back mockup"
+   searches and matches how real POD listings work.
+9. **Scene presets.** One-click styled compositions (current props + new ones arranged as
+   "Cozy", "Streetwear", "Summer") so a non-designer gets the gallery look in one click.
+
+## Priority 3 — Bigger bets (evaluate after P1/P2 ship + GSC data)
+
+10. **On-model mockups.** A small set of model photos per garment with displacement-mapped
+    prints. Attacks Placeit's core moat at $0. Asset sourcing (licensed or AI-generated) is the
+    hard part, not the code.
+11. **New product categories.** Mugs, totes, hats, phone cases. Each category = a full new SEO
+    cluster (landing pages + blog + comparisons) reusing the whole existing engine. Do totes
+    first (flat print surface = easy compositing).
+12. **PWA / offline.** Installable, works offline — completes the privacy/local story and adds
+    "no internet needed" to the comparison tables.
+
+## Explicitly not doing (for now)
+
+- **Accounts/cloud saves** — breaks the wedge; local library (P1.5) covers the need.
+- **AI text-to-design generation** — per-use API costs force monetization pressure; revisit only
+  as bring-your-own-key or if a viable free path appears.
+- **Watermark/paid tiers of any kind** — the moment "free" gets an asterisk, the entire SEO and
+  brand position collapses.
+
+## Sequencing & how it feeds SEO
+
+Ship order: **1 → 2 → 3** (each is small and independently announceable), then **6 → 7** (the two
+"wait, that's free?" features), then reassess with Search Console data before P3 bets.
+
+Every shipped feature gets: a changelog blog post, updated comparison tables on the alternative
+landing pages (new rows where competitors charge), and refreshed FAQ schema. Features 1, 6, 7,
+and 11 each justify dedicated landing pages of their own.
