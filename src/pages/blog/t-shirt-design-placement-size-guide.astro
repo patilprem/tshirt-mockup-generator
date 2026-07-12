@@ -1,0 +1,214 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+
+const canonical = 'https://freeteemockup.com/blog/t-shirt-design-placement-size-guide';
+
+const articleLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "T-Shirt Design Placement & Size Guide (With Measurements)",
+  "description": "Exactly where to place a t-shirt design and how big to make it: center chest, left chest, back, and sleeve measurements, plus file size specs for print on demand.",
+  "image": "https://freeteemockup.com/assets/banner/blog_placement_guide.jpg",
+  "url": canonical,
+  "datePublished": "2026-07-12",
+  "dateModified": "2026-07-12",
+  "author": { "@type": "Organization", "name": "TeeMockup", "url": "https://freeteemockup.com/" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "TeeMockup",
+    "logo": { "@type": "ImageObject", "url": "https://freeteemockup.com/favicon-96x96.png" }
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://freeteemockup.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://freeteemockup.com/blog" },
+    { "@type": "ListItem", "position": 3, "name": "T-Shirt Design Placement & Size Guide", "item": canonical }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How big should a design be on a t-shirt?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A standard center-chest print is 9–12 inches wide for adult sizes — roughly 60–70% of the chest width. Most print-on-demand providers support a maximum print area of about 12 × 16 inches on an adult tee."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How far below the collar should a t-shirt design be?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Place the top of the design about 2.5–3 inches below the collar seam on adult shirts. Any lower and the design drifts toward the stomach, which is the most common placement mistake."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What size should a t-shirt design file be?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "4500 × 5400 pixels at 300 DPI is the safest all-platform spec — it meets Amazon Merch requirements and exceeds what Printful, Printify, and most other providers need. Always use a transparent PNG."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where does a left-chest logo go?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A left-chest logo is typically 3–4 inches wide, placed on the wearer's left side, with its top about 2.5–3.5 inches below the collar seam — roughly where a polo crest sits."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="T-Shirt Design Placement & Size Guide (With Measurements)"
+  description="Exactly where to place a t-shirt design and how big to make it: center chest, left chest, back, and sleeve measurements, plus file size specs for print on demand."
+  canonical={canonical}
+  ogImage="/assets/banner/blog_placement_guide.jpg"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(articleLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="hero-wrap">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <a href="/blog">Blog</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <span aria-current="page">T-Shirt Design Placement &amp; Size Guide</span>
+    </nav>
+  </div>
+
+  <div class="page-content-wide">
+    <article class="prose" style="max-width: 720px; margin: 0 auto;">
+      <h1>T-shirt design placement &amp; size guide (with measurements)</h1>
+      <p><time datetime="2026-07-12">July 12, 2026</time></p>
+
+      <p>
+        Nothing says "first shirt I ever made" like a design that's two inches too low. Placement
+        and sizing are where most new print-on-demand sellers lose the professional look — not the
+        artwork itself. The rules below are the standards screen printers have used for decades,
+        with the exact measurements, so you can stop eyeballing it.
+      </p>
+
+      <p>
+        <img
+          src="/assets/banner/blog_placement_guide.jpg"
+          width="1200"
+          height="630"
+          loading="eager"
+          fetchpriority="high"
+          alt="T-shirt flatlay with a dashed print-area overlay showing placement measurements: 3 inches below the collar and 12 inches maximum print width"
+          style="max-width: 100%; height: auto; border-radius: 12px;"
+        />
+      </p>
+
+      <h2>The print area: what you're working with</h2>
+      <p>
+        Most print-on-demand providers print within a maximum area of roughly
+        <strong>12 × 16 inches</strong> on an adult tee (some go slightly larger). Everything below
+        positions your design inside that zone. Two anchor lines matter:
+      </p>
+      <ul>
+        <li><strong>The collar seam</strong> — vertical placement is measured down from here.</li>
+        <li><strong>The center line</strong> — an imaginary line from the middle of the collar to the hem. Almost every placement centers on it.</li>
+      </ul>
+
+      <h2>Center chest — the standard placement</h2>
+      <ul>
+        <li><strong>Width:</strong> 9–12″ for adult sizes — about 60–70% of the chest width. Statement designs sit at the top of that range, subtler graphics at the bottom.</li>
+        <li><strong>Vertical:</strong> top of the design <strong>2.5–3″ below the collar seam</strong>.</li>
+        <li><strong>Horizontal:</strong> dead center on the center line. Even ½″ off-center is visible from across a room.</li>
+      </ul>
+      <p>
+        The classic mistake is printing too low. Design tools center artwork on the print file, and
+        the print file covers the whole torso — so "centered" in the file means "stomach" on the
+        body. Anchor to the collar, not the canvas.
+      </p>
+
+      <h2>Left chest — the logo placement</h2>
+      <ul>
+        <li><strong>Width:</strong> 3–4″. Bigger reads as a small center print gone astray.</li>
+        <li><strong>Position:</strong> the wearer's left (viewer's right on a mockup), top about 2.5–3.5″ below the collar seam, centered between the collar and the armpit seam — where a polo crest sits.</li>
+      </ul>
+      <p>
+        This is the go-to for brand merch and uniforms. Pair it with a large back print for the
+        classic contractor/crew look.
+      </p>
+
+      <h2>Back prints</h2>
+      <ul>
+        <li><strong>Full back:</strong> same sizing as center chest (9–12″ wide), top about <strong>4–5″ below the collar</strong> so it clears the shoulder blades.</li>
+        <li><strong>Back neck (locker) print:</strong> a small 2–3″ wide mark directly below the collar — usually a logo or wordmark. Sits about 1″ below the seam.</li>
+      </ul>
+
+      <h2>Garment-specific adjustments</h2>
+      <p>Placement shifts with the garment. A few that trip sellers up:</p>
+      <ul>
+        <li><a href="/hoodie-mockup-generator">Hoodies</a>: the pocket cuts the print zone short — keep front designs 10″ wide or less and above the pocket, or use the classic across-the-chest placement.</li>
+        <li><a href="/tank-top-mockup-generator">Tank tops</a>: the narrow front means 7–9″ wide reads better than a full-size print.</li>
+        <li><a href="/ladies-tee-mockup-generator">Ladies' fitted tees</a>: scale everything to about 80% of unisex sizing and raise the placement slightly — a 12″ print overwhelms a fitted cut.</li>
+        <li><a href="/v-neck-mockup-generator">V-necks</a>: measure from the bottom of the V, not the shoulder line, or the design crowds the neckline.</li>
+      </ul>
+
+      <h2>Your design file: the numbers that matter</h2>
+      <ul>
+        <li><strong>4500 × 5400 pixels at 300 DPI</strong> — the safest all-platform spec. It's Amazon Merch's required size and exceeds what Printful, Printify, and Gelato ask for.</li>
+        <li><strong>Transparent PNG</strong>, always — see our <a href="/blog/how-to-make-a-t-shirt-mockup-for-free">step-by-step mockup guide</a> for why this matters when previewing.</li>
+        <li><strong>sRGB color</strong> — CMYK files shift colors unpredictably on DTG printers.</li>
+        <li>Design at full print size even for a small placement. Providers scale down cleanly; scaling up gets blurry.</li>
+      </ul>
+
+      <h2>Check placement before you publish</h2>
+      <p>
+        Numbers get you close; your eyes make the final call. Drop your design into the
+        <a href="/editor">free mockup editor</a>, position it with these measurements in mind, and
+        look at the result at thumbnail size — that's how buyers on
+        <a href="/t-shirt-mockups-for-etsy">Etsy</a> and
+        <a href="/t-shirt-mockups-for-shopify">Shopify</a> will first see it. If it reads clean and
+        centered at 300 pixels wide, it will look right on the shirt.
+      </p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>How big should a design be on a t-shirt?</h3>
+      <p>
+        A standard center-chest print is 9–12 inches wide for adult sizes — roughly 60–70% of the
+        chest width. Most print-on-demand providers support a maximum print area of about
+        12 × 16 inches on an adult tee.
+      </p>
+      <h3>How far below the collar should a t-shirt design be?</h3>
+      <p>
+        Place the top of the design about 2.5–3 inches below the collar seam on adult shirts. Any
+        lower and the design drifts toward the stomach, which is the most common placement mistake.
+      </p>
+      <h3>What size should a t-shirt design file be?</h3>
+      <p>
+        4500 × 5400 pixels at 300 DPI is the safest all-platform spec — it meets Amazon Merch
+        requirements and exceeds what Printful, Printify, and most other providers need. Always use
+        a transparent PNG.
+      </p>
+      <h3>Where does a left-chest logo go?</h3>
+      <p>
+        A left-chest logo is typically 3–4 inches wide, placed on the wearer's left side, with its
+        top about 2.5–3.5 inches below the collar seam — roughly where a polo crest sits.
+      </p>
+    </article>
+
+    <div class="about-cta-block">
+      <h2>See your placement on a real shirt</h2>
+      <p>Upload your design, position it with these measurements, and download a free mockup — no signup, no watermark.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free T-Shirt Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>
