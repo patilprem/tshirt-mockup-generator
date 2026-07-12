@@ -1,0 +1,253 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+
+const canonical = 'https://freeteemockup.com/blog/how-to-make-a-t-shirt-mockup-for-free';
+
+const articleLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How to Make a T-Shirt Mockup for Free (No Photoshop Needed)",
+  "description": "Turn a design file into a professional t-shirt mockup in under a minute — free, in your browser, no watermark. Step-by-step with placement tips.",
+  "image": "https://freeteemockup.com/assets/gallery/mockup_creative.jpg",
+  "url": canonical,
+  "datePublished": "2026-07-12",
+  "dateModified": "2026-07-12",
+  "author": { "@type": "Organization", "name": "TeeMockup", "url": "https://freeteemockup.com/" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "TeeMockup",
+    "logo": { "@type": "ImageObject", "url": "https://freeteemockup.com/favicon-96x96.png" }
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://freeteemockup.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://freeteemockup.com/blog" },
+    { "@type": "ListItem", "position": 3, "name": "How to Make a T-Shirt Mockup for Free", "item": canonical }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Do I need Photoshop to make a t-shirt mockup?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. A browser-based mockup generator places your design on a garment photo automatically — no design software, templates, or smart objects needed."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What file format should my design be?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A PNG with a transparent background works best, because anything behind your artwork shows the shirt fabric instead of a white box. JPG works too if your design fills a solid shape."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use free mockups for Etsy or Shopify listings?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — mockups from TeeMockup are free for commercial use with no watermark, so you can use them directly as listing images on Etsy, Shopify, or any print-on-demand marketplace."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What size should a t-shirt mockup image be?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "1000×1000 pixels or larger covers most marketplaces. Etsy recommends at least 2000px on the shortest side for zoom, but a crisp 1000×1000 PNG displays cleanly in search results and listings."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="How to Make a T-Shirt Mockup for Free (No Photoshop)"
+  description="Turn a design file into a professional t-shirt mockup in under a minute — free, in your browser, no watermark. Step-by-step guide with placement tips."
+  canonical={canonical}
+  ogImage="/assets/gallery/mockup_creative.jpg"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(articleLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="hero-wrap">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <a href="/blog">Blog</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <span aria-current="page">How to Make a T-Shirt Mockup for Free</span>
+    </nav>
+  </div>
+
+  <div class="page-content-wide">
+    <article class="prose" style="max-width: 720px; margin: 0 auto;">
+      <h1>How to make a t-shirt mockup for free (no Photoshop needed)</h1>
+      <p><time datetime="2026-07-12">July 12, 2026</time></p>
+
+      <p>
+        A mockup is the difference between selling a shirt and selling an idea of a shirt. Buyers on
+        Etsy, Shopify, and print-on-demand marketplaces almost never see your actual product before
+        it ships — they see a photo of your design on a garment. If that photo looks flat or fake,
+        the design gets skipped no matter how good it is.
+      </p>
+      <p>
+        The good news: you don't need Photoshop, a photographer, or a paid template. This guide
+        walks through making a professional t-shirt mockup in your browser, for free, in about a
+        minute — plus the placement and sizing details that make a mockup look real instead of
+        pasted on.
+      </p>
+
+      <p>
+        <img
+          src="/assets/gallery/mockup_creative.jpg"
+          width="600"
+          height="600"
+          loading="lazy"
+          alt="Finished t-shirt mockup made with the free TeeMockup editor, showing a design on a tee against a flatlay background"
+          style="max-width: 100%; height: auto; border-radius: 12px;"
+        />
+      </p>
+
+      <h2>What you need before you start</h2>
+      <ul>
+        <li>
+          <strong>Your design as a PNG with a transparent background.</strong> This matters more
+          than anything else. With transparency, the shirt fabric shows through around your
+          artwork; without it, you get a white rectangle behind everything. Most design tools
+          (Canva, Figma, Illustrator, Procreate) export transparent PNGs.
+        </li>
+        <li>
+          <strong>A browser.</strong> That's it. No account, no install, no credit card.
+        </li>
+      </ul>
+
+      <h2>Step 1 — Pick your garment</h2>
+      <p>
+        Open the <a href="/editor">free mockup editor</a> and choose the garment that matches what
+        you're actually selling. TeeMockup has eight:
+        <a href="/crewneck-mockup-generator">crewneck tee</a>,
+        <a href="/v-neck-mockup-generator">v-neck</a>,
+        <a href="/ladies-tee-mockup-generator">ladies tee</a>,
+        <a href="/long-sleeve-mockup-generator">long sleeve</a>,
+        <a href="/polo-shirt-mockup-generator">polo</a>,
+        <a href="/tank-top-mockup-generator">tank top</a>,
+        <a href="/sweatshirt-mockup-generator">sweatshirt</a>, and
+        <a href="/hoodie-mockup-generator">hoodie</a>.
+      </p>
+      <p>
+        Matching the mockup to the real product sounds obvious, but it's a common mistake: showing
+        a unisex crewneck mockup for a listing that ships a ladies' fitted tee leads to returns and
+        bad reviews. If you sell one design on several garments, make a mockup for each — it takes
+        seconds and multi-garment listings convert better.
+      </p>
+
+      <h2>Step 2 — Upload your design</h2>
+      <p>
+        Drop your PNG into the editor. Your file stays in your browser — nothing is uploaded to a
+        server, which also means there's no processing wait and no privacy question about
+        unreleased designs.
+      </p>
+
+      <h2>Step 3 — Position and size it like a real print</h2>
+      <p>
+        This is where most DIY mockups give themselves away. Drag your design into place and keep
+        three rules in mind:
+      </p>
+      <ul>
+        <li>
+          <strong>Width: roughly 60–70% of the chest.</strong> A full-width print looks like a
+          costume; a tiny centered logo looks like a pocket print (which is fine, if that's the
+          intent). Standard print-on-demand print areas are around 12″ wide on a 20″-wide shirt.
+        </li>
+        <li>
+          <strong>Vertical position: the top of the design about 2–3″ below the collar.</strong>
+          Designs centered on the belly are the most common beginner tell.
+        </li>
+        <li>
+          <strong>Respect the fabric.</strong> The editor renders 3D fabric folds over your
+          artwork, which is what makes the print read as <em>on</em> the shirt rather than floating
+          in front of it. If your design looks perfectly flat and crisp while the shirt has folds,
+          buyers notice something is off even if they can't say what.
+        </li>
+      </ul>
+
+      <h2>Step 4 — Download your PNG</h2>
+      <p>
+        Hit download and you get a 1000×1000 pixel PNG — no watermark, cleared for commercial use.
+        That resolution displays cleanly on every major marketplace: Etsy thumbnails, Shopify
+        product grids, Amazon Merch, Redbubble, all of them.
+      </p>
+
+      <h2>Tips that separate good mockups from great ones</h2>
+      <ul>
+        <li>
+          <strong>Make more than one.</strong> Your first image should be the clean product shot;
+          follow-ups can show the design on a <a href="/hoodie-mockup-generator">hoodie</a> or
+          <a href="/sweatshirt-mockup-generator">sweatshirt</a> to upsell other garments.
+        </li>
+        <li>
+          <strong>Check contrast against the garment color.</strong> A black-line design on a dark
+          shirt disappears in thumbnails. If your design has thin dark strokes, preview it small —
+          marketplace search results render your mockup at under 300px.
+        </li>
+        <li>
+          <strong>Keep your source design high-resolution.</strong> Upload the same 4500×5400px
+          file you'd send to your print provider. The editor scales it down cleanly; a low-res
+          upload scaled up gets blurry.
+        </li>
+        <li>
+          <strong>Reuse the mockup everywhere.</strong> The same PNG works for your listing, social
+          posts, and ads — consistent product imagery across channels measurably lifts trust.
+        </li>
+      </ul>
+
+      <h2>Selling on a marketplace? Go deeper</h2>
+      <p>
+        Mockup requirements and buyer expectations differ by platform. We've written specific
+        guides for <a href="/t-shirt-mockups-for-etsy">Etsy sellers</a>,
+        <a href="/t-shirt-mockups-for-shopify">Shopify stores</a>, and
+        <a href="/print-on-demand-mockups">print-on-demand sellers</a> in general.
+      </p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Do I need Photoshop to make a t-shirt mockup?</h3>
+      <p>
+        No. A browser-based mockup generator places your design on a garment photo automatically —
+        no design software, templates, or smart objects needed.
+      </p>
+      <h3>What file format should my design be?</h3>
+      <p>
+        A PNG with a transparent background works best, because anything behind your artwork shows
+        the shirt fabric instead of a white box. JPG works too if your design fills a solid shape.
+      </p>
+      <h3>Can I use free mockups for Etsy or Shopify listings?</h3>
+      <p>
+        Yes — mockups from TeeMockup are free for commercial use with no watermark, so you can use
+        them directly as listing images on Etsy, Shopify, or any print-on-demand marketplace.
+      </p>
+      <h3>What size should a t-shirt mockup image be?</h3>
+      <p>
+        1000×1000 pixels or larger covers most marketplaces. Etsy recommends at least 2000px on the
+        shortest side for zoom, but a crisp 1000×1000 PNG displays cleanly in search results and
+        listings.
+      </p>
+    </article>
+
+    <div class="about-cta-block">
+      <h2>Make your first mockup now</h2>
+      <p>Under 60 seconds from design file to finished mockup — free, no signup, no watermark.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free T-Shirt Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>
