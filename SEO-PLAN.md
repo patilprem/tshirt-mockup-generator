@@ -34,7 +34,7 @@ Everything below requires account access or publishing under your identity, so C
 Landing pages capture "mockup generator" intent; a `/blog` captures the informational long tail and feeds internal authority (hub-and-spoke). Blog hub lives at `/blog` (posts are plain `.astro` pages under `src/pages/blog/`, listed in the hub's `posts` array — add new posts there). Nav + footer link to it site-wide. Planned first posts, in order:
 
 1. [x] How to make a t-shirt mockup for free (step-by-step with the editor) — shipped 2026-07-12
-2. [ ] T-shirt design placement & size guide (evergreen, link-worthy)
+2. [x] T-shirt design placement & size guide (evergreen, link-worthy) — shipped 2026-07-12
 3. [ ] Best free t-shirt mockup generators in 2026 (comparison listicle)
 4. [ ] How to create Etsy listing photos for print-on-demand shirts
 5. [ ] Mockup vs. product photography: what converts better
