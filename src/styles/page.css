@@ -494,6 +494,30 @@
   .page-hero { padding: 56px 20px 40px; }
 }
 
+/* ── Prose tables (blog comparison tables) ── */
+.prose .table-scroll { overflow-x: auto; margin: 18px 0 24px; }
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 560px;
+}
+.prose th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--border-glass);
+  color: var(--text-primary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.prose td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.prose td strong { color: var(--text-primary); }
+
 /* ── Blog cards (/blog hub) ── */
 .blog-grid {
   display: grid;
