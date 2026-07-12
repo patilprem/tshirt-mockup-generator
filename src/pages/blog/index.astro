@@ -9,6 +9,8 @@ const posts = [
       'Turn a design file into a professional t-shirt mockup in under a minute — free, in your browser, no watermark. A step-by-step guide with placement tips.',
     date: '2026-07-12',
     dateLabel: 'July 12, 2026',
+    image: '/assets/gallery/mockup_creative.jpg',
+    imageAlt: 'Finished t-shirt mockup with a creative design, made in the free TeeMockup editor',
   },
 ];
 
@@ -56,11 +58,26 @@ const collectionLd = {
         signup, runs in your browser.
       </p>
 
-      {posts.map((post) => (
-        <article>
-          <h2><a href={`/blog/${post.slug}`}>{post.title}</a></h2>
-          <p><time datetime={post.date}>{post.dateLabel}</time> — {post.description}</p>
-        </article>
+    </div>
+
+    <div class="blog-grid">
+      {posts.map((post, i) => (
+        <a class="blog-card" href={`/blog/${post.slug}`}>
+          <img
+            class="blog-card-img"
+            src={post.image}
+            alt={post.imageAlt}
+            width="600"
+            height="600"
+            loading={i < 3 ? 'eager' : 'lazy'}
+          />
+          <div class="blog-card-body">
+            <time class="blog-card-date" datetime={post.date}>{post.dateLabel}</time>
+            <h2 class="blog-card-title">{post.title}</h2>
+            <p class="blog-card-desc">{post.description}</p>
+            <span class="blog-card-read">Read guide</span>
+          </div>
+        </a>
       ))}
     </div>
 
