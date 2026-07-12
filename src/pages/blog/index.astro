@@ -1,0 +1,73 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+
+const posts = [
+  {
+    slug: 'how-to-make-a-t-shirt-mockup-for-free',
+    title: 'How to Make a T-Shirt Mockup for Free (No Photoshop Needed)',
+    description:
+      'Turn a design file into a professional t-shirt mockup in under a minute — free, in your browser, no watermark. A step-by-step guide with placement tips.',
+    date: '2026-07-12',
+    dateLabel: 'July 12, 2026',
+  },
+];
+
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://freeteemockup.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://freeteemockup.com/blog" }
+  ]
+};
+const collectionLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "TeeMockup Blog — Mockup Guides & Tutorials",
+  "url": "https://freeteemockup.com/blog",
+  "description": "Practical guides on creating t-shirt mockups and selling print-on-demand apparel: design placement, listing images, mockup tools, and more."
+};
+---
+
+<PageLayout
+  title="Mockup Guides & Tutorials"
+  description="Practical guides on creating t-shirt mockups and selling print-on-demand apparel: design placement, listing images, mockup tools, and more."
+  canonical="https://freeteemockup.com/blog"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(collectionLd)}></script>
+  </Fragment>
+
+  <div class="hero-wrap">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <span aria-current="page">Blog</span>
+    </nav>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 720px; margin: 0 auto;">
+      <h1>Mockup guides &amp; tutorials</h1>
+      <p>
+        Practical, no-fluff guides on making t-shirt mockups and selling print-on-demand apparel.
+        Everything here pairs with the <a href="/editor">free mockup editor</a> — no watermark, no
+        signup, runs in your browser.
+      </p>
+
+      {posts.map((post) => (
+        <article>
+          <h2><a href={`/blog/${post.slug}`}>{post.title}</a></h2>
+          <p><time datetime={post.date}>{post.dateLabel}</time> — {post.description}</p>
+        </article>
+      ))}
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Skip the reading — try it instead</h2>
+      <p>Upload a design and download a finished mockup in under 60 seconds. Free, no signup.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free Mockup Editor</a>
+    </div>
+  </div>
+</PageLayout>
