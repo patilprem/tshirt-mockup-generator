@@ -5,20 +5,22 @@ const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..');
 
 function dataUri(p) {
-  return 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
+  const mime = p.endsWith('.jpg') || p.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
+  return `data:${mime};base64,` + fs.readFileSync(p).toString('base64');
 }
 
 (async () => {
   const woodUri = dataUri(path.join(ROOT, 'public/assets/wood_white.png'));
   const shirtUri = dataUri(path.join(ROOT, 'public/assets/processed/tshirt_flatlay.png'));
   const designUri = dataUri(path.join(ROOT, 'public/assets/designs/minimal_mountain.png'));
+  const heroPhotoUri = dataUri(path.join(ROOT, 'public/assets/gallery/mockup_youtube.jpg'));
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.setViewportSize({ width: 1200, height: 630 });
   await page.goto('about:blank');
 
-  const jpegBase64 = await page.evaluate(async ({ woodUri, shirtUri, designUri }) => {
+  const jpegBase64 = await page.evaluate(async ({ woodUri, shirtUri, designUri, heroPhotoUri }) => {
     const load = (src) =>
       new Promise((res, rej) => {
         const i = new Image();
@@ -26,7 +28,7 @@ function dataUri(p) {
         i.onerror = rej;
         i.src = src;
       });
-    const [wood, shirt, design] = await Promise.all([load(woodUri), load(shirtUri), load(designUri)]);
+    const [wood, shirt, design, heroPhoto] = await Promise.all([load(woodUri), load(shirtUri), load(designUri), load(heroPhotoUri)]);
 
     const W = 1200, H = 630;
     const canvas = document.createElement('canvas');
@@ -101,6 +103,7 @@ function dataUri(p) {
     };
 
     // listing card: photo area + stars + skeleton title + price
+    // `tee` may be a generated tee canvas (drawn on a gradient) or {photo: img} for a real photo fill
     const card = (x, y, w, h, tee, { hero = false } = {}) => {
       const r = 16;
       ctx.save();
@@ -120,13 +123,18 @@ function dataUri(p) {
       ctx.beginPath();
       ctx.roundRect(x + pad, y + pad, w - pad * 2, ph, 10);
       ctx.clip();
-      const g = ctx.createLinearGradient(x, y, x, y + ph);
-      g.addColorStop(0, '#f6f4f0');
-      g.addColorStop(1, '#ebe7e0');
-      ctx.fillStyle = g;
-      ctx.fillRect(x + pad, y + pad, w - pad * 2, ph);
-      const teeSize = ph * 1.16;
-      ctx.drawImage(tee, x + pad + (w - pad * 2 - teeSize) / 2, y + pad + ph * 0.02, teeSize, teeSize);
+      if (tee.photo) {
+        // real finished mockup photo, cover-filled
+        ctx.drawImage(tee.photo, x + pad, y + pad, w - pad * 2, ph);
+      } else {
+        const g = ctx.createLinearGradient(x, y, x, y + ph);
+        g.addColorStop(0, '#f6f4f0');
+        g.addColorStop(1, '#ebe7e0');
+        ctx.fillStyle = g;
+        ctx.fillRect(x + pad, y + pad, w - pad * 2, ph);
+        const teeSize = ph * 1.16;
+        ctx.drawImage(tee, x + pad + (w - pad * 2 - teeSize) / 2, y + pad + ph * 0.02, teeSize, teeSize);
+      }
       ctx.restore();
 
       // stars row
@@ -158,7 +166,7 @@ function dataUri(p) {
     card(862, 128, 300, 420, teeCream);
     // hero card
     const heroX = 405, heroY = 42, heroW = 390, heroH = 540;
-    const { priceY } = card(heroX, heroY, heroW, heroH, teeNavy, { hero: true });
+    const { priceY } = card(heroX, heroY, heroW, heroH, { photo: heroPhoto }, { hero: true });
 
     // "Bestseller" pill on the hero card's photo corner
     ctx.save();
@@ -184,7 +192,7 @@ function dataUri(p) {
     ctx.fillText('FREE shipping', heroX + 145, priceY);
 
     return canvas.toDataURL('image/jpeg', 0.88);
-  }, { woodUri, shirtUri, designUri });
+  }, { woodUri, shirtUri, designUri, heroPhotoUri });
 
   await browser.close();
 
