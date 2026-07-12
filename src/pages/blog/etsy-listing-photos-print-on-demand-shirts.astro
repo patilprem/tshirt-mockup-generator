@@ -1,0 +1,210 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+
+const canonical = 'https://freeteemockup.com/blog/etsy-listing-photos-print-on-demand-shirts';
+
+const articleLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How to Create Etsy Listing Photos for Print-on-Demand Shirts",
+  "description": "A photo-by-photo plan for Etsy t-shirt listings when you have no physical product: what to put in all 10 slots, thumbnail crop rules, and image specs that pass zoom.",
+  "image": "https://freeteemockup.com/assets/banner/blog_etsy_photos.jpg",
+  "url": canonical,
+  "datePublished": "2026-07-12",
+  "dateModified": "2026-07-12",
+  "author": { "@type": "Organization", "name": "TeeMockup", "url": "https://freeteemockup.com/" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "TeeMockup",
+    "logo": { "@type": "ImageObject", "url": "https://freeteemockup.com/favicon-96x96.png" }
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://freeteemockup.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://freeteemockup.com/blog" },
+    { "@type": "ListItem", "position": 3, "name": "Etsy Listing Photos for Print-on-Demand Shirts", "item": canonical }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can I use mockups instead of real photos on Etsy?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — mockups are the standard for print-on-demand listings, since the product doesn't exist until someone orders it. Just make sure the mockup accurately represents the garment your provider ships."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How many photos should an Etsy listing have?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Use all ten slots. Listings with a full photo set give buyers more reasons to stay, answer sizing and quality questions before they're asked, and signal an established shop."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What size should Etsy listing photos be?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Etsy recommends at least 2000 pixels on the shortest side so zoom works. Search thumbnails crop to roughly 4:3 landscape, so keep the shirt centered with breathing room on all sides."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do listing photos affect Etsy search ranking?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Indirectly, yes. Etsy's search rewards listings that convert; the thumbnail drives click-through rate, and the photo set drives purchases. Better photos compound into better ranking over time."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="How to Create Etsy Listing Photos for Print-on-Demand Shirts"
+  description="A photo-by-photo plan for Etsy t-shirt listings when you have no physical product: what to put in all 10 slots, thumbnail crop rules, and image specs that pass zoom."
+  canonical={canonical}
+  ogImage="/assets/banner/blog_etsy_photos.jpg"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(articleLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="hero-wrap">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <a href="/blog">Blog</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <span aria-current="page">Etsy Listing Photos for Print-on-Demand Shirts</span>
+    </nav>
+  </div>
+
+  <div class="page-content-wide">
+    <article class="prose" style="max-width: 720px; margin: 0 auto;">
+      <h1>How to create Etsy listing photos for print-on-demand shirts</h1>
+      <p><time datetime="2026-07-12">July 12, 2026</time></p>
+
+      <p>
+        Print-on-demand has a photography problem: the shirt doesn't exist until someone buys it.
+        You can't photograph inventory you don't hold — and yet your listing competes against
+        thousands of others on photos alone. In Etsy search, buyers see your thumbnail, a price,
+        and star count. That's the whole pitch.
+      </p>
+      <p>
+        The fix is a deliberate photo plan built from mockups. Here's the version that works: what
+        goes in each of Etsy's ten photo slots, the thumbnail rules that decide your click-through
+        rate, and the specs that keep images sharp under zoom.
+      </p>
+
+      <p>
+        <img
+          src="/assets/banner/blog_etsy_photos.jpg"
+          width="1200"
+          height="630"
+          loading="eager"
+          fetchpriority="high"
+          alt="Marketplace search results showing three t-shirt listings, with the center bestseller listing standing out"
+          style="max-width: 100%; height: auto; border-radius: 12px;"
+        />
+      </p>
+
+      <h2>The thumbnail decides everything</h2>
+      <p>
+        Photo #1 does 90% of the work — it's the only image buyers see before clicking. Three
+        rules for it:
+      </p>
+      <ul>
+        <li><strong>Design it for the crop.</strong> Etsy search thumbnails display at roughly 4:3 landscape, cutting the top and bottom of square images. Keep the shirt centered with margin on every side so nothing important gets cropped.</li>
+        <li><strong>Test it at 300 pixels.</strong> Shrink your hero image to thumbnail size. If the design turns to mush, simplify the composition — a clean flatlay on a light background wins at small sizes (dark, busy lifestyle scenes lose).</li>
+        <li><strong>One shirt, not five.</strong> Multi-product hero images read as clutter in search. Show the variants in slots 2–10 instead.</li>
+      </ul>
+
+      <h2>What to put in all ten slots</h2>
+      <p>A photo set that answers every pre-purchase question, in order:</p>
+      <ul>
+        <li><strong>1. Hero mockup</strong> — clean flatlay, light background, thumbnail-safe crop. Make it in the <a href="/editor">free editor</a> in under a minute.</li>
+        <li><strong>2. Design close-up</strong> — a tight crop on the artwork so buyers can inspect line work and texture.</li>
+        <li><strong>3–4. Color and garment variants</strong> — the same design on the other colors and cuts you sell: <a href="/ladies-tee-mockup-generator">ladies tee</a>, <a href="/hoodie-mockup-generator">hoodie</a>, <a href="/v-neck-mockup-generator">v-neck</a>. Regenerating a mockup per variant takes seconds.</li>
+        <li><strong>5. Size chart</strong> — a simple graphic with your provider's measurements. This is your biggest return-prevention tool.</li>
+        <li><strong>6. Placement/scale reference</strong> — the shirt with the print shown at true size (our <a href="/blog/t-shirt-design-placement-size-guide">placement guide</a> has the measurements buyers expect).</li>
+        <li><strong>7. Fabric & quality card</strong> — weight, material, feel; pull the details from your print provider's spec sheet.</li>
+        <li><strong>8. Back print or detail shot</strong> — if the shirt has one; otherwise a second lifestyle angle.</li>
+        <li><strong>9. Gift framing</strong> — shirts are gifts; one image suggesting the occasion ("dad's birthday", "hiking buddy") widens your buyer pool.</li>
+        <li><strong>10. Care & shipping card</strong> — washing instructions and production timeline. Sets expectations, prevents one-star surprises.</li>
+      </ul>
+      <p>
+        Slots 5–10 are graphics, not mockups — make them once as templates, then reuse them across
+        every listing in your shop. Only slots 1–4 change per design.
+      </p>
+
+      <h2>Image specs that pass Etsy zoom</h2>
+      <ul>
+        <li><strong>At least 2000px on the shortest side</strong> — Etsy's zoom feature needs the resolution, and zooming is what serious buyers do before purchasing.</li>
+        <li><strong>JPG for photos, sRGB color</strong> — smaller files, faster listing loads.</li>
+        <li><strong>Consistent background across your shop</strong> — when every listing uses the same flatlay style, your shop page looks like a brand instead of a garage sale.</li>
+        <li><strong>No watermarks, ever</strong> — a watermarked mockup image screams "I used a free trial" and erodes exactly the trust a listing photo exists to build. (Every mockup from the <a href="/editor">TeeMockup editor</a> is watermark-free.)</li>
+      </ul>
+
+      <h2>The mistakes that kill click-through</h2>
+      <ul>
+        <li><strong>Printing too low or too big on the mockup</strong> — buyers notice placement even when they can't articulate it; use the <a href="/blog/t-shirt-design-placement-size-guide">standard measurements</a>.</li>
+        <li><strong>Text-heavy thumbnails</strong> — "BUY 2 GET 1 FREE" banners on the hero image look like ads and get scrolled past.</li>
+        <li><strong>The same image ten times</strong> — ten slots of one angle answers no questions and wastes the biggest free real estate Etsy gives you.</li>
+        <li><strong>Mockups that don't match the product</strong> — if your provider ships a Gildan crewneck, don't mock up a fitted tri-blend. The disappointment shows up in reviews.</li>
+      </ul>
+
+      <h2>The full workflow, start to finish</h2>
+      <p>
+        New listing? The photo set takes about fifteen minutes: make the hero and variant mockups
+        in the <a href="/editor">free mockup generator</a> (our
+        <a href="/blog/how-to-make-a-t-shirt-mockup-for-free">step-by-step guide</a> covers it),
+        drop your reusable template graphics into slots 5–10, and upload. For deeper
+        marketplace-specific advice, see the dedicated
+        <a href="/t-shirt-mockups-for-etsy">t-shirt mockups for Etsy</a> page — and if you're
+        weighing tools, the <a href="/blog/best-free-t-shirt-mockup-generators">free generator comparison</a>
+        shows what each option actually gives you.
+      </p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Can I use mockups instead of real photos on Etsy?</h3>
+      <p>
+        Yes — mockups are the standard for print-on-demand listings, since the product doesn't
+        exist until someone orders it. Just make sure the mockup accurately represents the garment
+        your provider ships.
+      </p>
+      <h3>How many photos should an Etsy listing have?</h3>
+      <p>
+        Use all ten slots. Listings with a full photo set give buyers more reasons to stay, answer
+        sizing and quality questions before they're asked, and signal an established shop.
+      </p>
+      <h3>What size should Etsy listing photos be?</h3>
+      <p>
+        Etsy recommends at least 2000 pixels on the shortest side so zoom works. Search thumbnails
+        crop to roughly 4:3 landscape, so keep the shirt centered with breathing room on all sides.
+      </p>
+      <h3>Do listing photos affect Etsy search ranking?</h3>
+      <p>
+        Indirectly, yes. Etsy's search rewards listings that convert; the thumbnail drives
+        click-through rate, and the photo set drives purchases. Better photos compound into better
+        ranking over time.
+      </p>
+    </article>
+
+    <div class="about-cta-block">
+      <h2>Make your hero mockup now</h2>
+      <p>Photo #1 of your next listing is 60 seconds away — free, no signup, no watermark.</p>
+      <a href="/editor" class="btn-hero-primary">Open the Free T-Shirt Mockup Generator</a>
+    </div>
+  </div>
+</PageLayout>

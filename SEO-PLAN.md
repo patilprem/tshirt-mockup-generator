@@ -36,7 +36,7 @@ Landing pages capture "mockup generator" intent; a `/blog` captures the informat
 1. [x] How to make a t-shirt mockup for free (step-by-step with the editor) — shipped 2026-07-12
 2. [x] T-shirt design placement & size guide (evergreen, link-worthy) — shipped 2026-07-12
 3. [x] Best free t-shirt mockup generators in 2026 (comparison listicle) — shipped 2026-07-12
-4. [ ] How to create Etsy listing photos for print-on-demand shirts
+4. [x] How to create Etsy listing photos for print-on-demand shirts — shipped 2026-07-12
 5. [ ] Mockup vs. product photography: what converts better
 
 Each post deep-links to the relevant garment and use-case pages.
