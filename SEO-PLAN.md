@@ -21,6 +21,7 @@ Everything below requires account access or publishing under your identity, so C
 - 3 competitor-alternative pages (Placeit, Mockey, Canva) and 3 use-case pages (Etsy, Shopify, print-on-demand)
 - Horizontal branded hero banners on all 14 landing pages
 - Footer internal linking across all pages, robots.txt, GA4, noindex guard on `.pages.dev` previews
+- Trailing-slash fix (2026-07-13): `build.format: 'file'` + `trailingSlash: 'never'` so Cloudflare Pages serves pages directly at the no-slash URLs used by canonicals/sitemap instead of 308-redirecting them (GSC was reporting "Page with redirect" / "Alternative page with proper canonical tag"); added the missing canonical on `/editor` to consolidate `?garment=…` deep links
 
 ## Phase 1 — Technical quick wins (this branch)
 
