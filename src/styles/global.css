@@ -1464,3 +1464,237 @@ input[type="range"]:focus-visible,
 }
 
 
+
+/* ---------------------------------------------------------------------------
+   Batch Export modal
+--------------------------------------------------------------------------- */
+.batch-modal-card {
+  max-width: 560px;
+  gap: 18px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.batch-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.batch-tab {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.batch-tab.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.batch-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.batch-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.batch-section-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.batch-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.batch-garment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+}
+
+.batch-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-check input {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.batch-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.batch-color-check {
+  position: relative;
+  gap: 0;
+}
+
+.batch-color-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.batch-swatch {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.15s;
+}
+
+.batch-color-check input:checked + .batch-swatch {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4);
+  transform: scale(1.08);
+}
+
+.batch-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-radio input {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.batch-quality-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.batch-template-summary {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.batch-upload-zone {
+  padding: 18px;
+}
+
+.batch-upload-zone.dragover {
+  border-color: var(--primary);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.batch-file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 130px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.batch-file-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.batch-file-list li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-file-remove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.batch-file-remove:hover {
+  color: var(--text-primary);
+}
+
+.batch-estimate {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  min-height: 1.2em;
+}
+
+.batch-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.batch-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.batch-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
+.batch-progress-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#batch-start-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

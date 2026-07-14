@@ -31,10 +31,13 @@ per-use cost needs a very good reason.
 
 ## Priority 1 — Quick wins (days each, pure client-side)
 
-1. **Batch variant export.** One design → selected garments × selected colors → ZIP of PNGs
-   (JSZip, all client-side). Mockey charges for bulk; Placeit meters downloads. This is the
-   single highest-leverage feature for POD sellers, who always need 5–10 variant images per
-   listing. SEO: "bulk t-shirt mockup generator" landing page.
+1. **Batch variant export.** ✅ Shipped 2026-07-13. Two modes in one modal: (a) one design →
+   selected garments × selected colors → ZIP of PNGs, (b) many uploaded designs → the current
+   template. Built on per-garment calibrated print areas (`printArea` + `pxPerIn` in
+   `garmentConfigs`, calibrated via `scratch/calibrate_print_areas.cjs`) with placement
+   projected between garments in print-area-relative coordinates, plus a "Snap to Center Chest"
+   11″ preset. JSZip lazy-loaded, all client-side. Still to do: "bulk t-shirt mockup generator"
+   landing page + comparison-table rows on the alternative pages.
 2. **Placement presets with guides.** One-click Center Chest / Left Chest / Oversized / Pocket
    positions using the real measurements from the placement guide post, with optional overlay
    guides (collar offset, max width) while dragging. No competitor does standards-accurate
