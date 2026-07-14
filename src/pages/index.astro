@@ -101,6 +101,11 @@ import '../styles/landing.css';
         },
         {
           "@type": "Question",
+          "name": "Can I export multiple mockups at once?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Batch Export creates every combination of your selected garments and fabric colors as a ZIP of PNGs in one click, or renders many uploaded designs on a single template. It is completely free with no watermark." }
+        },
+        {
+          "@type": "Question",
           "name": "Is TeeMockup free?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes, TeeMockup is completely free to use with no hidden costs." }
         },
@@ -394,6 +399,53 @@ import '../styles/landing.css';
         </div>
       </section>
 
+      <!-- ─── Batch Export (new feature) ─── -->
+      <section class="section batch-section" id="batch-export" aria-labelledby="batch-heading">
+        <div class="section-inner">
+          <div class="section-tag batch-tag"><span class="batch-new-badge">New</span> Batch Export</div>
+          <h2 id="batch-heading" class="section-title">One click. Every garment,<br /><span class="gradient-text">every color, one ZIP.</span></h2>
+          <p class="section-subtitle" style="max-width:680px;margin:0 auto 2.5rem;">
+            Stop exporting mockups one at a time. Pick your garments and fabric colors and get every
+            combination as a ZIP of ready-to-list PNGs — or drop in a whole folder of designs and
+            render them all on one template. Free, no signup, and it all happens in your browser.
+          </p>
+
+          <div class="batch-strip" role="img" aria-label="The same surf design batch-exported onto a navy crewneck tee, a sand hoodie, and a white tank top">
+            <figure class="batch-strip-card">
+              <img src="/assets/batch/batch_crewneck_navy.jpg" width="640" height="640" loading="lazy" alt="Surf club design on a navy crewneck t-shirt mockup" />
+              <figcaption>Crewneck &middot; Navy</figcaption>
+            </figure>
+            <figure class="batch-strip-card batch-strip-card-mid">
+              <img src="/assets/batch/batch_hoodie_sand.jpg" width="640" height="640" loading="lazy" alt="Surf club design on a sand beige hoodie mockup" />
+              <figcaption>Hoodie &middot; Sand</figcaption>
+            </figure>
+            <figure class="batch-strip-card">
+              <img src="/assets/batch/batch_tank_white.jpg" width="640" height="640" loading="lazy" alt="Surf club design on a white tank top mockup" />
+              <figcaption>Tank Top &middot; White</figcaption>
+            </figure>
+          </div>
+
+          <div class="batch-points">
+            <div class="batch-point">
+              <strong>Variants for every listing</strong>
+              <span>One design &times; your garments &times; your colors — placement is mapped onto each garment&rsquo;s real print area automatically.</span>
+            </div>
+            <div class="batch-point">
+              <strong>Whole collections at once</strong>
+              <span>Or flip it: upload many designs and render them all on the same garment, color, and placement.</span>
+            </div>
+            <div class="batch-point">
+              <strong>Free, unlike anywhere else</strong>
+              <span>Bulk export is a paid feature on other mockup tools. Here it&rsquo;s free — no watermark, no daily cap.</span>
+            </div>
+          </div>
+
+          <a href="/editor" class="btn-hero-primary batch-cta" id="batch-cta-btn">
+            Try Batch Export →
+          </a>
+        </div>
+      </section>
+
       <!-- ─── Mockup Types (internal links) ─── -->
       <section class="section garment-links-section" id="mockup-types" aria-labelledby="garment-links-heading">
         <div class="section-inner">
@@ -453,6 +505,11 @@ import '../styles/landing.css';
               <details class="faq-item" role="listitem">
                 <summary class="faq-question">What mockup types are supported?</summary>
                 <p class="faq-answer">We support crewneck t-shirts, hoodies, polo shirts, long sleeves, sweatshirts, v-necks, ladies tees, and tank tops.</p>
+              </details>
+
+              <details class="faq-item" role="listitem">
+                <summary class="faq-question">Can I export multiple mockups at once?</summary>
+                <p class="faq-answer">Yes! Batch Export creates every combination of your selected garments and fabric colors as a ZIP of PNGs in one click — or renders many uploaded designs on a single template. It's completely free, with no watermark and no daily cap.</p>
               </details>
 
               <details class="faq-item" role="listitem">
