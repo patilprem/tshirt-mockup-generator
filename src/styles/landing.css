@@ -1276,6 +1276,7 @@
 }
 
 .batch-strip {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: flex-end;
@@ -1313,39 +1314,23 @@
   transform: rotate(1.5deg);
 }
 
-.batch-strip-card figcaption {
+.batch-strip-chip {
+  position: absolute;
+  top: -14px;
+  right: -6px;
+  background: var(--primary);
+  color: #fff;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  transform: rotate(3deg);
 }
 
-.batch-points {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  max-width: 960px;
-  margin: 0 auto 2.5rem;
-  text-align: left;
-}
-
-.batch-point {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 18px 20px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.batch-point strong {
-  color: var(--text-primary);
-  font-size: 0.95rem;
-}
-
-.batch-point span {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  line-height: 1.5;
+.batch-checklist {
+  justify-content: center;
+  margin-bottom: 2rem;
 }
 
 .batch-cta {
@@ -1365,7 +1350,7 @@
     transform: none;
   }
 
-  .batch-points {
-    grid-template-columns: 1fr;
+  .batch-strip-chip {
+    right: 4px;
   }
 }
