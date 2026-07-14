@@ -210,6 +210,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download Mockup
         </button>
+        <button class="btn btn-secondary" id="batch-export-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Batch Export
+        </button>
         <button class="btn btn-secondary" id="reset-btn">Reset</button>
       </div>
     </div>
@@ -371,6 +375,68 @@
         <button class="btn btn-primary" id="modal-download-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Export Modal -->
+  <div class="download-modal-overlay" id="batch-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title">
+    <div class="download-modal-card batch-modal-card">
+      <h3 id="batch-modal-title" class="modal-title">Batch Export</h3>
+
+      <div class="batch-tabs" role="tablist">
+        <button type="button" class="batch-tab active" id="batch-tab-variants" role="tab" aria-selected="true">One design &rarr; variants</button>
+        <button type="button" class="batch-tab" id="batch-tab-designs" role="tab" aria-selected="false">Many designs &rarr; this template</button>
+      </div>
+
+      <!-- Tab 1: one design, selected garments × colors -->
+      <div class="batch-tab-panel" id="batch-panel-variants">
+        <div class="batch-section">
+          <span class="batch-section-label">Garments</span>
+          <div class="batch-garment-grid" id="batch-garments"></div>
+        </div>
+        <div class="batch-section">
+          <span class="batch-section-label">Fabric colors <span class="batch-hint">(from the preset palette; current custom color is always included if active)</span></span>
+          <div class="batch-color-grid" id="batch-colors"></div>
+        </div>
+        <div class="batch-section">
+          <span class="batch-section-label">Placement</span>
+          <label class="batch-radio"><input type="radio" name="batch-placement" value="keep" checked /> Keep my placement <span class="batch-hint">(mapped onto each garment&rsquo;s print area)</span></label>
+          <label class="batch-radio"><input type="radio" name="batch-placement" value="center-chest" /> Snap to Center Chest <span class="batch-hint">(11&Prime; standard, sized per garment)</span></label>
+        </div>
+      </div>
+
+      <!-- Tab 2: many designs, current garment + color -->
+      <div class="batch-tab-panel" id="batch-panel-designs" style="display: none;">
+        <p class="batch-template-summary" id="batch-template-summary"></p>
+        <div class="upload-zone batch-upload-zone" id="batch-drop-zone" role="button" tabindex="0" aria-label="Upload designs for batch export">
+          <span class="upload-icon" aria-hidden="true">&#10022;</span>
+          <span class="upload-text">Add design files</span>
+          <span class="upload-hint">Drop multiple PNG/JPG files or click to browse</span>
+          <input type="file" id="batch-file-input" accept="image/*" multiple style="display: none;" />
+        </div>
+        <ul class="batch-file-list" id="batch-file-list"></ul>
+      </div>
+
+      <div class="batch-section batch-quality-row">
+        <span class="batch-section-label">Quality</span>
+        <label class="batch-radio"><input type="radio" name="batch-quality" value="1000" checked /> 1000&times;1000</label>
+        <label class="batch-radio"><input type="radio" name="batch-quality" value="2000" /> 2000&times;2000</label>
+      </div>
+
+      <p class="batch-estimate" id="batch-estimate" aria-live="polite"></p>
+
+      <div class="batch-progress" id="batch-progress" style="display: none;">
+        <div class="batch-progress-track"><div class="batch-progress-fill" id="batch-progress-fill"></div></div>
+        <span class="batch-progress-label" id="batch-progress-label"></span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="batch-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="batch-start-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export ZIP
         </button>
       </div>
     </div>
@@ -710,15 +776,20 @@
     // ----------------------------------------------------
     // 2. Editor State & Presets Configuration
     // ----------------------------------------------------
+    // printArea: printable rect in the 1000×1000 asset frame, calibrated with
+    // scratch/calibrate_print_areas.cjs (clears collars, the polo placket, the
+    // hoodie hood, and the hoodie/sweatshirt kangaroo pockets).
+    // pxPerIn: pixels per real-world inch, from torso width ÷ chest width of a
+    // standard size M — lets placements be expressed in inches per garment.
     const garmentConfigs = {
-      'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230 },
-      'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225 },
-      'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225 },
-      'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230 },
-      'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230 },
-      'sweatshirt': { chestY: 410, centerY: 480, bellyY: 570, defaultScale: 0.33, path: '/assets/processed/tshirt_sweatshirt.png', yFlat: 235 },
-      'vneck': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.35, path: '/assets/processed/tshirt_vneck.png', yFlat: 225 },
-      'tanktop': { chestY: 380, centerY: 460, bellyY: 550, defaultScale: 0.35, path: '/assets/processed/tshirt_tanktop.png', yFlat: 235 }
+      'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230, label: 'Crewneck Tee', printArea: { x: 310, y: 265, w: 384, h: 365 }, pxPerIn: 25.5 },
+      'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225, label: 'Ladies Tee', printArea: { x: 302, y: 225, w: 396, h: 375 }, pxPerIn: 30.8 },
+      'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225, label: 'Polo Shirt', printArea: { x: 306, y: 400, w: 402, h: 245 }, pxPerIn: 25.3 },
+      'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230, label: 'Long Sleeve', printArea: { x: 327, y: 265, w: 353, h: 375 }, pxPerIn: 23.3 },
+      'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230, label: 'Hoodie', printArea: { x: 346, y: 340, w: 312, h: 310 }, pxPerIn: 18.7 },
+      'sweatshirt': { chestY: 410, centerY: 480, bellyY: 570, defaultScale: 0.33, path: '/assets/processed/tshirt_sweatshirt.png', yFlat: 235, label: 'Sweatshirt', printArea: { x: 333, y: 265, w: 334, h: 305 }, pxPerIn: 20.0 },
+      'vneck': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.35, path: '/assets/processed/tshirt_vneck.png', yFlat: 225, label: 'V-Neck Tee', printArea: { x: 296, y: 270, w: 409, h: 370 }, pxPerIn: 26.9 },
+      'tanktop': { chestY: 380, centerY: 460, bellyY: 550, defaultScale: 0.35, path: '/assets/processed/tshirt_tanktop.png', yFlat: 235, label: 'Tank Top', printArea: { x: 310, y: 330, w: 380, h: 310 }, pxPerIn: 33.5 }
     };
 
     const propConfigs = {
@@ -1071,26 +1142,29 @@
     }, customBgColor);
 
     // key out background and extract shadow/highlight maps using BFS border flood fill
-    function preProcessShirt() {
-      const w = rawShirtImage.width;
-      const h = rawShirtImage.height;
+    // Build the mask/shadow/highlight layer canvases for a garment image.
+    // Pure with respect to editor state so batch export can process garments
+    // other than the active one (results cached per garment type).
+    function buildShirtLayers(shirtImage, yFlatBaseline) {
+      const w = shirtImage.width;
+      const h = shirtImage.height;
 
       // 1. Create canvases
-      processedShirtMask = document.createElement('canvas');
-      processedShirtMask.width = w;
-      processedShirtMask.height = h;
-      const maskCtx = processedShirtMask.getContext('2d');
-      maskCtx.drawImage(rawShirtImage, 0, 0);
+      const mask = document.createElement('canvas');
+      mask.width = w;
+      mask.height = h;
+      const maskCtx = mask.getContext('2d');
+      maskCtx.drawImage(shirtImage, 0, 0);
 
-      processedShirtShadows = document.createElement('canvas');
-      processedShirtShadows.width = w;
-      processedShirtShadows.height = h;
-      const shadowCtx = processedShirtShadows.getContext('2d');
+      const shadows = document.createElement('canvas');
+      shadows.width = w;
+      shadows.height = h;
+      const shadowCtx = shadows.getContext('2d');
 
-      processedShirtHighlights = document.createElement('canvas');
-      processedShirtHighlights.width = w;
-      processedShirtHighlights.height = h;
-      const highlightCtx = processedShirtHighlights.getContext('2d');
+      const highlights = document.createElement('canvas');
+      highlights.width = w;
+      highlights.height = h;
+      const highlightCtx = highlights.getContext('2d');
 
       // 2. Read pixels
       const maskData = maskCtx.getImageData(0, 0, w, h);
@@ -1102,10 +1176,9 @@
       const highlightData = highlightCtx.createImageData(w, h);
       const hPixels = highlightData.data;
 
-      // No BFS background removal needed on the client side since rawShirtImage is already pre-cropped and transparent!
+      // No BFS background removal needed on the client side since the garment image is already pre-cropped and transparent!
 
-      const config = garmentConfigs[activeGarmentType];
-      const Y_FLAT = config ? (config.yFlat || 215) : 215; // flat fabric baseline for white shirt
+      const Y_FLAT = yFlatBaseline || 215; // flat fabric baseline for white shirt
 
       // 3. Process remaining non-background pixels to build full intensity wrinkle & shine maps
       for (let idx = 0; idx < w * h; idx++) {
@@ -1164,6 +1237,16 @@
       maskCtx.putImageData(maskData, 0, 0);
       shadowCtx.putImageData(shadowData, 0, 0);
       highlightCtx.putImageData(highlightData, 0, 0);
+
+      return { mask, shadows, highlights };
+    }
+
+    function preProcessShirt() {
+      const config = garmentConfigs[activeGarmentType];
+      const layers = buildShirtLayers(rawShirtImage, config ? (config.yFlat || 215) : 215);
+      processedShirtMask = layers.mask;
+      processedShirtShadows = layers.shadows;
+      processedShirtHighlights = layers.highlights;
     }
 
     // Load active design graphic and apply background removal if needed
@@ -1178,24 +1261,24 @@
       };
     }
 
-    // Removes black background from logo using a BFS flood-fill boundary detector
-    function preProcessDesign() {
-      if (!designImage) return;
+    // Removes black background from a logo using a BFS flood-fill boundary
+    // detector. Pure: returns { buffer, isTransparent } without touching
+    // editor state, so batch export can process any number of designs.
+    function buildDesignBuffer(img) {
+      const w = img.width;
+      const h = img.height;
 
-      const w = designImage.width;
-      const h = designImage.height;
-
-      processedDesignBuffer = document.createElement('canvas');
-      processedDesignBuffer.width = w;
-      processedDesignBuffer.height = h;
-      const dCtx = processedDesignBuffer.getContext('2d');
-      dCtx.drawImage(designImage, 0, 0);
+      const buffer = document.createElement('canvas');
+      buffer.width = w;
+      buffer.height = h;
+      const dCtx = buffer.getContext('2d');
+      dCtx.drawImage(img, 0, 0);
 
       // Check if image already has transparent pixels.
       // If it does, we skip keying to avoid corrupting professional transparent PNGs.
       const dData = dCtx.getImageData(0, 0, w, h);
       const pixels = dData.data;
-      
+
       let hasTransparency = false;
       for (let i = 3; i < pixels.length; i += 4) {
         if (pixels[i] < 240) {
@@ -1206,11 +1289,8 @@
 
       if (hasTransparency) {
         // Just keep the original design as is
-        isDesignTransparent = true;
-        return;
+        return { buffer, isTransparent: true };
       }
-
-      isDesignTransparent = false;
 
       // Run Flood-Fill keyer starting from borders to extract outer black background
       const visited = new Uint8Array(w * h);
@@ -1298,6 +1378,14 @@
       }
 
       dCtx.putImageData(dData, 0, 0);
+      return { buffer, isTransparent: false };
+    }
+
+    function preProcessDesign() {
+      if (!designImage) return;
+      const result = buildDesignBuffer(designImage);
+      processedDesignBuffer = result.buffer;
+      isDesignTransparent = result.isTransparent;
     }
 
     // ----------------------------------------------------
@@ -1383,7 +1471,31 @@
     // ----------------------------------------------------
     // 5. Canvas Compositing & Drawing Loop
     // ----------------------------------------------------
-    function drawScene(targetCtx, w, h, scale = 1, isExport = false) {
+    // Snapshot of everything drawScene needs, taken from live editor state.
+    // Batch export builds its own scene objects to render garment/color/design
+    // combinations without disturbing what's on screen.
+    function currentScene() {
+      return {
+        shirtMask: processedShirtMask,
+        shirtShadows: processedShirtShadows,
+        shirtHighlights: processedShirtHighlights,
+        shirtColor,
+        designImage,
+        designBuffer: processedDesignBuffer,
+        isDesignTransparent,
+        designPos,
+        designScale,
+        designRotation,
+        designOpacity,
+        useRealisticBlending,
+        shadowDepth,
+        highlightShine,
+      };
+    }
+
+    function drawScene(targetCtx, w, h, scale = 1, isExport = false, scene = null) {
+      const s = scene || currentScene();
+
       // 1. Draw Backdrop
       drawBackground(targetCtx, w, h, isExport);
 
@@ -1394,54 +1506,54 @@
       const offCtx = tshirtOffscreen.getContext('2d');
 
       // A. Draw the transparent silhouette mask
-      offCtx.drawImage(processedShirtMask, 0, 0, w, h);
+      offCtx.drawImage(s.shirtMask, 0, 0, w, h);
 
       // B. Mask with T-shirt base color
       offCtx.globalCompositeOperation = 'source-in';
-      offCtx.fillStyle = shirtColor;
+      offCtx.fillStyle = s.shirtColor;
       offCtx.fillRect(0, 0, w, h);
 
       // C. Draw graphic design layer on top
-      if (designImage) {
+      if (s.designImage) {
         offCtx.globalCompositeOperation = 'source-atop';
         offCtx.save();
-        offCtx.translate(designPos.x * scale, designPos.y * scale);
-        offCtx.rotate(designRotation);
-        
+        offCtx.translate(s.designPos.x * scale, s.designPos.y * scale);
+        offCtx.rotate(s.designRotation);
+
         // Calculate graphic size
         const baseSize = 500 * scale; // base bounding size
-        const dAspect = designImage.width / designImage.height;
-        let dW = baseSize * designScale;
-        let dH = baseSize * designScale;
+        const dAspect = s.designImage.width / s.designImage.height;
+        let dW = baseSize * s.designScale;
+        let dH = baseSize * s.designScale;
         if (dAspect > 1) {
           dH = dW / dAspect;
         } else {
           dW = dH * dAspect;
         }
 
-        offCtx.globalAlpha = designOpacity;
-        
-        const sourceGraphic = isDesignTransparent ? designImage : processedDesignBuffer;
+        offCtx.globalAlpha = s.designOpacity;
+
+        const sourceGraphic = s.isDesignTransparent ? s.designImage : s.designBuffer;
         offCtx.drawImage(sourceGraphic, -dW / 2, -dH / 2, dW, dH);
         offCtx.restore();
       }
 
       // D. Apply fabric shadow and highlight overlays
-      if (useRealisticBlending) {
+      if (s.useRealisticBlending) {
         // Multiply creases on top of colored shirt + logo
         offCtx.globalCompositeOperation = 'source-atop';
         offCtx.save();
-        offCtx.globalAlpha = shadowDepth;
+        offCtx.globalAlpha = s.shadowDepth;
         offCtx.globalCompositeOperation = 'multiply';
-        offCtx.drawImage(processedShirtShadows, 0, 0, w, h);
+        offCtx.drawImage(s.shirtShadows, 0, 0, w, h);
         offCtx.restore();
 
         // Screen/Overlay highlights on top
         offCtx.globalCompositeOperation = 'source-atop';
         offCtx.save();
-        offCtx.globalAlpha = highlightShine;
+        offCtx.globalAlpha = s.highlightShine;
         offCtx.globalCompositeOperation = 'screen';
-        offCtx.drawImage(processedShirtHighlights, 0, 0, w, h);
+        offCtx.drawImage(s.shirtHighlights, 0, 0, w, h);
         offCtx.restore();
       }
 
@@ -2539,6 +2651,428 @@
           // Hide loading spinner
           if (canvasLoading) canvasLoading.style.display = 'none';
         }, 50);
+      });
+    }
+
+    // ----------------------------------------------------
+    // 9b. Batch Export (garment × color variants, or many designs on one template)
+    // ----------------------------------------------------
+
+    // --- Placement projection between garments -------------------------------
+    // A placement is portable when expressed relative to a garment's printArea:
+    // u/v = design center as a fraction of the area, size = design bounding box
+    // width as a fraction of the area width.
+    function placementToRelative(pos, scaleVal, garmentType) {
+      const pa = garmentConfigs[garmentType].printArea;
+      return {
+        u: (pos.x - pa.x) / pa.w,
+        v: (pos.y - pa.y) / pa.h,
+        size: (500 * scaleVal) / pa.w,
+      };
+    }
+
+    function clampVal(val, lo, hi) {
+      if (lo > hi) return (lo + hi) / 2;
+      return Math.min(Math.max(val, lo), hi);
+    }
+
+    function placementFromRelative(rel, garmentType) {
+      const pa = garmentConfigs[garmentType].printArea;
+      const size = Math.min(rel.size, 1); // never wider than the print area
+      const half = (size * pa.w) / 2;
+      const x = clampVal(pa.x + rel.u * pa.w, pa.x + half, pa.x + pa.w - half);
+      const y = clampVal(pa.y + rel.v * pa.h, pa.y + half, pa.y + pa.h - half);
+      return { pos: { x, y }, scale: (size * pa.w) / 500 };
+    }
+
+    // Standards-accurate center chest: 11″ wide print (clamped to the print
+    // area), top edge ~0.75″ below the top of the printable area.
+    function centerChestPlacement(garmentType) {
+      const cfg = garmentConfigs[garmentType];
+      const pa = cfg.printArea;
+      const wPx = Math.min(11 * cfg.pxPerIn, pa.w);
+      const half = wPx / 2;
+      const y = clampVal(pa.y + 0.75 * cfg.pxPerIn + half, pa.y + half, pa.y + pa.h - half);
+      return { pos: { x: pa.x + pa.w / 2, y }, scale: wPx / 500 };
+    }
+
+    // --- Garment layer cache --------------------------------------------------
+    // Mask/shadow/highlight extraction is the expensive per-garment step; cache
+    // it so N colors of the same garment cost one preprocessing pass.
+    const garmentLayerCache = new Map();
+
+    function loadImageAsync(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Failed to load ' + src));
+        img.src = src;
+      });
+    }
+
+    async function getGarmentLayers(type) {
+      if (garmentLayerCache.has(type)) return garmentLayerCache.get(type);
+      const cfg = garmentConfigs[type];
+      const promise = loadImageAsync(cfg.path).then((img) => buildShirtLayers(img, cfg.yFlat || 215));
+      garmentLayerCache.set(type, promise);
+      return promise;
+    }
+
+    // --- Batch modal elements -------------------------------------------------
+    const batchBtn = document.getElementById('batch-export-btn');
+    const batchModal = document.getElementById('batch-modal');
+    const batchTabVariants = document.getElementById('batch-tab-variants');
+    const batchTabDesigns = document.getElementById('batch-tab-designs');
+    const batchPanelVariants = document.getElementById('batch-panel-variants');
+    const batchPanelDesigns = document.getElementById('batch-panel-designs');
+    const batchGarmentsGrid = document.getElementById('batch-garments');
+    const batchColorsGrid = document.getElementById('batch-colors');
+    const batchDropZone = document.getElementById('batch-drop-zone');
+    const batchFileInput = document.getElementById('batch-file-input');
+    const batchFileList = document.getElementById('batch-file-list');
+    const batchTemplateSummary = document.getElementById('batch-template-summary');
+    const batchEstimate = document.getElementById('batch-estimate');
+    const batchProgress = document.getElementById('batch-progress');
+    const batchProgressFill = document.getElementById('batch-progress-fill');
+    const batchProgressLabel = document.getElementById('batch-progress-label');
+    const batchCancelBtn = document.getElementById('batch-cancel-btn');
+    const batchStartBtn = document.getElementById('batch-start-btn');
+
+    let batchMode = 'variants'; // 'variants' | 'designs'
+    let batchFiles = []; // File objects for the designs tab
+    let batchRunning = false;
+    let batchCancelled = false;
+
+    function slugify(str) {
+      return String(str).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'design';
+    }
+
+    // Preset palette straight from the sidebar buttons (hex + human name).
+    function getPresetColorOptions() {
+      const options = [];
+      presetColors.querySelectorAll('.color-btn').forEach((btn) => {
+        options.push({ hex: btn.dataset.color, name: btn.title || btn.dataset.color });
+      });
+      return options;
+    }
+
+    function buildBatchGarmentGrid() {
+      batchGarmentsGrid.innerHTML = '';
+      Object.entries(garmentConfigs).forEach(([type, cfg]) => {
+        const label = document.createElement('label');
+        label.className = 'batch-check';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = type;
+        input.checked = type === activeGarmentType;
+        input.addEventListener('change', updateBatchEstimate);
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(' ' + cfg.label));
+        batchGarmentsGrid.appendChild(label);
+      });
+    }
+
+    function buildBatchColorGrid() {
+      batchColorsGrid.innerHTML = '';
+      const options = getPresetColorOptions();
+      const currentHex = getNormalizedHex(shirtColor);
+      const inPresets = options.some((o) => getNormalizedHex(o.hex) === currentHex);
+      if (!inPresets) {
+        options.unshift({ hex: shirtColor, name: 'Current color' });
+      }
+      options.forEach((opt) => {
+        const label = document.createElement('label');
+        label.className = 'batch-check batch-color-check';
+        label.title = opt.name;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = opt.hex;
+        input.dataset.name = opt.name;
+        input.checked = getNormalizedHex(opt.hex) === currentHex;
+        input.addEventListener('change', updateBatchEstimate);
+        const swatch = document.createElement('span');
+        swatch.className = 'batch-swatch';
+        swatch.style.backgroundColor = opt.hex;
+        label.appendChild(input);
+        label.appendChild(swatch);
+        batchColorsGrid.appendChild(label);
+      });
+    }
+
+    function getBatchQuality() {
+      const checked = batchModal.querySelector('input[name="batch-quality"]:checked');
+      return checked && checked.value === '2000' ? 2000 : 1000;
+    }
+
+    function countBatchJobs() {
+      if (batchMode === 'designs') return batchFiles.length;
+      const garments = batchGarmentsGrid.querySelectorAll('input:checked').length;
+      const colors = batchColorsGrid.querySelectorAll('input:checked').length;
+      return garments * colors;
+    }
+
+    function updateBatchEstimate() {
+      const n = countBatchJobs();
+      const perImageMb = getBatchQuality() === 2000 ? 3.2 : 1.0;
+      const est = n === 0 ? '' : `${n} image${n === 1 ? '' : 's'} &middot; ~${Math.max(1, Math.round(n * perImageMb))} MB ZIP`;
+      batchEstimate.innerHTML = est;
+      batchStartBtn.disabled = n === 0 || (batchMode === 'variants' && !designImage);
+    }
+
+    function setBatchMode(mode) {
+      batchMode = mode;
+      const variants = mode === 'variants';
+      batchTabVariants.classList.toggle('active', variants);
+      batchTabDesigns.classList.toggle('active', !variants);
+      batchTabVariants.setAttribute('aria-selected', String(variants));
+      batchTabDesigns.setAttribute('aria-selected', String(!variants));
+      batchPanelVariants.style.display = variants ? '' : 'none';
+      batchPanelDesigns.style.display = variants ? 'none' : '';
+      updateBatchEstimate();
+    }
+
+    function renderBatchFileList() {
+      batchFileList.innerHTML = '';
+      batchFiles.forEach((file, i) => {
+        const li = document.createElement('li');
+        const name = document.createElement('span');
+        name.textContent = file.name;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'batch-file-remove';
+        remove.setAttribute('aria-label', 'Remove ' + file.name);
+        remove.textContent = '×';
+        remove.addEventListener('click', () => {
+          batchFiles.splice(i, 1);
+          renderBatchFileList();
+          updateBatchEstimate();
+        });
+        li.appendChild(name);
+        li.appendChild(remove);
+        batchFileList.appendChild(li);
+      });
+    }
+
+    function addBatchFiles(fileList) {
+      const MAX_FILES = 100;
+      for (const file of fileList) {
+        if (!file.type.match('image.*')) continue;
+        if (batchFiles.length >= MAX_FILES) break;
+        batchFiles.push(file);
+      }
+      renderBatchFileList();
+      updateBatchEstimate();
+    }
+
+    function openBatchModal() {
+      buildBatchGarmentGrid();
+      buildBatchColorGrid();
+      const cfg = garmentConfigs[activeGarmentType];
+      batchTemplateSummary.textContent =
+        `Each design is placed on your current template: ${cfg.label}, current fabric color, background and design position.`;
+      batchProgress.style.display = 'none';
+      batchStartBtn.style.display = '';
+      updateBatchEstimate();
+      batchModal.style.display = 'flex';
+    }
+
+    function closeBatchModal() {
+      if (batchRunning) return;
+      batchModal.style.display = 'none';
+    }
+
+    // --- Job building ---------------------------------------------------------
+    function buildVariantJobs() {
+      const garments = [...batchGarmentsGrid.querySelectorAll('input:checked')].map((i) => i.value);
+      const colors = [...batchColorsGrid.querySelectorAll('input:checked')].map((i) => ({ hex: i.value, name: i.dataset.name }));
+      const placementMode = batchModal.querySelector('input[name="batch-placement"]:checked').value;
+      const rel = placementToRelative(designPos, designScale, activeGarmentType);
+
+      const jobs = [];
+      for (const garment of garments) {
+        const placement = placementMode === 'center-chest'
+          ? centerChestPlacement(garment)
+          : placementFromRelative(rel, garment);
+        for (const color of colors) {
+          jobs.push({
+            garmentType: garment,
+            color: color.hex,
+            placement,
+            fileName: `${slugify(garmentConfigs[garment].label)}-${slugify(color.name)}.png`,
+          });
+        }
+      }
+      return jobs;
+    }
+
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Failed to read ' + file.name));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // --- Batch runner ----------------------------------------------------------
+    async function runBatchExport() {
+      const { default: JSZip } = await import('jszip');
+      const zip = new JSZip();
+      const size = getBatchQuality();
+      const scaleFactor = size / 1000;
+
+      batchRunning = true;
+      batchCancelled = false;
+      batchStartBtn.style.display = 'none';
+      batchProgress.style.display = '';
+      batchCancelBtn.textContent = 'Stop';
+
+      const usedNames = new Set();
+      const uniqueName = (name) => {
+        let candidate = name;
+        let i = 2;
+        while (usedNames.has(candidate)) {
+          candidate = name.replace(/\.png$/, `-${i}.png`);
+          i++;
+        }
+        usedNames.add(candidate);
+        return candidate;
+      };
+
+      const renderJobToZip = async (scene, fileName) => {
+        const cv = document.createElement('canvas');
+        cv.width = size;
+        cv.height = size;
+        drawScene(cv.getContext('2d'), size, size, scaleFactor, true, scene);
+        const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
+        if (blob) zip.file(uniqueName(fileName), blob);
+      };
+
+      const setProgress = (done, total, label) => {
+        batchProgressFill.style.width = `${Math.round((done / total) * 100)}%`;
+        batchProgressLabel.textContent = label || `${done} / ${total}`;
+      };
+
+      let total = 0;
+      let done = 0;
+      try {
+        if (batchMode === 'variants') {
+          const jobs = buildVariantJobs();
+          total = jobs.length;
+          setProgress(0, total);
+          const base = currentScene();
+          for (const job of jobs) {
+            if (batchCancelled) break;
+            const layers = await getGarmentLayers(job.garmentType);
+            await renderJobToZip({
+              ...base,
+              shirtMask: layers.mask,
+              shirtShadows: layers.shadows,
+              shirtHighlights: layers.highlights,
+              shirtColor: job.color,
+              designPos: job.placement.pos,
+              designScale: job.placement.scale,
+            }, job.fileName);
+            done++;
+            setProgress(done, total);
+            await new Promise((r) => setTimeout(r, 0)); // keep the UI responsive
+          }
+        } else {
+          total = batchFiles.length;
+          setProgress(0, total);
+          const base = currentScene();
+          for (const file of batchFiles) {
+            if (batchCancelled) break;
+            setProgress(done, total, `${done + 1} / ${total}: ${file.name}`);
+            const dataUrl = await readFileAsDataURL(file);
+            const img = await loadImageAsync(dataUrl);
+            const processed = buildDesignBuffer(img);
+            const baseName = file.name.replace(/\.[^.]*$/, '');
+            await renderJobToZip({
+              ...base,
+              designImage: img,
+              designBuffer: processed.buffer,
+              isDesignTransparent: processed.isTransparent,
+            }, `${slugify(baseName)}-${slugify(garmentConfigs[activeGarmentType].label)}.png`);
+            done++;
+            setProgress(done, total);
+            await new Promise((r) => setTimeout(r, 0));
+          }
+        }
+
+        if (done > 0) {
+          setProgress(done, Math.max(total, 1), 'Building ZIP…');
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const url = URL.createObjectURL(zipBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `teemockup-batch-${done}-mockups.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+        }
+      } catch (err) {
+        console.error('Batch export failed:', err);
+        batchProgressLabel.textContent = 'Export failed — please try again.';
+      } finally {
+        batchRunning = false;
+        batchCancelBtn.textContent = 'Cancel';
+        batchStartBtn.style.display = '';
+        if (done > 0 && !batchCancelled) {
+          batchProgress.style.display = 'none';
+          closeBatchModal();
+        }
+      }
+    }
+
+    // --- Wiring ----------------------------------------------------------------
+    if (batchBtn && batchModal) {
+      batchBtn.addEventListener('click', openBatchModal);
+      batchTabVariants.addEventListener('click', () => setBatchMode('variants'));
+      batchTabDesigns.addEventListener('click', () => setBatchMode('designs'));
+
+      batchCancelBtn.addEventListener('click', () => {
+        if (batchRunning) {
+          batchCancelled = true;
+          batchProgressLabel.textContent = 'Stopping…';
+        } else {
+          closeBatchModal();
+        }
+      });
+      batchModal.addEventListener('click', (e) => {
+        if (e.target === batchModal) closeBatchModal();
+      });
+
+      batchModal.querySelectorAll('input[name="batch-quality"], input[name="batch-placement"]').forEach((input) => {
+        input.addEventListener('change', updateBatchEstimate);
+      });
+
+      batchStartBtn.addEventListener('click', () => {
+        if (!batchRunning && countBatchJobs() > 0) runBatchExport();
+      });
+
+      batchDropZone.addEventListener('click', () => batchFileInput.click());
+      batchDropZone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          batchFileInput.click();
+        }
+      });
+      batchFileInput.addEventListener('change', (e) => {
+        if (e.target.files) addBatchFiles(e.target.files);
+        batchFileInput.value = '';
+      });
+      batchDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        batchDropZone.classList.add('dragover');
+      });
+      batchDropZone.addEventListener('dragleave', () => batchDropZone.classList.remove('dragover'));
+      batchDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        batchDropZone.classList.remove('dragover');
+        if (e.dataTransfer && e.dataTransfer.files) addBatchFiles(e.dataTransfer.files);
       });
     }
 
