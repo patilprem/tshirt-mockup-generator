@@ -773,14 +773,30 @@
     const garmentSelector = document.getElementById('garment-selector');
     const canvasLoading = document.getElementById('canvas-loading');
 
-    // GA4 event helper — no-op if analytics is blocked or absent. Only ever
-    // sends metadata (garment type, counts, quality), never design content.
+    // Export tracking — GA4 plus a first-party beacon to /api/track (counted
+    // even when ad-blockers stop GA). Only ever sends metadata (garment type,
+    // counts, quality), never design content. Must never break the editor.
     function trackEvent(name, params) {
+      params = params || {};
       try {
         if (typeof window.gtag === 'function') {
-          window.gtag('event', name, params || {});
+          window.gtag('event', name, params);
         }
-      } catch (e) { /* analytics must never break the editor */ }
+      } catch (e) { /* no-op */ }
+      try {
+        const beacon = JSON.stringify({
+          event: name,
+          garment: params.garment || '',
+          mode: params.mode || '',
+          quality: params.quality || '',
+          images: params.images || 0,
+        });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/track', beacon);
+        } else {
+          fetch('/api/track', { method: 'POST', body: beacon, keepalive: true }).catch(() => {});
+        }
+      } catch (e) { /* no-op */ }
     }
 
     // ----------------------------------------------------
