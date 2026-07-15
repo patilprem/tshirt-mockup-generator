@@ -46,6 +46,10 @@ Each post deep-links to the relevant garment and use-case pages.
 
 ## Phase 3 — More landing pages (selective)
 
+- [x] Bulk/batch export cluster (2026-07-15): `/bulk-t-shirt-mockup-generator` landing page,
+  `/blog/batch-export-t-shirt-mockups` post, homepage showcase section, and "Bulk / batch export"
+  rows on all three competitor-alternative tables — feature-led pages, not thin variants.
+
 - Competitor alternatives: Smartmockups, Mediamodifier, Printful mockup generator, Vexels
 - Seller platforms: Redbubble, Amazon Merch, TeePublic
 - **Avoid** thin color/style variant pages ("black t-shirt mockup" etc.) unless each page is genuinely distinct — near-duplicate landing pages risk being treated as doorway pages.

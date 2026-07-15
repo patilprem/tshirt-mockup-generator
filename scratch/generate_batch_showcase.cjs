@@ -134,6 +134,50 @@ const BANNER_DIR = path.join(ROOT, 'public', 'assets', 'banner');
   fs.writeFileSync(path.join(BANNER_DIR, 'blog_batch_export.jpg'), Buffer.from(bannerB64, 'base64'));
   console.log('wrote blog_batch_export.jpg');
 
+  // 3. Bulk landing page hero (680×680): square 3×3 grid, matches the other
+  //    landing pages' square hb-right banners.
+  const squareB64 = await page.evaluate(async ({ b64s }) => {
+    const imgs = await Promise.all(b64s.map((b) => new Promise((res) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.src = 'data:image/png;base64,' + b;
+    })));
+    const W = 680, H = 680;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#f4f1ec');
+    bg.addColorStop(1, '#e7e2d9');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    const cols = 3, rows = 3, gap = 14, pad = 26;
+    const cell = (W - 2 * pad - (cols - 1) * gap) / cols;
+    ctx.imageSmoothingQuality = 'high';
+    imgs.forEach((im, i) => {
+      const c = i % cols, r = Math.floor(i / cols);
+      const x = pad + c * (cell + gap), y = pad + r * (cell + gap);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.18)';
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 5;
+      ctx.beginPath();
+      ctx.roundRect(x, y, cell, cell, 12);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(x, y, cell, cell, 12);
+      ctx.clip();
+      ctx.drawImage(im, x, y, cell, cell);
+      ctx.restore();
+    });
+    return cv.toDataURL('image/jpeg', 0.85).split(',')[1];
+  }, { b64s });
+  fs.writeFileSync(path.join(BANNER_DIR, 'bulk_mock.jpg'), Buffer.from(squareB64, 'base64'));
+  console.log('wrote bulk_mock.jpg');
+
   fs.unlinkSync(zipPath);
   await browser.close();
 })();
