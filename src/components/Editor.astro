@@ -773,10 +773,26 @@
     const garmentSelector = document.getElementById('garment-selector');
     const canvasLoading = document.getElementById('canvas-loading');
 
+    // Owner self-exclusion: visiting /editor?notrack=1 flags this browser so
+    // its exports never count in GA4 or the first-party stats (?notrack=0
+    // clears the flag). Persisted in localStorage per browser profile.
+    const NOTRACK_KEY = 'teemockup_notrack';
+    let statsOptedOut = false;
+    try {
+      const notrackParam = new URLSearchParams(window.location.search).get('notrack');
+      if (notrackParam === '1') localStorage.setItem(NOTRACK_KEY, '1');
+      if (notrackParam === '0') localStorage.removeItem(NOTRACK_KEY);
+      statsOptedOut = localStorage.getItem(NOTRACK_KEY) === '1';
+      if (notrackParam !== null || statsOptedOut) {
+        console.info('[TeeMockup] export tracking is ' + (statsOptedOut ? 'OFF' : 'ON') + ' for this browser');
+      }
+    } catch (e) { /* private mode without storage: default to tracking on */ }
+
     // Export tracking — GA4 plus a first-party beacon to /api/track (counted
     // even when ad-blockers stop GA). Only ever sends metadata (garment type,
     // counts, quality), never design content. Must never break the editor.
     function trackEvent(name, params) {
+      if (statsOptedOut) return;
       params = params || {};
       try {
         if (typeof window.gtag === 'function') {
