@@ -773,6 +773,16 @@
     const garmentSelector = document.getElementById('garment-selector');
     const canvasLoading = document.getElementById('canvas-loading');
 
+    // GA4 event helper — no-op if analytics is blocked or absent. Only ever
+    // sends metadata (garment type, counts, quality), never design content.
+    function trackEvent(name, params) {
+      try {
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', name, params || {});
+        }
+      } catch (e) { /* analytics must never break the editor */ }
+    }
+
     // ----------------------------------------------------
     // 2. Editor State & Presets Configuration
     // ----------------------------------------------------
@@ -2648,6 +2658,11 @@
           downloadLink.click();
           document.body.removeChild(downloadLink);
 
+          trackEvent('mockup_download', {
+            garment: activeGarmentType,
+            quality: `${exportWidth}x${exportHeight}`,
+          });
+
           // Hide loading spinner
           if (canvasLoading) canvasLoading.style.display = 'none';
         }, 50);
@@ -3012,6 +3027,14 @@
           a.click();
           document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+          trackEvent('batch_export', {
+            mode: batchMode,
+            images: done,
+            planned: total,
+            quality: `${size}x${size}`,
+            cancelled: batchCancelled,
+          });
         }
       } catch (err) {
         console.error('Batch export failed:', err);
