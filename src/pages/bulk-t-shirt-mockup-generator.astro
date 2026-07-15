@@ -1,0 +1,177 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const softwareLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Bulk T-Shirt Mockup Generator — Free Batch Export, No Signup",
+  "url": "https://freeteemockup.com/bulk-t-shirt-mockup-generator",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "Free bulk t-shirt mockup generator: export every garment and color combination of your design as a ZIP of PNGs in one click, or render up to 100 designs on one template. No signup, no watermark.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://freeteemockup.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Bulk T-Shirt Mockup Generator",
+      "item": "https://freeteemockup.com/bulk-t-shirt-mockup-generator"
+    }
+  ]
+};
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is the bulk mockup export really free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Batch export is free with no signup, no watermark, and no daily cap. All rendering happens locally in your browser, so there is no server cost that would require a paid tier."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How many t-shirt mockups can I generate at once?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Variant mode renders every combination of your selected garments (up to 8) and fabric colors in one run. Design mode accepts up to 100 design files and renders each one on your chosen template."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Will my design be positioned correctly on every garment?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Your placement is mapped onto each garment's real printable area — below hoods and plackets, above pockets — or you can snap every variant to a standards-accurate 11-inch center chest print, sized per garment."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What do I get from a batch export?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "One ZIP containing a PNG per mockup at 1000×1000 or 2000×2000 pixels, named by garment and color or by design file name — ready to upload to Etsy, Shopify, Amazon Merch, or any print-on-demand marketplace."
+      }
+    }
+  ]
+};
+---
+
+<PageLayout
+  title="Bulk T-Shirt Mockup Generator (Free Batch Export)"
+  description="Export every garment and color combination of your design as a ZIP of PNGs in one click — or render up to 100 designs on one template. Free, no signup, no watermark."
+  canonical="https://freeteemockup.com/bulk-t-shirt-mockup-generator"
+  ogImage="/assets/banner/bulk_mock.jpg"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(softwareLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </Fragment>
+
+  <div class="hero-wrap">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="page-breadcrumb-sep" aria-hidden="true">/</span>
+      <span aria-current="page">Bulk T-Shirt Mockup Generator</span>
+    </nav>
+    <section class="hero-banner">
+      <div class="hb-left">
+        <span class="hb-eyebrow">Free · No signup · No watermark</span>
+        <h1 class="hb-title">Bulk T-Shirt <span class="hb-grad">Mockup Generator</span></h1>
+        <p class="hb-tag">Make one mockup, then export every variant in one click: your design on every garment and color you sell, downloaded as a single ZIP of listing-ready PNGs. Or flip it and render up to 100 designs on one template. Bulk export is a paid feature everywhere else — here it's free.</p>
+        <a class="hb-cta" href="/editor">Open the free editor →</a>
+      </div>
+      <div class="hb-right">
+        <img src="/assets/banner/bulk_mock.jpg" width="680" height="680" loading="eager" fetchpriority="high" alt="Nine t-shirt mockups from one bulk export: the same surf design on crewneck tees, hoodies, and tank tops in navy, white, and sand" />
+      </div>
+    </section>
+  </div>
+
+  <div class="page-content-wide">
+    <div class="prose" style="max-width: 760px; margin: 0 auto;">
+      <h2>Two ways to export in bulk</h2>
+      <p>
+        <strong>One design → every variant.</strong> Set up your mockup once in the
+        <a href="/editor">editor</a>, click <em>Batch Export</em>, and tick the garments and fabric
+        colors you sell. Every combination renders automatically — 3 garments × 3 colors is 9
+        mockups, like the grid above, which is a real unedited export. Files come back named and
+        ready to upload (<code>hoodie-classic-white.png</code>, <code>tank-top-sand-beige.png</code>).
+      </p>
+      <p>
+        <strong>Many designs → one template.</strong> Get a single mockup looking exactly right,
+        then drop in up to 100 design files. Each renders on the same garment, color, background,
+        and placement — the fastest way to give a whole shop a consistent, professional look.
+      </p>
+
+      <h2>Placement that follows the garment</h2>
+      <p>
+        Bulk tools usually paste your design at the same pixel position on every template, which
+        puts prints on hoodie pockets and polo plackets. Here, your placement is converted to each
+        garment's <em>real printable area</em> — measured per garment — so the design lands where a
+        print shop would put it. Or choose <strong>Snap to Center Chest</strong> for the standard
+        11″ print, automatically sized to each garment's width. The measurements follow our
+        <a href="/blog/t-shirt-design-placement-size-guide">placement &amp; size guide</a>.
+      </p>
+
+      <h2>How it compares</h2>
+      <table style="width:100%;border-collapse:collapse;margin:1rem 0;font-size:0.92rem;">
+      <thead><tr><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">&nbsp;</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">FreeTeeMockup</th><th style="text-align:left;padding:10px 12px;border-bottom:2px solid var(--border-glass,rgba(255,255,255,0.12));">Typical mockup platforms</th></tr></thead>
+      <tbody>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Bulk / batch export</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Free, unlimited</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Paid add-on or subscription-metered</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Signup</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Not required</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Account required for bulk</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Watermark</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">None</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Common on free tiers</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Where files are processed</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">In your browser — designs never uploaded</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Cloud servers</td></tr>
+      <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Output</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">ZIP of named PNGs, 1000px or 2000px</td><td style="padding:10px 12px;border-bottom:1px solid var(--border-glass,rgba(255,255,255,0.08));">Varies; often per-image downloads</td></tr>
+      </tbody></table>
+      <p>
+        Comparing specific tools? See how we stack up against
+        <a href="/free-placeit-alternative">Placeit</a>, <a href="/mockey-alternative">Mockey.ai</a>,
+        and <a href="/free-canva-mockup-alternative">Canva</a>.
+      </p>
+
+      <h2>Built for print-on-demand sellers</h2>
+      <ul>
+        <li><strong>Etsy listings:</strong> export at 2000×2000 for zoom, and fill your ten image slots with variants — our <a href="/t-shirt-mockups-for-etsy">Etsy mockup guide</a> shows which ones convert.</li>
+        <li><strong>Shopify stores:</strong> a consistent template across every product page — see <a href="/t-shirt-mockups-for-shopify">mockups for Shopify</a>.</li>
+        <li><strong>Any garment you sell:</strong> <a href="/crewneck-mockup-generator">crewneck</a>, <a href="/hoodie-mockup-generator">hoodie</a>, <a href="/sweatshirt-mockup-generator">sweatshirt</a>, <a href="/tank-top-mockup-generator">tank top</a>, <a href="/v-neck-mockup-generator">v-neck</a>, <a href="/long-sleeve-mockup-generator">long sleeve</a>, <a href="/polo-shirt-mockup-generator">polo</a>, and <a href="/ladies-tee-mockup-generator">ladies tee</a>.</li>
+      </ul>
+      <p>
+        For the full walkthrough with tips, read the
+        <a href="/blog/batch-export-t-shirt-mockups">batch export guide</a> on the blog.
+      </p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Is the bulk mockup export really free?</h3>
+      <p>Yes. No signup, no watermark, no daily cap. All rendering happens locally in your browser, so there's no server cost that would require a paid tier.</p>
+      <h3>How many t-shirt mockups can I generate at once?</h3>
+      <p>Variant mode renders every combination of your selected garments (up to 8) and fabric colors in one run. Design mode accepts up to 100 design files rendered on your chosen template.</p>
+      <h3>Will my design be positioned correctly on every garment?</h3>
+      <p>Yes — your placement is mapped onto each garment's real printable area, or you can snap every variant to a standards-accurate 11″ center chest print, sized per garment.</p>
+      <h3>What do I get from a batch export?</h3>
+      <p>One ZIP with a PNG per mockup at 1000×1000 or 2000×2000, named by garment and color or by design file name — ready for Etsy, Shopify, Amazon Merch, or any POD marketplace.</p>
+    </div>
+
+    <div class="about-cta-block">
+      <h2>Export your first batch</h2>
+      <p>One design in, every variant out — free, no signup, no watermark.</p>
+      <a href="/editor" class="btn-hero-primary">Try Batch Export Free</a>
+    </div>
+  </div>
+</PageLayout>
