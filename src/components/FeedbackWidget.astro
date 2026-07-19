@@ -1,0 +1,518 @@
+---
+// Floating feedback chat widget — fixed bottom-right on every page.
+// Do NOT add this to isolated export/render/print-only pages (none exist yet;
+// if one is added later, skip importing this component there).
+const WEB3FORMS_ACCESS_KEY = '1f8beca4-21a0-4483-88e5-6da95e11c5ea';
+const CONTACT_EMAIL = 'contact@freeteemockup.com';
+---
+
+<div id="feedback-widget-root" data-access-key={WEB3FORMS_ACCESS_KEY} data-contact-email={CONTACT_EMAIL}>
+  <button type="button" id="feedback-fab" class="feedback-fab" aria-haspopup="dialog" aria-expanded="false" aria-controls="feedback-panel" aria-label="Send feedback">
+    <span aria-hidden="true">💬</span>
+  </button>
+
+  <div id="feedback-overlay" class="feedback-overlay" hidden></div>
+
+  <div id="feedback-panel" class="feedback-panel" role="dialog" aria-modal="true" aria-labelledby="feedback-panel-title" hidden>
+    <div class="feedback-panel-header">
+      <span id="feedback-panel-title" class="feedback-panel-title">Feedback</span>
+      <button type="button" id="feedback-close" class="feedback-close" aria-label="Close feedback panel">✕</button>
+    </div>
+
+    <div id="feedback-thread" class="feedback-thread" aria-live="polite"></div>
+
+    <form id="feedback-form" class="feedback-composer">
+      <label for="feedback-input" class="feedback-sr-only">Your reply</label>
+      <input
+        type="text"
+        id="feedback-input"
+        name="feedback-input"
+        class="feedback-input"
+        autocomplete="off"
+        placeholder="Type your answer…"
+      />
+      <button type="submit" id="feedback-send" class="feedback-send-btn">Send</button>
+    </form>
+  </div>
+</div>
+
+<style is:global>
+  #feedback-widget-root {
+    --feedback-bottom-offset: 0px;
+  }
+
+  .feedback-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .feedback-fab {
+    position: fixed;
+    right: 20px;
+    bottom: calc(20px + var(--feedback-bottom-offset) + env(safe-area-inset-bottom, 0px));
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #fff;
+    box-shadow: 0 6px 20px var(--primary-glow);
+    cursor: pointer;
+    z-index: 2147483000;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .feedback-fab:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 26px var(--primary-glow);
+  }
+
+  .feedback-fab[aria-expanded="true"] {
+    transform: scale(0.92);
+  }
+
+  .feedback-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 2147482998;
+    animation: feedback-fade-in 0.2s ease-out;
+  }
+
+  .feedback-panel[hidden] {
+    display: none;
+  }
+
+  .feedback-panel {
+    position: fixed;
+    right: 20px;
+    bottom: calc(88px + var(--feedback-bottom-offset) + env(safe-area-inset-bottom, 0px));
+    width: min(360px, calc(100vw - 32px));
+    max-height: min(70vh, 520px);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    z-index: 2147482999;
+    animation: feedback-panel-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes feedback-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes feedback-panel-in {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feedback-fab,
+    .feedback-overlay,
+    .feedback-panel {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+  .feedback-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: hsla(215, 25%, 10%, 0.9);
+    border-bottom: 1px solid var(--border-glass);
+    backdrop-filter: blur(16px);
+  }
+
+  .feedback-panel-title {
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .feedback-close {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.2s, background-color 0.2s;
+  }
+
+  .feedback-close:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .feedback-thread {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .feedback-bubble {
+    max-width: 82%;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    color: var(--text-primary);
+    animation: feedback-fade-in 0.2s ease-out;
+    word-wrap: break-word;
+  }
+
+  .feedback-bubble a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .feedback-bubble-bot {
+    align-self: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    border-radius: 4px 16px 16px 16px;
+  }
+
+  .feedback-bubble-user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #fff;
+    border-radius: 16px 4px 16px 16px;
+  }
+
+  .feedback-composer[hidden] {
+    display: none;
+  }
+
+  .feedback-composer {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--border-glass);
+    background: hsla(215, 25%, 10%, 0.9);
+  }
+
+  .feedback-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    background: var(--bg-main);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .feedback-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .feedback-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+  }
+
+  .feedback-send-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #fff;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 14px var(--primary-glow);
+  }
+
+  .feedback-send-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px var(--primary-glow);
+  }
+
+  .feedback-send-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .feedback-reset-btn {
+    align-self: flex-start;
+    margin-top: 2px;
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+  .feedback-reset-btn:hover {
+    border-color: var(--primary);
+    background: hsla(197, 95%, 48%, 0.08);
+  }
+
+  @media (max-width: 480px) {
+    .feedback-fab {
+      right: 16px;
+      width: 52px;
+      height: 52px;
+      font-size: 1.35rem;
+    }
+
+    .feedback-panel {
+      right: 16px;
+      bottom: calc(80px + var(--feedback-bottom-offset) + env(safe-area-inset-bottom, 0px));
+      width: calc(100vw - 32px);
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    const root = document.getElementById('feedback-widget-root');
+    if (!root) return;
+
+    const ACCESS_KEY = root.dataset.accessKey || '';
+    const CONTACT_EMAIL = root.dataset.contactEmail || '';
+    const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
+
+    const Q1 = 'What were you trying to do, and how did it go?';
+    const Q2 = 'Anything that felt confusing, broken, or missing?';
+
+    const fab = document.getElementById('feedback-fab');
+    const overlay = document.getElementById('feedback-overlay');
+    const panel = document.getElementById('feedback-panel');
+    const closeBtn = document.getElementById('feedback-close');
+    const thread = document.getElementById('feedback-thread');
+    const form = document.getElementById('feedback-form');
+    const input = document.getElementById('feedback-input');
+    const sendBtn = document.getElementById('feedback-send');
+
+    /** @type {'idle' | 'q1' | 'q2' | 'sending' | 'done' | 'error'} */
+    let state = 'idle';
+    let answer1 = '';
+    let answer2 = '';
+
+    function addBubble(text, sender, { html } = {}) {
+      const bubble = document.createElement('div');
+      bubble.className = `feedback-bubble feedback-bubble-${sender}`;
+      if (html) {
+        bubble.appendChild(html);
+      } else {
+        bubble.textContent = text;
+      }
+      thread.appendChild(bubble);
+      thread.scrollTop = thread.scrollHeight;
+      return bubble;
+    }
+
+    function buildFallbackMessage() {
+      const wrap = document.createDocumentFragment();
+      wrap.appendChild(document.createTextNode("Hmm, that didn't send. Mind emailing us instead? "));
+      const link = document.createElement('a');
+      link.href = `mailto:${CONTACT_EMAIL}`;
+      link.textContent = CONTACT_EMAIL;
+      wrap.appendChild(link);
+      return wrap;
+    }
+
+    function updateComposer() {
+      const value = input.value.trim();
+      if (state === 'q1') {
+        form.hidden = false;
+        input.disabled = false;
+        input.placeholder = 'Type your answer…';
+        sendBtn.textContent = 'Send';
+        sendBtn.disabled = value.length === 0;
+      } else if (state === 'q2') {
+        form.hidden = false;
+        input.disabled = false;
+        input.placeholder = 'Type your answer… (optional)';
+        sendBtn.textContent = value.length > 0 ? 'Send' : 'Skip';
+        sendBtn.disabled = false;
+      } else if (state === 'sending') {
+        form.hidden = false;
+        input.disabled = true;
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending…';
+      } else {
+        form.hidden = true;
+      }
+    }
+
+    function removeResetAction() {
+      const existing = thread.querySelector('.feedback-reset-btn');
+      if (existing) existing.remove();
+    }
+
+    function showResetAction() {
+      removeResetAction();
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'feedback-reset-btn';
+      btn.textContent = 'Send more feedback';
+      btn.addEventListener('click', startConversation);
+      thread.appendChild(btn);
+      thread.scrollTop = thread.scrollHeight;
+    }
+
+    function startConversation() {
+      thread.innerHTML = '';
+      answer1 = '';
+      answer2 = '';
+      input.value = '';
+      state = 'q1';
+      addBubble(Q1, 'bot');
+      updateComposer();
+    }
+
+    async function submitFeedback() {
+      state = 'sending';
+      updateComposer();
+
+      const message = [
+        `Q1: ${Q1}`,
+        `A1: ${answer1}`,
+        '',
+        `Q2: ${Q2}`,
+        `A2: ${answer2 || '(skipped)'}`,
+      ].join('\n');
+
+      try {
+        const res = await fetch(WEB3FORMS_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            access_key: ACCESS_KEY,
+            subject: 'Website Feedback — TeeMockup',
+            from_name: 'TeeMockup Feedback Widget',
+            page_url: window.location.href,
+            message,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || data.success === false) {
+          throw new Error('Web3Forms submission failed');
+        }
+        state = 'done';
+        addBubble('Thanks, that really helps! 🎉', 'bot');
+        showResetAction();
+      } catch (err) {
+        state = 'error';
+        addBubble('', 'bot', { html: buildFallbackMessage() });
+        showResetAction();
+      }
+      updateComposer();
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      const value = input.value.trim();
+
+      if (state === 'q1') {
+        if (!value) return;
+        answer1 = value;
+        addBubble(value, 'user');
+        input.value = '';
+        state = 'q2';
+        addBubble(Q2, 'bot');
+        updateComposer();
+        input.focus();
+      } else if (state === 'q2') {
+        answer2 = value;
+        if (value) addBubble(value, 'user');
+        input.value = '';
+        submitFeedback();
+      }
+    }
+
+    function computeBottomClearance() {
+      const stickyBar = document.querySelector('.viewport-export-panel');
+      let extra = 0;
+      if (stickyBar) {
+        const style = window.getComputedStyle(stickyBar);
+        if (style.position === 'fixed') {
+          const rect = stickyBar.getBoundingClientRect();
+          if (rect.height > 0) extra = rect.height + 12;
+        }
+      }
+      root.style.setProperty('--feedback-bottom-offset', `${extra}px`);
+    }
+
+    let resizeTimer;
+    function scheduleClearanceCheck() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(computeBottomClearance, 100);
+    }
+
+    function openPanel() {
+      overlay.hidden = false;
+      panel.hidden = false;
+      fab.setAttribute('aria-expanded', 'true');
+      computeBottomClearance();
+      if (state === 'idle') startConversation();
+      window.setTimeout(() => input.focus(), 50);
+      document.addEventListener('keydown', onKeydown);
+    }
+
+    function closePanel() {
+      overlay.hidden = true;
+      panel.hidden = true;
+      fab.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('keydown', onKeydown);
+      fab.focus();
+    }
+
+    function onKeydown(e) {
+      if (e.key === 'Escape') closePanel();
+    }
+
+    fab.addEventListener('click', () => {
+      if (panel.hidden) openPanel();
+      else closePanel();
+    });
+    closeBtn.addEventListener('click', closePanel);
+    overlay.addEventListener('click', closePanel);
+    form.addEventListener('submit', handleSubmit);
+    input.addEventListener('input', updateComposer);
+
+    computeBottomClearance();
+    window.addEventListener('resize', scheduleClearanceCheck);
+    window.addEventListener('orientationchange', scheduleClearanceCheck);
+  })();
+</script>

@@ -3,6 +3,7 @@
 import '../styles/global.css';
 import '../styles/landing.css';
 import '../styles/page.css';
+import FeedbackWidget from '../components/FeedbackWidget.astro';
 
 interface Props {
   title: string;
@@ -186,6 +187,8 @@ const ogImageUrl = `https://freeteemockup.com${ogImage ?? '/og-image.png'}`;
         });
       });
     </script>
+
+    <FeedbackWidget />
 
   </body>
 </html>
