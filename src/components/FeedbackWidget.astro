@@ -15,7 +15,10 @@ const CONTACT_EMAIL = 'contact@freeteemockup.com';
 
   <div id="feedback-panel" class="feedback-panel" role="dialog" aria-modal="true" aria-labelledby="feedback-panel-title" hidden>
     <div class="feedback-panel-header">
-      <span id="feedback-panel-title" class="feedback-panel-title">Feedback</span>
+      <div class="feedback-panel-heading">
+        <h2 id="feedback-panel-title" class="feedback-panel-title">Quick feedback</h2>
+        <p class="feedback-panel-subtitle">Goes straight to the team — no signup</p>
+      </div>
       <button type="button" id="feedback-close" class="feedback-close" aria-label="Close feedback panel">✕</button>
     </div>
 
@@ -102,7 +105,7 @@ const CONTACT_EMAIL = 'contact@freeteemockup.com';
     max-height: min(70vh, 520px);
     display: flex;
     flex-direction: column;
-    background: var(--bg-sidebar);
+    background: hsl(215, 25%, 10%);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-lg);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -132,19 +135,33 @@ const CONTACT_EMAIL = 'contact@freeteemockup.com';
 
   .feedback-panel-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 12px;
     padding: 14px 16px;
-    background: hsla(215, 25%, 10%, 0.9);
+    background: hsl(215, 25%, 12%);
     border-bottom: 1px solid var(--border-glass);
-    backdrop-filter: blur(16px);
+  }
+
+  .feedback-panel-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
   }
 
   .feedback-panel-title {
     font-family: var(--font-sans);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--text-primary);
+    margin: 0;
+  }
+
+  .feedback-panel-subtitle {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0;
   }
 
   .feedback-close {
@@ -215,7 +232,7 @@ const CONTACT_EMAIL = 'contact@freeteemockup.com';
     gap: 8px;
     padding: 12px;
     border-top: 1px solid var(--border-glass);
-    background: hsla(215, 25%, 10%, 0.9);
+    background: hsl(215, 25%, 12%);
   }
 
   .feedback-input {
