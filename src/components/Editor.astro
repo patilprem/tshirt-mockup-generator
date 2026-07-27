@@ -856,8 +856,8 @@
       'shoes': { path: '/assets/props/prop_shoes.png', x: 50, y: 600, w: 330, h: 330, rotation: 0, loaded: false, img: null },
       'sunglasses': { path: '/assets/props/prop_sunglasses.png', x: 740, y: 400, w: 180, h: 72, rotation: 0, loaded: false, img: null },
       'jeans': { path: '/assets/props/prop_jeans.png', x: 630, y: 520, w: 300, h: 375, rotation: 0, loaded: false, img: null },
-      'bag': { path: '/assets/props/prop_bag.png', x: 400, y: 50, w: 210, h: 210, rotation: 0, loaded: false, img: null },
-      'sandals': { path: '/assets/props/prop_sandals.png', x: 350, y: 630, w: 230, h: 303, rotation: 0, loaded: false, img: null },
+      'bag': { path: '/assets/props/prop_bag.png', x: 380, y: 70, w: 250, h: 128, rotation: 0, loaded: false, img: null },
+      'sandals': { path: '/assets/props/prop_sandals.png', x: 350, y: 630, w: 230, h: 282, rotation: 0, loaded: false, img: null },
       'distressedshorts': { path: '/assets/props/prop_shorts_distressed.png', x: 380, y: 350, w: 260, h: 206, rotation: 0, loaded: false, img: null },
       'leaf': { path: '/assets/props/prop_leaf.png', x: 790, y: 10, w: 190, h: 190, rotation: 0, loaded: false, img: null }
     };
@@ -1509,14 +1509,14 @@
             const rot = config.rotation || 0;
             ctxTarget.rotate(rot);
             
-            // Fixed screen shadow offset (down & right)
+            // Fixed screen shadow offset (down & right) — soft contact shadow, not a hard drop shadow
             const cos = Math.cos(rot);
             const sin = Math.sin(rot);
-            const shadowX = 8 * cos + 12 * sin;
-            const shadowY = 12 * cos - 8 * sin;
+            const shadowX = 3 * cos + 5 * sin;
+            const shadowY = 5 * cos - 3 * sin;
 
-            ctxTarget.shadowColor = 'rgba(0, 0, 0, 0.45)';
-            ctxTarget.shadowBlur = 18 * scale;
+            ctxTarget.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            ctxTarget.shadowBlur = 26 * scale;
             ctxTarget.shadowOffsetX = shadowX * scale;
             ctxTarget.shadowOffsetY = shadowY * scale;
             
@@ -2524,8 +2524,8 @@
         'shoes': { x: 50, y: 600, w: 330, h: 330 },
         'sunglasses': { x: 740, y: 400, w: 180, h: 72 },
         'jeans': { x: 630, y: 520, w: 300, h: 375 },
-        'bag': { x: 400, y: 50, w: 210, h: 210 },
-        'sandals': { x: 350, y: 630, w: 230, h: 303 },
+        'bag': { x: 380, y: 70, w: 250, h: 128 },
+        'sandals': { x: 350, y: 630, w: 230, h: 282 },
         'distressedshorts': { x: 380, y: 350, w: 260, h: 206 },
         'leaf': { x: 790, y: 10, w: 190, h: 190 }
       };
