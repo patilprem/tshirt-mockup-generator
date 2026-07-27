@@ -883,8 +883,6 @@
     let isRotatingProp = false;
     let startPropWidth = 0;
     let startPropHeight = 0;
-    let startPropX = 0;
-    let startPropY = 0;
     let startPropAspect = 1.0;
 
     let activeGarmentType = 'crewneck';
@@ -913,8 +911,18 @@
     let startScale = 0.35;
     let startRotation = 0;
     let startAngleOffset = 0;
-    let startDistFromCenter = 0;
     let activeScaleCorner = ''; // 'tl', 'tr', 'br', 'bl'
+
+    // Anchored-resize state: the opposite corner from the one being dragged stays
+    // pinned in place (Canva-style resize) instead of scaling around the center.
+    let anchorWorld = { x: 0, y: 0 };
+    let startDistFromAnchor = 0;
+
+    // Snap-to-center guides shown while dragging, and rotation-snap increment
+    let activeSnapGuide = { x: false, y: false };
+    const ROTATION_SNAP_STEP = 15; // degrees
+    const ROTATION_SNAP_THRESHOLD = 4; // degrees
+    const CENTER_SNAP_THRESHOLD = 10; // canvas units (canvas is 1000x1000)
 
     // Offscreen Canvas buffers for image processing
     let processedShirtMask = null;
@@ -1652,20 +1660,35 @@
           drawEditorHandles();
         }
         drawPropHandles();
+        drawSnapGuides();
       }
+    }
+
+    // Canva-style center alignment guides, shown while dragging near canvas center
+    function drawSnapGuides() {
+      if (!activeSnapGuide.x && !activeSnapGuide.y) return;
+      ctx.save();
+      ctx.strokeStyle = '#ff4d94';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 5]);
+      if (activeSnapGuide.x) {
+        ctx.beginPath();
+        ctx.moveTo(500, 0);
+        ctx.lineTo(500, 1000);
+        ctx.stroke();
+      }
+      if (activeSnapGuide.y) {
+        ctx.beginPath();
+        ctx.moveTo(0, 500);
+        ctx.lineTo(1000, 500);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // Draws bounding box outline, scale corners, and rotation handle
     function drawEditorHandles() {
-      const baseSize = 500;
-      const dAspect = designImage.width / designImage.height;
-      let dW = baseSize * designScale;
-      let dH = baseSize * designScale;
-      if (dAspect > 1) {
-        dH = dW / dAspect;
-      } else {
-        dW = dH * dAspect;
-      }
+      const { w: dW, h: dH } = getDesignBoxSize(designScale);
 
       ctx.save();
       ctx.translate(designPos.x, designPos.y);
@@ -1687,7 +1710,8 @@
       ctx.setLineDash([]); // solid lines
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = '#00b4e6';
-      const hSize = 12; // handle size
+      ctx.lineWidth = 2;
+      const hSize = 14; // handle size
 
       const corners = [
         { x: -dW / 2, y: -dH / 2 }, // Top Left
@@ -1697,8 +1721,10 @@
       ];
 
       corners.forEach(c => {
-        ctx.fillRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
-        ctx.strokeRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, hSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
       });
 
       // Draw Rotation Handle (Line upwards + Circle handle)
@@ -1714,6 +1740,46 @@
       ctx.stroke();
 
       ctx.restore();
+    }
+
+    // ----------------------------------------------------
+    // Shared geometry helpers for Canva-style anchored resize & angle snapping
+    // ----------------------------------------------------
+    const OPPOSITE_CORNER = { tl: 'br', tr: 'bl', br: 'tl', bl: 'tr' };
+
+    function cornerLocalPoint(w, h, corner) {
+      switch (corner) {
+        case 'tl': return { x: -w / 2, y: -h / 2 };
+        case 'tr': return { x: w / 2, y: -h / 2 };
+        case 'br': return { x: w / 2, y: h / 2 };
+        case 'bl': return { x: -w / 2, y: h / 2 };
+      }
+    }
+
+    function rotateVec(x, y, rotation) {
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      return { x: x * cos - y * sin, y: x * sin + y * cos };
+    }
+
+    // Snaps to the nearest 15° increment when close, so rotating settles
+    // cleanly at 0/15/30/45/... like Canva/PowerPoint, instead of any angle.
+    function snapAngleDeg(deg) {
+      const nearest = Math.round(deg / ROTATION_SNAP_STEP) * ROTATION_SNAP_STEP;
+      return Math.abs(deg - nearest) <= ROTATION_SNAP_THRESHOLD ? nearest : deg;
+    }
+
+    function getDesignBoxSize(scale) {
+      const baseSize = 500;
+      const dAspect = designImage.width / designImage.height;
+      let dW = baseSize * scale;
+      let dH = baseSize * scale;
+      if (dAspect > 1) {
+        dH = dW / dAspect;
+      } else {
+        dW = dH * dAspect;
+      }
+      return { w: dW, h: dH };
     }
 
     function getPropTransformMetrics(type) {
@@ -1794,7 +1860,7 @@
       const metrics = getPropTransformMetrics(type);
       if (!metrics) return null;
       
-      const clickRadius = 25; // hit area in canvas pixels
+      const clickRadius = 30; // hit area in canvas pixels (generous, Canva-style)
       
       // Check rotation handle
       if (Math.hypot(metrics.rot.x - cx, metrics.rot.y - cy) < clickRadius) {
@@ -1909,15 +1975,7 @@
     
     // Calculates coordinates of handles in global canvas space
     function getTransformMetrics() {
-      const baseSize = 500;
-      const dAspect = designImage.width / designImage.height;
-      let dW = baseSize * designScale;
-      let dH = baseSize * designScale;
-      if (dAspect > 1) {
-        dH = dW / dAspect;
-      } else {
-        dW = dH * dAspect;
-      }
+      const { w: dW, h: dH } = getDesignBoxSize(designScale);
 
       const cos = Math.cos(designRotation);
       const sin = Math.sin(designRotation);
@@ -1968,7 +2026,7 @@
     function checkHitHandles(cx, cy) {
       if (!designImage) return null;
       const metrics = getTransformMetrics();
-      const clickRadius = 25; // hit area in canvas pixels
+      const clickRadius = 30; // hit area in canvas pixels (generous, Canva-style)
 
       function getDist(p1, p2) {
         return Math.sqrt(Math.pow(p1.x - p2, 2) + Math.pow(p1.y - cy, 2));
@@ -2024,13 +2082,18 @@
             const config = propConfigs[selectedElement];
             startPropWidth = config.w;
             startPropHeight = config.h;
-            startPropX = config.x;
-            startPropY = config.y;
             startPropAspect = config.w / config.h;
-            
+
+            // Pin the opposite corner in world space so resizing anchors there
+            // instead of scaling around the center (matches Canva/Figma).
             const centerX = config.x + config.w / 2;
             const centerY = config.y + config.h / 2;
-            startDistFromCenter = Math.hypot(coords.x - centerX, coords.y - centerY);
+            const rotation = config.rotation || 0;
+            const oppCorner = OPPOSITE_CORNER[activeScaleCorner];
+            const anchorLocal = cornerLocalPoint(config.w, config.h, oppCorner);
+            const anchorRot = rotateVec(anchorLocal.x, anchorLocal.y, rotation);
+            anchorWorld = { x: centerX + anchorRot.x, y: centerY + anchorRot.y };
+            startDistFromAnchor = Math.hypot(config.w, config.h);
             canvas.style.cursor = 'nwse-resize';
           } else if (hitPropHandle.type === 'rotate') {
             isRotatingProp = true;
@@ -2071,7 +2134,14 @@
           isScaling = true;
           activeScaleCorner = hit.corner;
           startScale = designScale;
-          startDistFromCenter = Math.hypot(coords.x - designPos.x, coords.y - designPos.y);
+
+          // Pin the opposite corner in world space (Canva-style anchored resize)
+          const { w: dW, h: dH } = getDesignBoxSize(designScale);
+          const oppCorner = OPPOSITE_CORNER[activeScaleCorner];
+          const anchorLocal = cornerLocalPoint(dW, dH, oppCorner);
+          const anchorRot = rotateVec(anchorLocal.x, anchorLocal.y, designRotation);
+          anchorWorld = { x: designPos.x + anchorRot.x, y: designPos.y + anchorRot.y };
+          startDistFromAnchor = Math.hypot(dW, dH);
           canvas.style.cursor = 'nwse-resize';
         } else if (hit.type === 'rotate') {
           isRotating = true;
@@ -2096,27 +2166,32 @@
     }
 
     function handleMove(coords) {
-      // 1. If scaling a selected prop
+      // 1. If scaling a selected prop — resize anchored on the opposite corner
       if (isScalingProp && selectedElement) {
         const config = propConfigs[selectedElement];
-        const centerX = config.x + config.w / 2;
-        const centerY = config.y + config.h / 2;
-        const currentDist = Math.hypot(coords.x - centerX, coords.y - centerY);
-        const ratio = currentDist / startDistFromCenter;
+        const currentDist = Math.hypot(coords.x - anchorWorld.x, coords.y - anchorWorld.y);
+        const ratio = currentDist / startDistFromAnchor;
 
         // Maintain aspect ratio, enforce limits (50px to 600px width)
         let newW = Math.max(50, Math.min(600, startPropWidth * ratio));
         let newH = newW / startPropAspect;
 
-        config.x = centerX - newW / 2;
-        config.y = centerY - newH / 2;
+        const rotation = config.rotation || 0;
+        const oppCorner = OPPOSITE_CORNER[activeScaleCorner];
+        const newAnchorLocal = cornerLocalPoint(newW, newH, oppCorner);
+        const newAnchorRot = rotateVec(newAnchorLocal.x, newAnchorLocal.y, rotation);
+        const newCenterX = anchorWorld.x - newAnchorRot.x;
+        const newCenterY = anchorWorld.y - newAnchorRot.y;
+
+        config.x = newCenterX - newW / 2;
+        config.y = newCenterY - newH / 2;
         config.w = newW;
         config.h = newH;
         render();
         return;
       }
 
-      // 1b. If rotating a selected prop
+      // 1b. If rotating a selected prop — snaps to 15° increments like Canva
       if (isRotatingProp && selectedElement) {
         const config = propConfigs[selectedElement];
         const centerX = config.x + config.w / 2;
@@ -2127,16 +2202,24 @@
         let deg = Math.round(newRotation * (180 / Math.PI));
         if (deg > 180) deg -= 360;
         if (deg < -180) deg += 360;
-        config.rotation = deg * (Math.PI / 180);
+        config.rotation = snapAngleDeg(deg) * (Math.PI / 180);
         render();
         return;
       }
 
-      // 2. If dragging a prop
+      // 2. If dragging a prop — snaps to the canvas center like Canva's alignment guides
       if (draggedPropType) {
         const config = propConfigs[draggedPropType];
-        config.x = Math.max(-config.w / 2, Math.min(1000 - config.w / 2, coords.x - dragStartOffset.x));
-        config.y = Math.max(-config.h / 2, Math.min(1000 - config.h / 2, coords.y - dragStartOffset.y));
+        let newX = Math.max(-config.w / 2, Math.min(1000 - config.w / 2, coords.x - dragStartOffset.x));
+        let newY = Math.max(-config.h / 2, Math.min(1000 - config.h / 2, coords.y - dragStartOffset.y));
+
+        activeSnapGuide.x = Math.abs(newX + config.w / 2 - 500) < CENTER_SNAP_THRESHOLD;
+        if (activeSnapGuide.x) newX = 500 - config.w / 2;
+        activeSnapGuide.y = Math.abs(newY + config.h / 2 - 500) < CENTER_SNAP_THRESHOLD;
+        if (activeSnapGuide.y) newY = 500 - config.h / 2;
+
+        config.x = newX;
+        config.y = newY;
         render();
         return;
       }
@@ -2183,24 +2266,40 @@
 
       if (!designImage) return;
 
-      // 4. Drag logo
+      // 4. Drag logo — snaps to the canvas center like Canva's alignment guides
       if (isDragging) {
-        designPos.x = Math.max(100, Math.min(900, coords.x - dragStartOffset.x));
-        designPos.y = Math.max(100, Math.min(900, coords.y - dragStartOffset.y));
+        let newX = Math.max(100, Math.min(900, coords.x - dragStartOffset.x));
+        let newY = Math.max(100, Math.min(900, coords.y - dragStartOffset.y));
+
+        activeSnapGuide.x = Math.abs(newX - 500) < CENTER_SNAP_THRESHOLD;
+        if (activeSnapGuide.x) newX = 500;
+        activeSnapGuide.y = Math.abs(newY - 500) < CENTER_SNAP_THRESHOLD;
+        if (activeSnapGuide.y) newY = 500;
+
+        designPos.x = newX;
+        designPos.y = newY;
       }
 
-      // 5. Scale logo
+      // 5. Scale logo — resize anchored on the opposite corner
       if (isScaling) {
-        const currentDist = Math.hypot(coords.x - designPos.x, coords.y - designPos.y);
-        let ratio = currentDist / startDistFromCenter;
+        const currentDist = Math.hypot(coords.x - anchorWorld.x, coords.y - anchorWorld.y);
+        let ratio = currentDist / startDistFromAnchor;
         let newScale = Math.max(0.1, Math.min(0.9, startScale * ratio));
         designScale = newScale;
+
+        const { w: newDW, h: newDH } = getDesignBoxSize(newScale);
+        const oppCorner = OPPOSITE_CORNER[activeScaleCorner];
+        const newAnchorLocal = cornerLocalPoint(newDW, newDH, oppCorner);
+        const newAnchorRot = rotateVec(newAnchorLocal.x, newAnchorLocal.y, designRotation);
+        designPos.x = anchorWorld.x - newAnchorRot.x;
+        designPos.y = anchorWorld.y - newAnchorRot.y;
+
         scaleSlider.value = Math.round(newScale * 100);
         scaleManual.value = Math.round(newScale * 100);
         userHasManuallyScaled = true;
       }
 
-      // 6. Rotate logo
+      // 6. Rotate logo — snaps to 15° increments like Canva
       if (isRotating) {
         const currentAngle = Math.atan2(coords.y - designPos.y, coords.x - designPos.x);
         let angleDelta = currentAngle - startAngleOffset;
@@ -2208,6 +2307,7 @@
         let deg = Math.round(newRotation * (180 / Math.PI));
         if (deg > 180) deg -= 360;
         if (deg < -180) deg += 360;
+        deg = snapAngleDeg(deg);
         designRotation = deg * (Math.PI / 180);
         rotateSlider.value = deg;
         rotateManual.value = deg;
@@ -2221,7 +2321,10 @@
       isScaling = false;
       isRotating = false;
       isScalingProp = false;
+      isRotatingProp = false;
       draggedPropType = null;
+      activeSnapGuide.x = false;
+      activeSnapGuide.y = false;
       canvas.style.cursor = 'default';
       render();
     }
