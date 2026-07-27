@@ -341,10 +341,6 @@
             <span class="prop-icon" aria-hidden="true">👜</span>
             <span class="prop-name">Straw Bag</span>
           </button>
-          <button class="prop-card" data-prop="sandals" title="Braided Slide Sandals" aria-label="Toggle Braided Slide Sandals prop">
-            <span class="prop-icon" aria-hidden="true">🩴</span>
-            <span class="prop-name">Sandals</span>
-          </button>
           <button class="prop-card" data-prop="distressedshorts" title="Distressed Denim Shorts" aria-label="Toggle Distressed Denim Shorts prop">
             <span class="prop-icon" aria-hidden="true">🩳</span>
             <span class="prop-name">Denim Shorts</span>
@@ -856,10 +852,9 @@
       'shoes': { path: '/assets/props/prop_shoes.png', x: 50, y: 600, w: 330, h: 330, rotation: 0, loaded: false, img: null },
       'sunglasses': { path: '/assets/props/prop_sunglasses.png', x: 740, y: 400, w: 180, h: 72, rotation: 0, loaded: false, img: null },
       'jeans': { path: '/assets/props/prop_jeans.png', x: 630, y: 520, w: 300, h: 375, rotation: 0, loaded: false, img: null },
-      'bag': { path: '/assets/props/prop_bag.png', x: 380, y: 70, w: 250, h: 128, rotation: 0, loaded: false, img: null },
-      'sandals': { path: '/assets/props/prop_sandals.png', x: 350, y: 630, w: 230, h: 282, rotation: 0, loaded: false, img: null },
-      'distressedshorts': { path: '/assets/props/prop_shorts_distressed.png', x: 380, y: 350, w: 260, h: 206, rotation: 0, loaded: false, img: null },
-      'leaf': { path: '/assets/props/prop_leaf.png', x: 790, y: 10, w: 190, h: 190, rotation: 0, loaded: false, img: null }
+      'bag': { path: '/assets/props/prop_bag.png', x: 255, y: 6, w: 500, h: 256, rotation: 0, loaded: false, img: null },
+      'distressedshorts': { path: '/assets/props/prop_shorts_distressed.png', x: 250, y: 247, w: 520, h: 412, rotation: 0, loaded: false, img: null },
+      'leaf': { path: '/assets/props/prop_leaf.png', x: 610, y: 0, w: 380, h: 380, rotation: 0, loaded: false, img: null }
     };
 
     let activeProps = {
@@ -869,7 +864,6 @@
       'sunglasses': false,
       'jeans': false,
       'bag': false,
-      'sandals': false,
       'distressedshorts': false,
       'leaf': false
     };
@@ -2627,10 +2621,9 @@
         'shoes': { x: 50, y: 600, w: 330, h: 330 },
         'sunglasses': { x: 740, y: 400, w: 180, h: 72 },
         'jeans': { x: 630, y: 520, w: 300, h: 375 },
-        'bag': { x: 380, y: 70, w: 250, h: 128 },
-        'sandals': { x: 350, y: 630, w: 230, h: 282 },
-        'distressedshorts': { x: 380, y: 350, w: 260, h: 206 },
-        'leaf': { x: 790, y: 10, w: 190, h: 190 }
+        'bag': { x: 255, y: 6, w: 500, h: 256 },
+        'distressedshorts': { x: 250, y: 247, w: 520, h: 412 },
+        'leaf': { x: 610, y: 0, w: 380, h: 380 }
       };
 
       Object.keys(activeProps).forEach(type => {
