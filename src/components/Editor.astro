@@ -337,6 +337,14 @@
             <span class="prop-icon" aria-hidden="true">👖</span>
             <span class="prop-name">Jeans</span>
           </button>
+          <button class="prop-card" data-prop="bag" title="Woven Straw Bag" aria-label="Toggle Woven Straw Bag prop">
+            <span class="prop-icon" aria-hidden="true">👜</span>
+            <span class="prop-name">Straw Bag</span>
+          </button>
+          <button class="prop-card" data-prop="sandals" title="Braided Slide Sandals" aria-label="Toggle Braided Slide Sandals prop">
+            <span class="prop-icon" aria-hidden="true">🩴</span>
+            <span class="prop-name">Sandals</span>
+          </button>
         </div>
       </div>
     </div>
@@ -839,7 +847,9 @@
       'hat': { path: '/assets/props/prop_hat.png', x: 610, y: 100, w: 330, h: 330, rotation: 0, loaded: false, img: null },
       'shoes': { path: '/assets/props/prop_shoes.png', x: 50, y: 600, w: 330, h: 330, rotation: 0, loaded: false, img: null },
       'sunglasses': { path: '/assets/props/prop_sunglasses.png', x: 740, y: 400, w: 180, h: 72, rotation: 0, loaded: false, img: null },
-      'jeans': { path: '/assets/props/prop_jeans.png', x: 630, y: 520, w: 300, h: 375, rotation: 0, loaded: false, img: null }
+      'jeans': { path: '/assets/props/prop_jeans.png', x: 630, y: 520, w: 300, h: 375, rotation: 0, loaded: false, img: null },
+      'bag': { path: '/assets/props/prop_bag.png', x: 400, y: 50, w: 210, h: 210, rotation: 0, loaded: false, img: null },
+      'sandals': { path: '/assets/props/prop_sandals.png', x: 350, y: 630, w: 230, h: 303, rotation: 0, loaded: false, img: null }
     };
 
     let activeProps = {
@@ -847,7 +857,9 @@
       'hat': false,
       'shoes': false,
       'sunglasses': false,
-      'jeans': false
+      'jeans': false,
+      'bag': false,
+      'sandals': false
     };
 
     let draggedPropType = null;
@@ -2499,7 +2511,9 @@
         'hat': { x: 610, y: 100, w: 330, h: 330 },
         'shoes': { x: 50, y: 600, w: 330, h: 330 },
         'sunglasses': { x: 740, y: 400, w: 180, h: 72 },
-        'jeans': { x: 630, y: 520, w: 300, h: 375 }
+        'jeans': { x: 630, y: 520, w: 300, h: 375 },
+        'bag': { x: 400, y: 50, w: 210, h: 210 },
+        'sandals': { x: 350, y: 630, w: 230, h: 303 }
       };
 
       Object.keys(activeProps).forEach(type => {
