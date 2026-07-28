@@ -637,6 +637,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
   box-shadow: 0 0 10px var(--primary-glow);
 }
 
+.texture-btn .aspect-label {
+  display: block;
+}
+
+.texture-btn .aspect-sub {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* Animations */
 @keyframes pulse-slow {
   0%, 100% {
