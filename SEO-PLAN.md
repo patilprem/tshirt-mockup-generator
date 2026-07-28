@@ -24,6 +24,7 @@ Everything below requires account access or publishing under your identity, so C
 - Horizontal branded hero banners on all 14 landing pages
 - Footer internal linking across all pages, robots.txt, GA4, noindex guard on `.pages.dev` previews
 - Trailing-slash fix (2026-07-13): `build.format: 'file'` + `trailingSlash: 'never'` so Cloudflare Pages serves pages directly at the no-slash URLs used by canonicals/sitemap instead of 308-redirecting them (GSC was reporting "Page with redirect" / "Alternative page with proper canonical tag"); added the missing canonical on `/editor` to consolidate `?garment=…` deep links
+- GSC "Why pages aren't indexed" cleanup (2026-07-28): fixed the homepage's canonical/`og:url`/JSON-LD `url` trailing-slash mismatch vs the sitemap. Audited all four flagged reasons — most of the 23 pages were external backlink noise (the `www` subdomain and `?ref=producthunt` / `?ref=launches.uicomet.com` tracking params on otherwise-correct URLs), not code bugs. Deployed a Cloudflare `www → apex` 301 redirect (Rules → Redirect Rules, wildcard `https://www.freeteemockup.com/*` → `https://freeteemockup.com/${1}`) to consolidate those. The "Redirect error" group (5 garment/use-case pages) pre-dated the July 13 fix by one day — spot-checked live, then validated in GSC. Requested indexing for `/editor` via URL Inspection since it had never been crawled despite being linked from every landing page.
 
 ## Phase 1 — Technical quick wins (this branch)
 
