@@ -189,6 +189,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Section 2b: Canvas Size -->
+    <div class="panel-section" id="canvas-size-section">
+      <h3 class="panel-title">Canvas Size</h3>
+      <div class="control-group">
+        <div class="texture-grid" id="canvas-size-selector" style="grid-template-columns: repeat(4, 1fr);">
+          <button class="texture-btn active" data-aspect="1:1">1:1</button>
+          <button class="texture-btn" data-aspect="4:3">4:3</button>
+          <button class="texture-btn" data-aspect="4:5">4:5</button>
+          <button class="texture-btn" data-aspect="9:16">9:16</button>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- Viewport Workspace (Center) -->
@@ -762,6 +775,7 @@
     const swatchGridPanel = document.getElementById('swatch-grid-panel');
     const swatchGrid = document.getElementById('swatch-grid');
     const bgSelector = document.getElementById('bg-selector');
+    const canvasSizeSelector = document.getElementById('canvas-size-selector');
     const bgColorPickerContainer = document.getElementById('bg-color-picker-container');
     const bgCustomColorToggle = document.getElementById('bg-custom-color-toggle');
     const bgCustomColorPreview = document.getElementById('bg-custom-color-preview');
@@ -897,6 +911,64 @@
     let customBgColor = '#121318';
     let userHasManuallyScaled = false; // tracks if user manually adjusted design scale
 
+    // Canvas aspect ratio — the garment/design/prop composition always lives in a
+    // fixed 1000x1000 "artboard"; changing aspect only changes how much extra
+    // background canvas surrounds that centered square (letterbox-style), so none
+    // of the existing 0-1000 interaction/positioning math needs to change.
+    const CANVAS_ASPECTS = {
+      '1:1': { w: 1, h: 1 },
+      '4:3': { w: 4, h: 3 },
+      '4:5': { w: 4, h: 5 },
+      '9:16': { w: 9, h: 16 }
+    };
+    let canvasAspect = '1:1';
+
+    // Returns the full render frame size for a given export scale (1 = on-screen
+    // 1000px artboard, 2 = 2x export, etc.), plus the offset to center the square
+    // artboard within it.
+    function getFrameDims(scale) {
+      const artboardSize = 1000 * scale;
+      const ratio = CANVAS_ASPECTS[canvasAspect];
+      let frameW = artboardSize;
+      let frameH = artboardSize;
+      if (ratio.w > ratio.h) {
+        frameW = Math.round(artboardSize * (ratio.w / ratio.h));
+      } else if (ratio.h > ratio.w) {
+        frameH = Math.round(artboardSize * (ratio.h / ratio.w));
+      }
+      return {
+        frameW,
+        frameH,
+        artboardSize,
+        offsetX: (frameW - artboardSize) / 2,
+        offsetY: (frameH - artboardSize) / 2
+      };
+    }
+
+    // Resizes the live canvas element + its CSS box to match the selected aspect.
+    function applyCanvasAspect() {
+      const { frameW, frameH } = getFrameDims(1);
+      canvas.width = frameW;
+      canvas.height = frameH;
+
+      // .canvas-container has explicit width:100%/height:100% (capped at 600px),
+      // which makes the CSS `aspect-ratio` property a no-op — it only applies
+      // when a dimension is auto. So size it explicitly here instead, containing
+      // it within the same 600x600 bound the square canvas always used.
+      const BOUND = 600;
+      const ratio = frameW / frameH;
+      let boxW, boxH;
+      if (ratio >= 1) {
+        boxW = BOUND;
+        boxH = BOUND / ratio;
+      } else {
+        boxH = BOUND;
+        boxW = BOUND * ratio;
+      }
+      container.style.width = `${boxW}px`;
+      container.style.height = `${boxH}px`;
+    }
+
     // Interaction Modes
     let isDragging = false;
     let isScaling = false;
@@ -1003,6 +1075,7 @@
       const requestedCard = garmentSelector.querySelector('[data-garment="' + initialGarment + '"]');
       if (requestedCard) requestedCard.classList.add('active');
     }
+    applyCanvasAspect();
     loadGarment(initialGarment);
 
     let woodWhiteImg = null;
@@ -1564,22 +1637,30 @@
     function drawScene(targetCtx, w, h, scale = 1, isExport = false, scene = null) {
       const s = scene || currentScene();
 
-      // 1. Draw Backdrop
+      // The garment/design composition always renders into a fixed square
+      // "artboard" (1000 units * scale); for non-1:1 canvas aspects the frame
+      // (w,h) is larger in one dimension, so the artboard is centered within it
+      // (letterboxed) rather than stretching the garment to fill the frame.
+      const artboardSize = 1000 * scale;
+      const offsetX = (w - artboardSize) / 2;
+      const offsetY = (h - artboardSize) / 2;
+
+      // 1. Draw Backdrop (fills the full frame, including any letterbox margin)
       drawBackground(targetCtx, w, h, isExport);
 
       // 2. Render T-Shirt + Design offscreen to handle masking correctly
       const tshirtOffscreen = document.createElement('canvas');
-      tshirtOffscreen.width = w;
-      tshirtOffscreen.height = h;
+      tshirtOffscreen.width = artboardSize;
+      tshirtOffscreen.height = artboardSize;
       const offCtx = tshirtOffscreen.getContext('2d');
 
       // A. Draw the transparent silhouette mask
-      offCtx.drawImage(s.shirtMask, 0, 0, w, h);
+      offCtx.drawImage(s.shirtMask, 0, 0, artboardSize, artboardSize);
 
       // B. Mask with T-shirt base color
       offCtx.globalCompositeOperation = 'source-in';
       offCtx.fillStyle = s.shirtColor;
-      offCtx.fillRect(0, 0, w, h);
+      offCtx.fillRect(0, 0, artboardSize, artboardSize);
 
       // C. Draw graphic design layer on top
       if (s.designImage) {
@@ -1613,7 +1694,7 @@
         offCtx.save();
         offCtx.globalAlpha = s.shadowDepth;
         offCtx.globalCompositeOperation = 'multiply';
-        offCtx.drawImage(s.shirtShadows, 0, 0, w, h);
+        offCtx.drawImage(s.shirtShadows, 0, 0, artboardSize, artboardSize);
         offCtx.restore();
 
         // Screen/Overlay highlights on top
@@ -1621,22 +1702,25 @@
         offCtx.save();
         offCtx.globalAlpha = s.highlightShine;
         offCtx.globalCompositeOperation = 'screen';
-        offCtx.drawImage(s.shirtHighlights, 0, 0, w, h);
+        offCtx.drawImage(s.shirtHighlights, 0, 0, artboardSize, artboardSize);
         offCtx.restore();
       }
 
-      // E. Draw finished offscreen mockup onto main viewport canvas
+      // E. Draw finished offscreen mockup onto main viewport canvas, centered
       targetCtx.save();
       if (activeBgType !== 'transparent') {
         targetCtx.shadowColor = 'rgba(0, 0, 0, 0.20)';
         targetCtx.shadowBlur = 32 * scale;
         targetCtx.shadowOffsetY = 16 * scale;
       }
-      targetCtx.drawImage(tshirtOffscreen, 0, 0);
+      targetCtx.drawImage(tshirtOffscreen, offsetX, offsetY);
       targetCtx.restore();
 
       // F. Draw active aesthetic props with realistic drop shadows
+      targetCtx.save();
+      targetCtx.translate(offsetX, offsetY);
       drawProps(targetCtx, scale);
+      targetCtx.restore();
     }
 
     function render(showHandles = true) {
@@ -1648,13 +1732,19 @@
       // Draw scene at 1x scale
       drawScene(ctx, w, h, 1, false);
 
-      // 3. Draw Editor Interactive Handles (if requested)
+      // 3. Draw Editor Interactive Handles (if requested) — offset into the same
+      // centered artboard space the scene above was drawn into.
       if (showHandles) {
+        const offsetX = (w - 1000) / 2;
+        const offsetY = (h - 1000) / 2;
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
         if (designImage && selectedElement === 'design') {
           drawEditorHandles();
         }
         drawPropHandles();
         drawSnapGuides();
+        ctx.restore();
       }
     }
 
@@ -2055,13 +2145,19 @@
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
-      
+
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
+      // Convert screen -> full canvas frame -> centered 0-1000 artboard space,
+      // so all drag/resize/rotate math (written for a plain 1000x1000 square)
+      // keeps working unchanged regardless of the selected canvas aspect ratio.
+      const offsetX = (canvas.width - 1000) / 2;
+      const offsetY = (canvas.height - 1000) / 2;
+
       return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
+        x: (clientX - rect.left) * scaleX - offsetX,
+        y: (clientY - rect.top) * scaleY - offsetY
       };
     }
 
@@ -2425,6 +2521,19 @@
       render();
     });
 
+    // Canvas aspect ratio selection
+    canvasSizeSelector.addEventListener('click', (e) => {
+      const btn = e.target.closest('.texture-btn');
+      if (!btn) return;
+
+      canvasSizeSelector.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      canvasAspect = btn.dataset.aspect;
+      applyCanvasAspect();
+      render();
+    });
+
     // Custom BG Color Swatch dropdown toggle
     bgCustomColorToggle.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -2606,6 +2715,11 @@
       activeBgType = 'wood-white';
       customBgColor = '#121318';
 
+      canvasAspect = '1:1';
+      applyCanvasAspect();
+      canvasSizeSelector.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
+      canvasSizeSelector.querySelector('[data-aspect="1:1"]').classList.add('active');
+
       // Reset garment active selection card
       garmentSelector.querySelectorAll('.garment-card').forEach(c => c.classList.remove('active'));
       const defaultCard = garmentSelector.querySelector('[data-garment="crewneck"]');
@@ -2784,9 +2898,8 @@
 
         // 1. Determine canvas settings based on selection
         const isExtraHigh = (quality === 'extra-high');
-        const exportWidth = isExtraHigh ? 2000 : 1000;
-        const exportHeight = isExtraHigh ? 2000 : 1000;
         const scaleFactor = isExtraHigh ? 2 : 1;
+        const { frameW: exportWidth, frameH: exportHeight } = getFrameDims(scaleFactor);
 
         // 2. Create offscreen canvas for quality export
         const exportCanvas = document.createElement('canvas');
@@ -3092,6 +3205,7 @@
       const zip = new JSZip();
       const size = getBatchQuality();
       const scaleFactor = size / 1000;
+      const { frameW, frameH } = getFrameDims(scaleFactor);
 
       batchRunning = true;
       batchCancelled = false;
@@ -3113,9 +3227,9 @@
 
       const renderJobToZip = async (scene, fileName) => {
         const cv = document.createElement('canvas');
-        cv.width = size;
-        cv.height = size;
-        drawScene(cv.getContext('2d'), size, size, scaleFactor, true, scene);
+        cv.width = frameW;
+        cv.height = frameH;
+        drawScene(cv.getContext('2d'), frameW, frameH, scaleFactor, true, scene);
         const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
         if (blob) zip.file(uniqueName(fileName), blob);
       };
@@ -3188,7 +3302,7 @@
             mode: batchMode,
             images: done,
             planned: total,
-            quality: `${size}x${size}`,
+            quality: `${Math.round(frameW)}x${Math.round(frameH)}`,
             cancelled: batchCancelled,
           });
         }
