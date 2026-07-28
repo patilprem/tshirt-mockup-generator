@@ -195,19 +195,21 @@
       <h3 class="panel-title">Canvas Size</h3>
       <div class="control-group">
         <div class="texture-grid" id="canvas-size-selector" style="grid-template-columns: repeat(4, 1fr);">
-          <button class="texture-btn active" data-aspect="1:1">1:1</button>
-          <button class="texture-btn" data-aspect="4:3">4:3</button>
-          <button class="texture-btn" data-aspect="4:5">4:5</button>
-          <button class="texture-btn" data-aspect="9:16">9:16</button>
-        </div>
-      </div>
-      <div class="control-group">
-        <label class="control-label">Platform Presets</label>
-        <div class="texture-grid" id="canvas-size-selector-presets" style="grid-template-columns: repeat(2, 1fr);">
-          <button class="texture-btn" data-aspect="etsy" title="2700 × 2025">Etsy Listing</button>
-          <button class="texture-btn" data-aspect="ig-post" title="1080 × 1080">Instagram Post</button>
-          <button class="texture-btn" data-aspect="ig-story" title="1080 × 1920">Instagram Story</button>
-          <button class="texture-btn" data-aspect="amazon" title="4500 × 5400">Amazon Merch</button>
+          <button class="texture-btn active" data-aspect="1:1" title="Also Instagram Post (1080×1080)">
+            <span class="aspect-label">1:1</span>
+            <span class="aspect-sub">Instagram Post</span>
+          </button>
+          <button class="texture-btn" data-aspect="4:3" title="Also Etsy Listing (2700×2025)">
+            <span class="aspect-label">4:3</span>
+            <span class="aspect-sub">Etsy Listing</span>
+          </button>
+          <button class="texture-btn" data-aspect="4:5">
+            <span class="aspect-label">4:5</span>
+          </button>
+          <button class="texture-btn" data-aspect="9:16" title="Also Instagram Story (1080×1920)">
+            <span class="aspect-label">9:16</span>
+            <span class="aspect-sub">Instagram Story</span>
+          </button>
         </div>
       </div>
     </div>
@@ -785,7 +787,6 @@
     const swatchGrid = document.getElementById('swatch-grid');
     const bgSelector = document.getElementById('bg-selector');
     const canvasSizeSelector = document.getElementById('canvas-size-selector');
-    const canvasSizeSelectorPresets = document.getElementById('canvas-size-selector-presets');
     const bgColorPickerContainer = document.getElementById('bg-color-picker-container');
     const bgCustomColorToggle = document.getElementById('bg-custom-color-toggle');
     const bgCustomColorPreview = document.getElementById('bg-custom-color-preview');
@@ -930,14 +931,10 @@
     // (exportShort = pixels on the shorter frame side) — that resolution is
     // fixed by the platform, so it overrides the quality picker at export time.
     const CANVAS_ASPECTS = {
-      '1:1': { w: 1, h: 1, label: '1:1' },
-      '4:3': { w: 4, h: 3, label: '4:3' },
-      '4:5': { w: 4, h: 5, label: '4:5' },
-      '9:16': { w: 9, h: 16, label: '9:16' },
-      'etsy': { w: 4, h: 3, label: 'Etsy Listing', exportShort: 2025 },
-      'ig-post': { w: 1, h: 1, label: 'Instagram Post', exportShort: 1080 },
-      'ig-story': { w: 9, h: 16, label: 'Instagram Story', exportShort: 1080 },
-      'amazon': { w: 5, h: 6, label: 'Amazon Merch', exportShort: 4500 }
+      '1:1': { w: 1, h: 1, exportShort: 1080 }, // also Instagram Post
+      '4:3': { w: 4, h: 3, exportShort: 2025 }, // also Etsy Listing (2700x2025)
+      '4:5': { w: 4, h: 5 },
+      '9:16': { w: 9, h: 16, exportShort: 1080 } // also Instagram Story (1080x1920)
     };
     let canvasAspect = '1:1';
 
@@ -2569,22 +2566,19 @@
       render();
     });
 
-    // Canvas aspect ratio selection (plain ratios + named platform presets
-    // share one selection — clicking either grid clears the other)
-    function handleCanvasSizeClick(e) {
+    // Canvas aspect ratio selection — 1:1/4:3/9:16 double as Instagram
+    // Post/Etsy Listing/Instagram Story via their exportShort override
+    canvasSizeSelector.addEventListener('click', (e) => {
       const btn = e.target.closest('.texture-btn');
       if (!btn) return;
 
       canvasSizeSelector.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
-      canvasSizeSelectorPresets.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
       canvasAspect = btn.dataset.aspect;
       applyCanvasAspect();
       render();
-    }
-    canvasSizeSelector.addEventListener('click', handleCanvasSizeClick);
-    canvasSizeSelectorPresets.addEventListener('click', handleCanvasSizeClick);
+    });
 
     // Custom BG Color Swatch dropdown toggle
     bgCustomColorToggle.addEventListener('click', (e) => {
@@ -2770,7 +2764,6 @@
       canvasAspect = '1:1';
       applyCanvasAspect();
       canvasSizeSelector.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
-      canvasSizeSelectorPresets.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
       canvasSizeSelector.querySelector('[data-aspect="1:1"]').classList.add('active');
 
       // Reset garment active selection card
