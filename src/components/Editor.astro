@@ -932,11 +932,19 @@
     // fixed by the platform, so it overrides the quality picker at export time.
     const CANVAS_ASPECTS = {
       '1:1': { w: 1, h: 1, exportShort: 1080 }, // also Instagram Post
-      '4:3': { w: 4, h: 3, exportShort: 2025 }, // also Etsy Listing (2700x2025)
+      '4:3': { w: 4, h: 3, exportShort: 2025, shirtZoom: 1.12 }, // also Etsy Listing (2700x2025)
       '4:5': { w: 4, h: 5 },
-      '9:16': { w: 9, h: 16, exportShort: 1080 } // also Instagram Story (1080x1920)
+      '9:16': { w: 9, h: 16, exportShort: 1080, shirtZoom: 1.12 } // also Instagram Story (1080x1920)
     };
     let canvasAspect = '1:1';
+
+    // Slight zoom some presets (Etsy, Instagram Story) apply so the garment
+    // doesn't look small against the extra letterboxed space — shared by
+    // rendering (drawScene) and interaction (render/getCanvasCoords) so
+    // on-screen handles always line up with what's actually drawn.
+    function getShirtZoom() {
+      return CANVAS_ASPECTS[canvasAspect].shirtZoom || 1;
+    }
 
     // Resolves the actual export scale for the current canvasAspect: platform
     // presets always export at their exact fixed resolution; plain ratios use
@@ -1686,9 +1694,13 @@
       // "artboard" (1000 units * scale); for non-1:1 canvas aspects the frame
       // (w,h) is larger in one dimension, so the artboard is centered within it
       // (letterboxed) rather than stretching the garment to fill the frame.
+      // Some presets (Etsy/Instagram Story) also apply a slight zoom so the
+      // garment doesn't look small against all the extra letterboxed space.
+      const shirtZoom = getShirtZoom();
       const artboardSize = 1000 * scale;
-      const offsetX = (w - artboardSize) / 2;
-      const offsetY = (h - artboardSize) / 2;
+      const zoomedArtboardSize = artboardSize * shirtZoom;
+      const offsetX = (w - zoomedArtboardSize) / 2;
+      const offsetY = (h - zoomedArtboardSize) / 2;
 
       // 1. Draw Backdrop (fills the full frame, including any letterbox margin)
       drawBackground(targetCtx, w, h, isExport);
@@ -1758,12 +1770,14 @@
         targetCtx.shadowBlur = 32 * scale;
         targetCtx.shadowOffsetY = 16 * scale;
       }
-      targetCtx.drawImage(tshirtOffscreen, offsetX, offsetY);
+      targetCtx.drawImage(tshirtOffscreen, offsetX, offsetY, zoomedArtboardSize, zoomedArtboardSize);
       targetCtx.restore();
 
-      // F. Draw active aesthetic props with realistic drop shadows
+      // F. Draw active aesthetic props with realistic drop shadows — same
+      // offset + zoom as the shirt above, so props stay aligned to it.
       targetCtx.save();
       targetCtx.translate(offsetX, offsetY);
+      targetCtx.scale(shirtZoom, shirtZoom);
       drawProps(targetCtx, scale);
       targetCtx.restore();
     }
@@ -1777,13 +1791,15 @@
       // Draw scene at 1x scale
       drawScene(ctx, w, h, 1, false);
 
-      // 3. Draw Editor Interactive Handles (if requested) — offset into the same
-      // centered artboard space the scene above was drawn into.
+      // 3. Draw Editor Interactive Handles (if requested) — same offset + zoom
+      // the scene above was drawn into, so handles land exactly on the artwork.
       if (showHandles) {
-        const offsetX = (w - 1000) / 2;
-        const offsetY = (h - 1000) / 2;
+        const shirtZoom = getShirtZoom();
+        const offsetX = (w - 1000 * shirtZoom) / 2;
+        const offsetY = (h - 1000 * shirtZoom) / 2;
         ctx.save();
         ctx.translate(offsetX, offsetY);
+        ctx.scale(shirtZoom, shirtZoom);
         if (designImage && selectedElement === 'design') {
           drawEditorHandles();
         }
@@ -2196,13 +2212,15 @@
 
       // Convert screen -> full canvas frame -> centered 0-1000 artboard space,
       // so all drag/resize/rotate math (written for a plain 1000x1000 square)
-      // keeps working unchanged regardless of the selected canvas aspect ratio.
-      const offsetX = (canvas.width - 1000) / 2;
-      const offsetY = (canvas.height - 1000) / 2;
+      // keeps working unchanged regardless of the selected canvas aspect ratio
+      // or its shirt zoom.
+      const shirtZoom = getShirtZoom();
+      const offsetX = (canvas.width - 1000 * shirtZoom) / 2;
+      const offsetY = (canvas.height - 1000 * shirtZoom) / 2;
 
       return {
-        x: (clientX - rect.left) * scaleX - offsetX,
-        y: (clientY - rect.top) * scaleY - offsetY
+        x: ((clientX - rect.left) * scaleX - offsetX) / shirtZoom,
+        y: ((clientY - rect.top) * scaleY - offsetY) / shirtZoom
       };
     }
 
