@@ -1152,7 +1152,8 @@ input[type="range"]:focus-visible,
     display: flex !important;
   }
 
-  .app-container[data-mobile-tab="background"] #mockup-background-section {
+  .app-container[data-mobile-tab="background"] #mockup-background-section,
+  .app-container[data-mobile-tab="background"] #canvas-size-section {
     display: flex !important;
   }
 
