@@ -13,7 +13,7 @@
       <span class="nav-icon" aria-hidden="true">👕</span>
       <span class="nav-text">Garment</span>
     </button>
-    <button class="mobile-nav-btn" data-target="background" role="tab" aria-selected="false" aria-controls="mockup-background-section">
+    <button class="mobile-nav-btn" data-target="background" role="tab" aria-selected="false" aria-controls="mockup-background-section canvas-size-section">
       <span class="nav-icon" aria-hidden="true">🖼️</span>
       <span class="nav-text">Background</span>
     </button>
@@ -951,19 +951,28 @@
       canvas.width = frameW;
       canvas.height = frameH;
 
-      // .canvas-container has explicit width:100%/height:100% (capped at 600px),
-      // which makes the CSS `aspect-ratio` property a no-op — it only applies
-      // when a dimension is auto. So size it explicitly here instead, containing
-      // it within the same 600x600 bound the square canvas always used.
-      const BOUND = 600;
+      // .canvas-container has explicit width/height (100% on desktop, or
+      // width:100%/max-width:420px/height:auto on mobile), which makes the CSS
+      // `aspect-ratio` property a no-op — it only applies when a dimension is
+      // auto. So size it explicitly here instead. Clear any prior override
+      // first and measure the CSS-driven natural box (this already reflects
+      // the current responsive breakpoint — desktop's 600px cap or mobile's
+      // 420px cap) rather than hardcoding a bound that could overflow a
+      // narrower viewport.
+      container.style.width = '';
+      container.style.height = '';
+      const naturalRect = container.getBoundingClientRect();
+      const boundW = naturalRect.width;
+      const boundH = naturalRect.height;
+
       const ratio = frameW / frameH;
       let boxW, boxH;
-      if (ratio >= 1) {
-        boxW = BOUND;
-        boxH = BOUND / ratio;
+      if (ratio >= boundW / boundH) {
+        boxW = boundW;
+        boxH = boundW / ratio;
       } else {
-        boxH = BOUND;
-        boxW = BOUND * ratio;
+        boxH = boundH;
+        boxW = boundH * ratio;
       }
       container.style.width = `${boxW}px`;
       container.style.height = `${boxH}px`;
@@ -1077,6 +1086,19 @@
     }
     applyCanvasAspect();
     loadGarment(initialGarment);
+
+    // Re-fit the canvas box on viewport changes (orientation flip, browser
+    // resize crossing the mobile/desktop breakpoint, etc.) since its size is
+    // computed in JS rather than pure responsive CSS.
+    let resizeRaf = null;
+    window.addEventListener('resize', () => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = null;
+        applyCanvasAspect();
+        render();
+      });
+    });
 
     let woodWhiteImg = null;
     let woodBrownImg = null;
