@@ -212,7 +212,9 @@ const TEMPLATES = [
       // A 3x3 mean was never a feather — it left the hard staircase visible on
       // any hem. Three separable box passes approximate a gaussian closely
       // enough and stay O(n).
-      const FEATHER = Math.max(1, Math.round(W / 640));
+      // ~6px of ramp at template resolution. Wider than this and a garment edge
+      // stops looking like cut cotton.
+      const FEATHER = Math.max(1, Math.round(W / 1000));
       function boxBlur(srcArr) {
         const tmp = new Float32Array(N), dst = new Float32Array(N);
         for (let y = 0; y < H; y++) {
@@ -237,21 +239,15 @@ const TEMPLATES = [
         }
         return dst;
       }
-      // A centred ramp is the physically correct coverage at the silhouette:
-      // half the pixel's light came from fabric, half from behind it.
-      let ramp = a2;
-      for (let pass = 0; pass < 3; pass++) ramp = boxBlur(ramp);
-
-      // But cotton is opaque. Anywhere the key is confident the pixel is mostly
-      // fabric, alpha has to reach 1 — a dark crease where the hue signal went
-      // soft must not let the plate behind it show through, and now that the
-      // plate holds pale inpainted background that bleed is glaring on a dark
-      // garment. Only the outermost band keeps its fractional coverage.
-      let solid = new Uint8Array(N);
-      for (let i = 0; i < N; i++) solid[i] = a2[i] >= 0.5 ? 1 : 0;
-      for (let i = 0; i < FEATHER + 1; i++) solid = ero(solid);
-      const alpha = new Float32Array(N);
-      for (let i = 0; i < N; i++) alpha[i] = solid[i] ? 1 : ramp[i];
+      // Cotton is opaque, so coverage is binary everywhere except the one pixel
+      // the silhouette actually crosses; blurring that binary mask is what turns
+      // it into a ramp. Forcing an eroded interior to 1 and keeping the blurred
+      // value outside it seems equivalent but is not — the two meet at a value
+      // like 0.79 and jump to 1.0 in a single pixel, and that discontinuity
+      // draws a hard line just inside every sleeve and shoulder edge.
+      let alpha = new Float32Array(N);
+      for (let i = 0; i < N; i++) alpha[i] = a2[i] >= 0.5 ? 1 : 0;
+      for (let pass = 0; pass < 3; pass++) alpha = boxBlur(alpha);
 
       // 7. illumination normalisation + scene ambient
       const cV = [], cR = [], cG = [], cB = [];
