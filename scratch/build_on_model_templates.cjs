@@ -267,12 +267,17 @@ const TEMPLATES = [
       const aM = Math.max(...amb);
       const ambientTint = amb.map(c => +(c / aM).toFixed(4));
 
-      // 8. background plate: divide the garment's colour back out of soft edges
+      // 8. background plate: divide the garment's colour back out of soft edges.
+      // Driven by the pre-feather coverage, never the feathered alpha. The
+      // feather deliberately reaches a couple of pixels past the silhouette;
+      // those pixels hold pure background and were never violet, so subtracting
+      // violet and dividing by (1 - a*0.9) only brightens them — which is
+      // exactly the pale halo that shows up along a shoulder or sleeve edge.
       const plate = document.createElement('canvas'); plate.width = W; plate.height = H;
       const pctx = plate.getContext('2d');
       const pd = pctx.createImageData(W, H);
       for (let i = 0; i < N; i++) {
-        const o = i * 4, a = alpha[i];
+        const o = i * 4, a = a2[i];
         if (a > 0.02 && a < 0.60) {
           const den = Math.max(0.15, 1 - a * 0.9);
           pd.data[o] = Math.max(0, Math.min(255, (src[o] - a * 0.9 * shirtRGB[0]) / den));
