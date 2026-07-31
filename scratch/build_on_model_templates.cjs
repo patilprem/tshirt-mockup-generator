@@ -238,6 +238,29 @@ const TEMPLATES = [
       //  - dark: deep fold shadows keep a violet-family hue but lose sat and
       //    value below the strict key's floor; anything hue-vaguely violet,
       //    still saturated, and dark inside the gate is fold shadow.
+      // Interior holes: non-core pixels that cannot reach the image border
+      // without crossing fabric. A deep fold's neutral-black centre is enclosed
+      // this way; background, hair and skin always connect outward. Enclosed
+      // neutral-dark pixels are fold shadow by construction, so recolouring
+      // them is safe for every target — and necessary for pale ones, where the
+      // photograph's near-black fold core would otherwise sit untouched next to
+      // a lifted penumbra and read as a painted black streak.
+      const outside = new Uint8Array(N);
+      {
+        let fh2 = 0, ft2 = 0;
+        const ox = new Int32Array(N), oy = new Int32Array(N);
+        const push = (x, y) => { const i = y * W + x; if (!outside[i] && !core[i]) { outside[i] = 1; ox[ft2] = x; oy[ft2] = y; ft2++; } };
+        for (let x = 0; x < W; x++) { push(x, 0); push(x, H - 1); }
+        for (let y = 0; y < H; y++) { push(0, y); push(W - 1, y); }
+        while (fh2 < ft2) {
+          const cx2 = ox[fh2], cy2 = oy[fh2]; fh2++;
+          for (const [nx, ny] of [[cx2 + 1, cy2], [cx2 - 1, cy2], [cx2, cy2 + 1], [cx2, cy2 - 1]]) {
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            push(nx, ny);
+          }
+        }
+      }
+
       const sgn = h => { let d = ((h - shirtHue + 540) % 360) - 180; return d; };
       let wMap = new Float32Array(N);
       for (let i = 0; i < N; i++) {
@@ -249,7 +272,10 @@ const TEMPLATES = [
           * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08);
         const dark = (a < 80 ? 1 : 0)
           * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34));
-        wMap[i] = Math.max(clip[i], wRaw[i], wide, dark);
+        const enclosed = (!core[i] && !outside[i])
+          ? (1 - smooth(sA[i], 0.10, 0.20)) * (1 - smooth(vA[i], 0.16, 0.28))
+          : 0;
+        wMap[i] = Math.max(clip[i], wRaw[i], wide, dark, enclosed);
       }
       wMap = boxBlur(wMap, 1);
 
@@ -393,22 +419,33 @@ const TEMPLATES = [
         fitSum += (Math.abs(src[o] - vr) + Math.abs(src[o + 1] - vg) + Math.abs(src[o + 2] - vb)) / 3;
         fitCnt++;
       }
-      let missed = 0, skin = 0;
+      let missed = 0, skin = 0, gN = 0, deepN = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
         if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
+        if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
       }
+      const deepShadowPct = +(100 * deepN / Math.max(1, gN)).toFixed(2);
 
       return {
         W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2) },
+        qa: { missed, skin, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
         photo: photo.toDataURL('image/jpeg', 0.92),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
       };
     }, { b64, MAX_EDGE });
+
+    // QA gate, mechanising the guide's "no hard shadow band" rule. A garment
+    // whose deep-shadow fraction is this high has a broad near-black band that
+    // no recolour can make look right on a pale target — the photo needs
+    // regenerating with softer light, not more pipeline work.
+    if (r.qa.deepShadowPct > 8) {
+      console.log(`${r.W}x${r.H} deepShadow=${r.qa.deepShadowPct}% — FAILS QA (hard shadow band), excluded from manifest`);
+      continue;
+    }
 
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-photo.jpg`), Buffer.from(r.photo.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-weight.png`), Buffer.from(r.weight.split(',')[1], 'base64'));
@@ -424,7 +461,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} modelFit=${r.qa.modelFit}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');

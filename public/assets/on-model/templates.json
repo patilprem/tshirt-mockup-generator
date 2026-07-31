@@ -46,52 +46,6 @@
     }
   },
   {
-    "id": "window-f",
-    "label": "Window Light",
-    "model": "female",
-    "scene": "Tall window, sheer curtain",
-    "width": 1066,
-    "height": 1600,
-    "photo": "/assets/on-model/window-f-photo.jpg",
-    "weight": "/assets/on-model/window-f-weight.png",
-    "shade": "/assets/on-model/window-f-shade.jpg",
-    "ambientTint": [
-      1,
-      0.9946,
-      0.9622
-    ],
-    "relMax": 1.45,
-    "violetBase": [
-      121.5,
-      82.5,
-      159
-    ],
-    "quad": {
-      "tl": [
-        471.9,
-        746
-      ],
-      "tr": [
-        668.1,
-        746
-      ],
-      "br": [
-        622.6,
-        996
-      ],
-      "bl": [
-        426.4,
-        996
-      ]
-    },
-    "bbox": {
-      "x": 237,
-      "y": 611,
-      "w": 769,
-      "h": 641
-    }
-  },
-  {
     "id": "gallery-f",
     "label": "Gallery Interior",
     "model": "female",
