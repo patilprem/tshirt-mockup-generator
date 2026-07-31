@@ -6,8 +6,8 @@
     "scene": "Warm plaster wall, daylight",
     "width": 1066,
     "height": 1600,
-    "plate": "/assets/on-model/plaster-f-plate.jpg",
-    "matte": "/assets/on-model/plaster-f-matte.png",
+    "photo": "/assets/on-model/plaster-f-photo.jpg",
+    "weight": "/assets/on-model/plaster-f-weight.png",
     "shade": "/assets/on-model/plaster-f-shade.jpg",
     "ambientTint": [
       1,
@@ -15,6 +15,11 @@
       0.934
     ],
     "relMax": 1.45,
+    "violetBase": [
+      111.8,
+      58.5,
+      169
+    ],
     "quad": {
       "tl": [
         403.8,
@@ -47,30 +52,35 @@
     "scene": "Tall window, sheer curtain",
     "width": 1066,
     "height": 1600,
-    "plate": "/assets/on-model/window-f-plate.jpg",
-    "matte": "/assets/on-model/window-f-matte.png",
+    "photo": "/assets/on-model/window-f-photo.jpg",
+    "weight": "/assets/on-model/window-f-weight.png",
     "shade": "/assets/on-model/window-f-shade.jpg",
     "ambientTint": [
       1,
       0.9946,
-      0.9568
+      0.9622
     ],
     "relMax": 1.45,
+    "violetBase": [
+      121.5,
+      82.5,
+      159
+    ],
     "quad": {
       "tl": [
-        491.7,
+        471.9,
         746
       ],
       "tr": [
-        738.3,
+        668.1,
         746
       ],
       "br": [
-        737.8,
+        622.6,
         996
       ],
       "bl": [
-        491.2,
+        426.4,
         996
       ]
     },
@@ -88,8 +98,8 @@
     "scene": "Minimal off-white interior",
     "width": 1066,
     "height": 1600,
-    "plate": "/assets/on-model/gallery-f-plate.jpg",
-    "matte": "/assets/on-model/gallery-f-matte.png",
+    "photo": "/assets/on-model/gallery-f-photo.jpg",
+    "weight": "/assets/on-model/gallery-f-weight.png",
     "shade": "/assets/on-model/gallery-f-shade.jpg",
     "ambientTint": [
       1,
@@ -97,21 +107,26 @@
       0.9251
     ],
     "relMax": 1.45,
+    "violetBase": [
+      118.2,
+      74.2,
+      153
+    ],
     "quad": {
       "tl": [
-        399.6,
+        405.3,
         780
       ],
       "tr": [
-        671.4,
+        665.7,
         780
       ],
       "br": [
-        658.9,
+        652.2,
         1050
       ],
       "bl": [
-        387.1,
+        391.8,
         1050
       ]
     },
@@ -129,8 +144,8 @@
     "scene": "Bright airy living room",
     "width": 1066,
     "height": 1600,
-    "plate": "/assets/on-model/livingroom-m-plate.jpg",
-    "matte": "/assets/on-model/livingroom-m-matte.png",
+    "photo": "/assets/on-model/livingroom-m-photo.jpg",
+    "weight": "/assets/on-model/livingroom-m-weight.png",
     "shade": "/assets/on-model/livingroom-m-shade.jpg",
     "ambientTint": [
       0.9844,
@@ -138,28 +153,33 @@
       0.974
     ],
     "relMax": 1.45,
+    "violetBase": [
+      105.7,
+      67,
+      134
+    ],
     "quad": {
       "tl": [
-        463.2,
+        464.4,
         680
       ],
       "tr": [
-        691.8,
+        690.6,
         680
       ],
       "br": [
-        702.8,
+        701.6,
         972
       ],
       "bl": [
-        474.2,
+        475.4,
         972
       ]
     },
     "bbox": {
-      "x": 285,
+      "x": 286,
       "y": 522,
-      "w": 602,
+      "w": 600,
       "h": 750
     }
   },
@@ -170,8 +190,8 @@
     "scene": "Sunlit pavement outside a cafe",
     "width": 1066,
     "height": 1600,
-    "plate": "/assets/on-model/street-m-plate.jpg",
-    "matte": "/assets/on-model/street-m-matte.png",
+    "photo": "/assets/on-model/street-m-photo.jpg",
+    "weight": "/assets/on-model/street-m-weight.png",
     "shade": "/assets/on-model/street-m-shade.jpg",
     "ambientTint": [
       1,
@@ -179,29 +199,34 @@
       0.9365
     ],
     "relMax": 1.45,
+    "violetBase": [
+      115.5,
+      80.4,
+      144
+    ],
     "quad": {
       "tl": [
-        434.3,
-        730
+        434.6,
+        731
       ],
       "tr": [
-        703.7,
-        730
+        703.4,
+        731
       ],
       "br": [
-        704.7,
-        1021
+        704.4,
+        1022
       ],
       "bl": [
-        435.3,
-        1021
+        435.6,
+        1022
       ]
     },
     "bbox": {
       "x": 201,
-      "y": 573,
+      "y": 574,
       "w": 738,
-      "h": 747
+      "h": 746
     }
   },
   {
@@ -211,8 +236,8 @@
     "scene": "Green park path, open shade",
     "width": 1066,
     "height": 1600,
-    "plate": "/assets/on-model/park-m-plate.jpg",
-    "matte": "/assets/on-model/park-m-matte.png",
+    "photo": "/assets/on-model/park-m-photo.jpg",
+    "weight": "/assets/on-model/park-m-weight.png",
     "shade": "/assets/on-model/park-m-shade.jpg",
     "ambientTint": [
       1,
@@ -220,28 +245,33 @@
       0.8571
     ],
     "relMax": 1.45,
+    "violetBase": [
+      116.2,
+      80.9,
+      154
+    ],
     "quad": {
       "tl": [
-        458.3,
+        458.6,
         748
       ],
       "tr": [
-        691.7,
+        691.4,
         748
       ],
       "br": [
-        689.2,
+        688.4,
         1028
       ],
       "bl": [
-        455.8,
+        455.6,
         1028
       ]
     },
     "bbox": {
-      "x": 268,
+      "x": 269,
       "y": 597,
-      "w": 609,
+      "w": 607,
       "h": 718
     }
   }
