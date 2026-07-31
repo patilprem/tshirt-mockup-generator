@@ -237,13 +237,12 @@ const TEMPLATES = [
         }
         return dst;
       }
-      let blurred = a2;
-      for (let pass = 0; pass < 3; pass++) blurred = boxBlur(blurred);
-      // Feather outward only. Letting the blur eat inward drops interior fabric
-      // below full opacity, and the plate still holds the original violet
-      // there — which composites as a dark rim around the whole garment.
-      const alpha = new Float32Array(N);
-      for (let i = 0; i < N; i++) alpha[i] = Math.max(blurred[i], a2[i]);
+      // A centred ramp is the physically correct coverage: half the pixel's light
+      // came from fabric, half from behind it. That only works because the plate
+      // below is inpainted with real background rather than reconstructed from
+      // the edge, so there is nothing left to bleed through on the inward side.
+      let alpha = a2;
+      for (let pass = 0; pass < 3; pass++) alpha = boxBlur(alpha);
 
       // 7. illumination normalisation + scene ambient
       const cV = [], cR = [], cG = [], cB = [];
@@ -267,22 +266,102 @@ const TEMPLATES = [
       const aM = Math.max(...amb);
       const ambientTint = amb.map(c => +(c / aM).toFixed(4));
 
-      // 8. background plate: divide the garment's colour back out of soft edges.
-      // Driven by the pre-feather coverage, never the feathered alpha. The
-      // feather deliberately reaches a couple of pixels past the silhouette;
-      // those pixels hold pure background and were never violet, so subtracting
-      // violet and dividing by (1 - a*0.9) only brightens them — which is
-      // exactly the pale halo that shows up along a shoulder or sleeve edge.
+      // 8. Background plate.
+      //
+      // Earlier revisions reconstructed the background by dividing the garment's
+      // colour back out of the edge pixels. That reconstruction is where every
+      // edge artifact came from: too little and violet bleeds through as a dark
+      // rim, too much and clean background gets brightened into a pale one.
+      // There is no setting that is right everywhere, because the operation is
+      // guessing at information the photo does not contain.
+      //
+      // Instead, fill the whole garment region — plus a margin covering every
+      // contaminated edge pixel — with plausible background, once, here. The
+      // runtime composite then becomes an ordinary alpha blend over real pixels,
+      // with nothing left to get wrong.
+      //
+      // The fill is a push-pull pyramid: colour is pulled into successively
+      // coarser levels weighted by coverage, then pushed back down to fill holes.
+      // Only the few pixels within the feather are ever visible, and those sit
+      // directly against known background, so the interpolation there is close
+      // to exact. Deeper into the hole it degrades to a smooth gradient, which
+      // is fine — the garment covers it completely.
+      const holeR = Math.max(4, Math.round(W / 150));
+      let hole = new Uint8Array(N);
+      for (let i = 0; i < N; i++) hole[i] = a2[i] > 0.02 ? 1 : 0;
+      for (let i = 0; i < holeR; i++) hole = dil(hole);
+
+      const lvR = [], lvG = [], lvB = [], lvW = [], lvDim = [];
+      {
+        const r0 = new Float32Array(N), g0 = new Float32Array(N), b0 = new Float32Array(N), w0 = new Float32Array(N);
+        for (let i = 0; i < N; i++) {
+          if (hole[i]) continue;
+          const o = i * 4;
+          r0[i] = src[o]; g0[i] = src[o + 1]; b0[i] = src[o + 2]; w0[i] = 1;
+        }
+        lvR.push(r0); lvG.push(g0); lvB.push(b0); lvW.push(w0); lvDim.push([W, H]);
+      }
+      while (lvDim[lvDim.length - 1][0] > 2 && lvDim[lvDim.length - 1][1] > 2) {
+        const [pw, ph] = lvDim[lvDim.length - 1];
+        const pr = lvR[lvR.length - 1], pg = lvG[lvG.length - 1], pb = lvB[lvB.length - 1], pwt = lvW[lvW.length - 1];
+        const cw = Math.ceil(pw / 2), chh = Math.ceil(ph / 2);
+        const cr = new Float32Array(cw * chh), cg = new Float32Array(cw * chh),
+              cb = new Float32Array(cw * chh), cwt = new Float32Array(cw * chh);
+        for (let y = 0; y < chh; y++) for (let x = 0; x < cw; x++) {
+          let sr = 0, sg = 0, sb = 0, sw = 0;
+          for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+            const fx2 = x * 2 + dx, fy2 = y * 2 + dy;
+            if (fx2 >= pw || fy2 >= ph) continue;
+            const fi = fy2 * pw + fx2, ww = pwt[fi];
+            if (ww <= 0) continue;
+            sr += pr[fi] * ww; sg += pg[fi] * ww; sb += pb[fi] * ww; sw += ww;
+          }
+          const ci = y * cw + x;
+          if (sw > 0) { cr[ci] = sr / sw; cg[ci] = sg / sw; cb[ci] = sb / sw; cwt[ci] = Math.min(1, sw / 4); }
+        }
+        lvR.push(cr); lvG.push(cg); lvB.push(cb); lvW.push(cwt); lvDim.push([cw, chh]);
+      }
+      for (let L = lvDim.length - 2; L >= 0; L--) {
+        const [fw, fh] = lvDim[L], [cw, chh] = lvDim[L + 1];
+        const fr = lvR[L], fg = lvG[L], fb = lvB[L], fwt = lvW[L];
+        const cr = lvR[L + 1], cg = lvG[L + 1], cb = lvB[L + 1], cwt = lvW[L + 1];
+        // Bilinear rather than nearest — sampling the coarse level per 2x2 block
+        // quantises the fill into visible squares, and those squares reach the
+        // feather band where they would show along the silhouette.
+        for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+          const fi = y * fw + x;
+          if (fwt[fi] >= 1) continue;
+          const gx = Math.min(cw - 1.001, Math.max(0, (x - 0.5) / 2));
+          const gy = Math.min(chh - 1.001, Math.max(0, (y - 0.5) / 2));
+          const x0 = Math.floor(gx), y0 = Math.floor(gy);
+          const x1 = Math.min(cw - 1, x0 + 1), y1 = Math.min(chh - 1, y0 + 1);
+          const tx = gx - x0, ty = gy - y0;
+          let sr = 0, sg = 0, sb = 0, sw = 0;
+          for (const [sx2, sy2, wq] of [[x0, y0, (1 - tx) * (1 - ty)], [x1, y0, tx * (1 - ty)],
+                                        [x0, y1, (1 - tx) * ty], [x1, y1, tx * ty]]) {
+            const ci = sy2 * cw + sx2, ww = cwt[ci] * wq;
+            if (ww <= 0) continue;
+            sr += cr[ci] * ww; sg += cg[ci] * ww; sb += cb[ci] * ww; sw += ww;
+          }
+          if (sw <= 0) continue;
+          const a = fwt[fi];
+          fr[fi] = fr[fi] * a + (sr / sw) * (1 - a);
+          fg[fi] = fg[fi] * a + (sg / sw) * (1 - a);
+          fb[fi] = fb[fi] * a + (sb / sw) * (1 - a);
+          fwt[fi] = Math.max(a, Math.min(1, sw));
+        }
+      }
+
       const plate = document.createElement('canvas'); plate.width = W; plate.height = H;
       const pctx = plate.getContext('2d');
       const pd = pctx.createImageData(W, H);
+      const fR = lvR[0], fG = lvG[0], fB = lvB[0];
       for (let i = 0; i < N; i++) {
-        const o = i * 4, a = a2[i];
-        if (a > 0.02 && a < 0.60) {
-          const den = Math.max(0.15, 1 - a * 0.9);
-          pd.data[o] = Math.max(0, Math.min(255, (src[o] - a * 0.9 * shirtRGB[0]) / den));
-          pd.data[o + 1] = Math.max(0, Math.min(255, (src[o + 1] - a * 0.9 * shirtRGB[1]) / den));
-          pd.data[o + 2] = Math.max(0, Math.min(255, (src[o + 2] - a * 0.9 * shirtRGB[2]) / den));
+        const o = i * 4;
+        if (hole[i]) {
+          pd.data[o] = Math.max(0, Math.min(255, fR[i]));
+          pd.data[o + 1] = Math.max(0, Math.min(255, fG[i]));
+          pd.data[o + 2] = Math.max(0, Math.min(255, fB[i]));
         } else { pd.data[o] = src[o]; pd.data[o + 1] = src[o + 1]; pd.data[o + 2] = src[o + 2]; }
         pd.data[o + 3] = 255;
       }
