@@ -10,13 +10,15 @@
  *   <id>-plate.jpg   background plate — the photo with the garment's colour
  *                    contamination divided back out of the soft edge pixels
  *   <id>-matte.png   garment alpha (greyscale)
- *   <id>-shade.jpg   normalised illumination across the garment (greyscale),
- *                    0 = deepest fold, 255 = brightest lit area
+ *   <id>-shade.jpg   per-pixel illumination relative to the garment's own
+ *                    diffuse white point, encoded as rel/REL_MAX. 255 is the
+ *                    brightest lit fabric, ~182 (=1.0) the diffuse white point.
  *
- * At runtime the editor recolours with
- *   rgb = target * lerp(LO, HI, shade) * lerp(ambientTint, 1, shade)
- * composited over the plate through the matte — cheap per-pixel work with no
- * hue analysis, and the same maths this was validated against offline.
+ * Storing the true illumination ratio rather than a percentile-normalised
+ * position is what lets the runtime relight physically: the diffuse part scales
+ * the target colour directly, and anything above the white point becomes an
+ * additive sheen. A normalised remap flattens every colour into the same narrow
+ * band, which is what made recolours read as poster art rather than cotton.
  *
  * Usage: node scratch/build_on_model_templates.cjs
  */
@@ -139,16 +141,31 @@ const TEMPLATES = [
       const fragments = kept.length;
       let blob = kept.flat();
 
+      // A pixel may only ever be claimed as garment if it is at least plausibly
+      // shirt — either it carries some hue confidence, or it is dark enough to
+      // be fold shadow whose hue has collapsed. Without this the closing below
+      // happily bridges the narrow arm-to-torso gap and paints the model's skin.
+      const isDarkShadowEarly = i => {
+        const v = vA[i];
+        if (v >= 0.32) return false;
+        if (v < 0.12 && sA[i] < 0.15) return true;
+        return ad(hA[i], shirtHue) < 100;
+      };
+      const plausible = new Uint8Array(N);
+      for (let i = 0; i < N; i++) plausible[i] = (a0[i] > 0.02 || isDarkShadowEarly(i)) ? 1 : 0;
+
       // 4. morphological close bridges dark creases that break hue connectivity
       let core = new Uint8Array(N);
       for (const i of blob) core[i] = 1;
       const dil = m => { const o = new Uint8Array(N); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (m[i] || (x + 1 < W && m[i + 1]) || (x > 0 && m[i - 1]) || (y + 1 < H && m[i + W]) || (y > 0 && m[i - W])) o[i] = 1; } return o; };
       const ero = m => { const o = new Uint8Array(N); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; const l = x > 0 ? m[i - 1] : 0, rr = x + 1 < W ? m[i + 1] : 0, u = y > 0 ? m[i - W] : 0, d = y + 1 < H ? m[i + W] : 0; o[i] = (m[i] && l && rr && u && d) ? 1 : 0; } return o; };
-      const CR = Math.max(8, Math.round(W / 66));
+      // Radius is deliberately small. A wide close does span the underarm gap,
+      // and once it does no later step can tell the bridged skin from fabric.
+      const CR = Math.max(3, Math.round(W / 220));
       let cl = core;
       for (let i = 0; i < CR; i++) cl = dil(cl);
       for (let i = 0; i < CR; i++) cl = ero(cl);
-      core = cl;
+      for (let i = 0; i < N; i++) core[i] = (cl[i] && plausible[i]) ? 1 : 0;
       blob = []; for (let i = 0; i < N; i++) if (core[i]) blob.push(i);
 
       // 5. bounded-distance soft edge. Near-black pixels adjacent to the garment
@@ -192,23 +209,51 @@ const TEMPLATES = [
         }
         a2 = n2; if (!ch) break;
       }
-      const alpha = new Float32Array(N);
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        let s = 0, c = 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-          const nx = x + dx, ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-          s += a2[ny * W + nx]; c++;
+      // A 3x3 mean was never a feather — it left the hard staircase visible on
+      // any hem. Three separable box passes approximate a gaussian closely
+      // enough and stay O(n).
+      const FEATHER = Math.max(1, Math.round(W / 640));
+      function boxBlur(srcArr) {
+        const tmp = new Float32Array(N), dst = new Float32Array(N);
+        for (let y = 0; y < H; y++) {
+          let acc = 0;
+          for (let x = -FEATHER; x <= FEATHER; x++) acc += srcArr[y * W + Math.min(W - 1, Math.max(0, x))];
+          for (let x = 0; x < W; x++) {
+            tmp[y * W + x] = acc / (FEATHER * 2 + 1);
+            const out = Math.min(W - 1, Math.max(0, x - FEATHER));
+            const inn = Math.min(W - 1, Math.max(0, x + FEATHER + 1));
+            acc += srcArr[y * W + inn] - srcArr[y * W + out];
+          }
         }
-        alpha[y * W + x] = s / c;
+        for (let x = 0; x < W; x++) {
+          let acc = 0;
+          for (let y = -FEATHER; y <= FEATHER; y++) acc += tmp[Math.min(H - 1, Math.max(0, y)) * W + x];
+          for (let y = 0; y < H; y++) {
+            dst[y * W + x] = acc / (FEATHER * 2 + 1);
+            const out = Math.min(H - 1, Math.max(0, y - FEATHER));
+            const inn = Math.min(H - 1, Math.max(0, y + FEATHER + 1));
+            acc += tmp[inn * W + x] - tmp[out * W + x];
+          }
+        }
+        return dst;
       }
+      let blurred = a2;
+      for (let pass = 0; pass < 3; pass++) blurred = boxBlur(blurred);
+      // Feather outward only. Letting the blur eat inward drops interior fabric
+      // below full opacity, and the plate still holds the original violet
+      // there — which composites as a dark rim around the whole garment.
+      const alpha = new Float32Array(N);
+      for (let i = 0; i < N; i++) alpha[i] = Math.max(blurred[i], a2[i]);
 
       // 7. illumination normalisation + scene ambient
       const cV = [], cR = [], cG = [], cB = [];
       for (const i of blob) { const o = i * 4; cV.push(vA[i]); cR.push(src[o]); cG.push(src[o + 1]); cB.push(src[o + 2]); }
       cV.sort((x, y) => x - y);
       const pct = p => cV[Math.min(cV.length - 1, Math.floor(cV.length * p))];
-      const vLo = pct(0.02), vHi = pct(0.97);
+      // The diffuse white point: fabric at this brightness takes the target
+      // colour at full strength, anything above it is sheen.
+      const vRef = pct(0.88);
+      const REL_MAX = 1.45;
       const med = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
       const shirtRGB = [med(cR), med(cG), med(cB)];
 
@@ -249,9 +294,8 @@ const TEMPLATES = [
         const o = i * 4;
         const av = Math.round(alpha[i] * 255);
         md.data[o] = av; md.data[o + 1] = av; md.data[o + 2] = av; md.data[o + 3] = 255;
-        let t = (vA[i] - vLo) / Math.max(1e-6, vHi - vLo);
-        t = Math.pow(Math.max(0, Math.min(1, t)), 0.78);
-        const tv = Math.round(t * 255);
+        const rel = vA[i] / Math.max(1e-6, vRef);
+        const tv = Math.round(Math.max(0, Math.min(1, rel / REL_MAX)) * 255);
         sd.data[o] = tv; sd.data[o + 1] = tv; sd.data[o + 2] = tv; sd.data[o + 3] = 255;
       }
       mctx.putImageData(md, 0, 0);
@@ -273,7 +317,7 @@ const TEMPLATES = [
       }
 
       return {
-        W, H, shirtHue, fragments, ambientTint, quad,
+        W, H, shirtHue, fragments, ambientTint, quad, relMax: REL_MAX,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         qa: { missedViolet: missed, skinGrabbed: skin },
         plate: plate.toDataURL('image/jpeg', 0.92),
@@ -296,6 +340,7 @@ const TEMPLATES = [
       matte: `/assets/on-model/${tpl.id}-matte.png`,
       shade: `/assets/on-model/${tpl.id}-shade.jpg`,
       ambientTint: r.ambientTint,
+      relMax: r.relMax,
       quad: r.quad,
       bbox: r.bbox,
     });

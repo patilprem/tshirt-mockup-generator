@@ -1866,9 +1866,14 @@
       const tg = parseInt(hex.slice(3, 5), 16);
       const tb = parseInt(hex.slice(5, 7), 16);
       const tLum = (tr + tg + tb) / 765;
-      const LO = 0.30 + 0.36 * tLum;
-      const HI = 1.00 + 0.055 * tLum;
-      const TINT = 0.40 * tLum;
+      const REL_MAX = meta.relMax || 1.45;
+      // Below the diffuse white point the target colour is simply scaled by how
+      // much light reaches the fabric. The gamma lifts shadows for pale colours
+      // — a white tee's folds are filled by its own inter-reflection — while
+      // preserving their relative depth, which a linear remap flattens away.
+      const GAMMA = 1 - 0.55 * tLum;
+      const TINT = 0.35 * tLum;
+      const SPEC = 0.28;
       const [ar, ag, ab] = meta.ambientTint;
 
       const cnv = document.createElement('canvas');
@@ -1881,12 +1886,21 @@
         const a = matte[i];
         const o = i * 4;
         if (a === 0) { d[o + 3] = 0; continue; }
-        const t = shade[i] / 255;
-        const f = LO + (HI - LO) * t;
-        const wgt = (1 - t) * TINT;
-        d[o] = Math.min(255, tr * f * (1 - wgt + wgt * ar));
-        d[o + 1] = Math.min(255, tg * f * (1 - wgt + wgt * ag));
-        d[o + 2] = Math.min(255, tb * f * (1 - wgt + wgt * ab));
+        const rel = (shade[i] / 255) * REL_MAX;
+        const diff = Math.pow(Math.min(rel, 1), GAMMA);
+        const wgt = (1 - diff) * TINT;
+        let r = tr * diff * (1 - wgt + wgt * ar);
+        let g = tg * diff * (1 - wgt + wgt * ag);
+        let b = tb * diff * (1 - wgt + wgt * ab);
+        // Anything above the white point is sheen on the weave: additive and
+        // roughly colourless, so it lifts dark and pale garments alike.
+        if (rel > 1) {
+          const spec = Math.min(1, (rel - 1) / (REL_MAX - 1)) * SPEC;
+          r += (255 - r) * spec; g += (255 - g) * spec; b += (255 - b) * spec;
+        }
+        d[o] = Math.min(255, r);
+        d[o + 1] = Math.min(255, g);
+        d[o + 2] = Math.min(255, b);
         d[o + 3] = a;
       }
       c.putImageData(out, 0, 0);
