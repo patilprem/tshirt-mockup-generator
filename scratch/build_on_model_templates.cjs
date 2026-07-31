@@ -400,11 +400,84 @@ const TEMPLATES = [
       mctx.putImageData(md, 0, 0);
       sctx.putImageData(sd, 0, 0);
 
-      // 10. print-area quad, as a fraction of the garment bounding box
+      // 10. Print-area quad, measured from the garment itself.
+      //
+      // A fixed fraction of the bounding box cannot work: the box includes both
+      // sleeves, so its centre is only the torso's centre when the model happens
+      // to be square to camera, and its width has nothing to do with how wide the
+      // chest actually is. On a turned pose that puts the print off the body's
+      // centre line while still looking suspiciously centred in the frame.
+      //
+      // Instead, measure the torso directly. Below the sleeves the garment is
+      // torso and nothing else, so its width there is a true chest reference.
+      // Then walk upward row by row following the run of fabric under the last
+      // known centre, limiting how far the centre may travel per row — when the
+      // sleeves merge into the torso the run suddenly spans shoulder to shoulder,
+      // and without that limit the centre lurches sideways.
       const bw = mxX - mnX, bh = mxY - mnY;
+      const rowRuns = y => {
+        const runs = []; let start = -1;
+        for (let x = mnX; x <= mxX; x++) {
+          const on = alpha[y * W + x] > 0.5;
+          if (on && start < 0) start = x;
+          else if (!on && start >= 0) { runs.push([start, x - 1]); start = -1; }
+        }
+        if (start >= 0) runs.push([start, mxX]);
+        return runs;
+      };
+      const widths = [];
+      for (let y = Math.round(mnY + bh * 0.66); y <= Math.round(mnY + bh * 0.92); y += 2) {
+        const runs = rowRuns(y);
+        if (!runs.length) continue;
+        let best = runs[0];
+        for (const r of runs) if (r[1] - r[0] > best[1] - best[0]) best = r;
+        widths.push(best[1] - best[0]);
+      }
+      widths.sort((a, b) => a - b);
+      const torsoW = widths.length ? widths[Math.floor(widths.length / 2)] : bw * 0.55;
+
+      let cx = null;
+      for (let y = Math.round(mnY + bh * 0.80); y >= Math.round(mnY + bh * 0.66); y--) {
+        const runs = rowRuns(y);
+        if (!runs.length) continue;
+        let best = runs[0];
+        for (const r of runs) if (r[1] - r[0] > best[1] - best[0]) best = r;
+        cx = (best[0] + best[1]) / 2;
+        break;
+      }
+      if (cx === null) cx = mnX + bw / 2;
+
+      const centreAt = {};
+      const MAX_DRIFT = 1.5;
+      for (let y = Math.round(mnY + bh * 0.80); y >= mnY; y--) {
+        const runs = rowRuns(y);
+        if (runs.length) {
+          let pick = null;
+          for (const r of runs) if (cx >= r[0] - 2 && cx <= r[1] + 2) { pick = r; break; }
+          if (!pick) {
+            let bd = Infinity;
+            for (const r of runs) {
+              const d = Math.abs((r[0] + r[1]) / 2 - cx);
+              if (d < bd) { bd = d; pick = r; }
+            }
+          }
+          const target = (pick[0] + pick[1]) / 2;
+          cx += Math.max(-MAX_DRIFT, Math.min(MAX_DRIFT, target - cx));
+        }
+        centreAt[y] = cx;
+      }
+
+      // A chest print runs roughly from just under the collar to mid-torso, and
+      // about 60% of the chest's width — the same proportion the flat-lay print
+      // areas use, so a design lands at a comparable size in both modes.
+      const topY = Math.round(mnY + bh * 0.21);
+      const botY = Math.round(mnY + bh * 0.60);
+      const hw = torsoW * 0.30;
+      const cTop = centreAt[topY] != null ? centreAt[topY] : mnX + bw / 2;
+      const cBot = centreAt[botY] != null ? centreAt[botY] : mnX + bw / 2;
       const quad = {
-        tl: [mnX + bw * 0.30, mnY + bh * 0.22], tr: [mnX + bw * 0.70, mnY + bh * 0.22],
-        br: [mnX + bw * 0.68, mnY + bh * 0.62], bl: [mnX + bw * 0.32, mnY + bh * 0.62],
+        tl: [cTop - hw, topY], tr: [cTop + hw, topY],
+        br: [cBot + hw, botY], bl: [cBot - hw, botY],
       };
 
       // QA metrics

@@ -1922,12 +1922,12 @@
       layer.width = w; layer.height = h;
       const lc = layer.getContext('2d');
 
-      // Design box, sized against the quad the same way the flat-lay path sizes
-      // it against the 1000-unit artboard.
+      // The quad is now measured from the torso itself, so a design at the
+      // default scale should simply fill it — that is what a chest print is.
       const dAspect = designImage.width / designImage.height;
-      let dW = quadW * (designScale / 0.35) * 0.75;
+      let dW = quadW * (designScale / 0.35);
       let dH = dW / dAspect;
-      if (dAspect <= 1) { dH = quadH * (designScale / 0.35) * 0.75; dW = dH * dAspect; }
+      if (dAspect <= 1) { dH = quadH * (designScale / 0.35); dW = dH * dAspect; }
 
       // designPos is authored in artboard units around (500, 420); carry that
       // offset across proportionally rather than pinning the design dead-centre.
