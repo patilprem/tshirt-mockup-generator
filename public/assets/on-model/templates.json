@@ -1,0 +1,242 @@
+[
+  {
+    "id": "plaster-f",
+    "label": "Plaster Wall",
+    "model": "female",
+    "scene": "Warm plaster wall, daylight",
+    "width": 1066,
+    "height": 1600,
+    "plate": "/assets/on-model/plaster-f-plate.jpg",
+    "matte": "/assets/on-model/plaster-f-matte.png",
+    "shade": "/assets/on-model/plaster-f-shade.jpg",
+    "ambientTint": [
+      1,
+      0.9797,
+      0.934
+    ],
+    "quad": {
+      "tl": [
+        397.79999999999995,
+        753.1800000000001
+      ],
+      "tr": [
+        688.2,
+        753.1800000000001
+      ],
+      "br": [
+        673.6800000000001,
+        1040.78
+      ],
+      "bl": [
+        412.32,
+        1040.78
+      ]
+    },
+    "bbox": {
+      "x": 180,
+      "y": 595,
+      "w": 726,
+      "h": 719
+    }
+  },
+  {
+    "id": "window-f",
+    "label": "Window Light",
+    "model": "female",
+    "scene": "Tall window, sheer curtain",
+    "width": 1066,
+    "height": 1600,
+    "plate": "/assets/on-model/window-f-plate.jpg",
+    "matte": "/assets/on-model/window-f-matte.png",
+    "shade": "/assets/on-model/window-f-shade.jpg",
+    "ambientTint": [
+      1,
+      0.9946,
+      0.9568
+    ],
+    "quad": {
+      "tl": [
+        467.7,
+        752.02
+      ],
+      "tr": [
+        775.3,
+        752.02
+      ],
+      "br": [
+        759.9200000000001,
+        1008.4200000000001
+      ],
+      "bl": [
+        483.08000000000004,
+        1008.4200000000001
+      ]
+    },
+    "bbox": {
+      "x": 237,
+      "y": 611,
+      "w": 769,
+      "h": 641
+    }
+  },
+  {
+    "id": "gallery-f",
+    "label": "Gallery Interior",
+    "model": "female",
+    "scene": "Minimal off-white interior",
+    "width": 1066,
+    "height": 1600,
+    "plate": "/assets/on-model/gallery-f-plate.jpg",
+    "matte": "/assets/on-model/gallery-f-matte.png",
+    "shade": "/assets/on-model/gallery-f-shade.jpg",
+    "ambientTint": [
+      1,
+      0.9786,
+      0.9251
+    ],
+    "quad": {
+      "tl": [
+        390.79999999999995,
+        787.02
+      ],
+      "tr": [
+        681.2,
+        787.02
+      ],
+      "br": [
+        666.6800000000001,
+        1063.42
+      ],
+      "bl": [
+        405.32,
+        1063.42
+      ]
+    },
+    "bbox": {
+      "x": 173,
+      "y": 635,
+      "w": 726,
+      "h": 691
+    }
+  },
+  {
+    "id": "livingroom-m",
+    "label": "Living Room",
+    "model": "male",
+    "scene": "Bright airy living room",
+    "width": 1066,
+    "height": 1600,
+    "plate": "/assets/on-model/livingroom-m-plate.jpg",
+    "matte": "/assets/on-model/livingroom-m-matte.png",
+    "shade": "/assets/on-model/livingroom-m-shade.jpg",
+    "ambientTint": [
+      0.9844,
+      1,
+      0.974
+    ],
+    "quad": {
+      "tl": [
+        465.6,
+        687
+      ],
+      "tr": [
+        706.4,
+        687
+      ],
+      "br": [
+        694.36,
+        987
+      ],
+      "bl": [
+        477.64,
+        987
+      ]
+    },
+    "bbox": {
+      "x": 285,
+      "y": 522,
+      "w": 602,
+      "h": 750
+    }
+  },
+  {
+    "id": "street-m",
+    "label": "Urban Street",
+    "model": "male",
+    "scene": "Sunlit pavement outside a cafe",
+    "width": 1066,
+    "height": 1600,
+    "plate": "/assets/on-model/street-m-plate.jpg",
+    "matte": "/assets/on-model/street-m-matte.png",
+    "shade": "/assets/on-model/street-m-shade.jpg",
+    "ambientTint": [
+      1,
+      0.9841,
+      0.9365
+    ],
+    "quad": {
+      "tl": [
+        422.4,
+        737.34
+      ],
+      "tr": [
+        717.6,
+        737.34
+      ],
+      "br": [
+        702.84,
+        1036.1399999999999
+      ],
+      "bl": [
+        437.15999999999997,
+        1036.1399999999999
+      ]
+    },
+    "bbox": {
+      "x": 201,
+      "y": 573,
+      "w": 738,
+      "h": 747
+    }
+  },
+  {
+    "id": "park-m",
+    "label": "Park Path",
+    "model": "male",
+    "scene": "Green park path, open shade",
+    "width": 1066,
+    "height": 1600,
+    "plate": "/assets/on-model/park-m-plate.jpg",
+    "matte": "/assets/on-model/park-m-matte.png",
+    "shade": "/assets/on-model/park-m-shade.jpg",
+    "ambientTint": [
+      1,
+      0.9396,
+      0.8571
+    ],
+    "quad": {
+      "tl": [
+        450.7,
+        754.96
+      ],
+      "tr": [
+        694.3,
+        754.96
+      ],
+      "br": [
+        682.12,
+        1042.16
+      ],
+      "bl": [
+        462.88,
+        1042.16
+      ]
+    },
+    "bbox": {
+      "x": 268,
+      "y": 597,
+      "w": 609,
+      "h": 718
+    }
+  }
+]

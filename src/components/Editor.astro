@@ -25,6 +25,31 @@
 
   <!-- Left Sidebar Controls -->
   <aside class="sidebar sidebar-left">
+    <!-- Section 00: Mockup Style — flat lay vs. photographed on a model -->
+    <div class="panel-section" id="mockup-style-section">
+      <h3 class="panel-title">Mockup Style</h3>
+      <div class="control-group">
+        <div class="style-toggle" id="mockup-style-toggle">
+          <button class="style-btn active" data-style="flatlay" type="button">
+            <span class="style-icon" aria-hidden="true">👕</span>
+            <span class="style-name">Flat Lay</span>
+          </button>
+          <button class="style-btn" data-style="onmodel" type="button">
+            <span class="style-icon" aria-hidden="true">🧍</span>
+            <span class="style-name">On Model</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 0b: On-model template picker (only shown in on-model mode) -->
+    <div class="panel-section" id="on-model-section" style="display: none;">
+      <h3 class="panel-title">Model &amp; Scene</h3>
+      <div class="control-group">
+        <div class="garment-grid" id="on-model-selector"></div>
+      </div>
+    </div>
+
     <!-- Section 0: Garment Type -->
     <div class="panel-section" id="garment-type-section">
       <h3 class="panel-title">Garment Type</h3>
@@ -1117,6 +1142,7 @@
     }
     applyCanvasAspect();
     loadGarment(initialGarment);
+    initOnModel();
 
     // Re-fit the canvas box on viewport changes (orientation flip, browser
     // resize crossing the mobile/desktop breakpoint, etc.) since its size is
@@ -1782,11 +1808,297 @@
       targetCtx.restore();
     }
 
+    // ----------------------------------------------------
+    // 5b. On-Model Mockups
+    // ----------------------------------------------------
+    // Photographs of a model in a plain violet crewneck, pre-keyed offline by
+    // scripts/build-on-model-templates.cjs into three flat images:
+    //   plate  — the scene with the garment's colour divided back out of soft edges
+    //   matte  — garment alpha
+    //   shade  — normalised illumination, 0 = deepest fold, 255 = brightest lit
+    // Recolouring is then just per-pixel arithmetic; no keying happens in the
+    // browser. The tone range widens with the target colour's lightness because
+    // a white tee's folds are filled by its own inter-reflection and never go as
+    // dark as a saturated tee's — without that, white renders as flat grey.
+    let mockupStyle = 'flatlay'; // 'flatlay' | 'onmodel'
+    let onModelTemplates = [];
+    let activeOnModelId = null;
+    const onModelCache = new Map(); // id -> { plate, matte:Uint8ClampedArray, shade, w, h, meta }
+    let onModelGarment = null;      // cached recoloured garment canvas
+    let onModelGarmentKey = '';     // invalidation key: templateId + colour
+
+    async function loadOnModelTemplate(meta) {
+      if (onModelCache.has(meta.id)) return onModelCache.get(meta.id);
+      const loadImg = src => new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('failed to load ' + src));
+        i.src = src;
+      });
+      const [plate, matteImg, shadeImg] = await Promise.all([
+        loadImg(meta.plate), loadImg(meta.matte), loadImg(meta.shade),
+      ]);
+      const w = meta.width, h = meta.height;
+      // Pull matte + shade into flat byte arrays once; per-frame work then never
+      // touches an ImageData decode again.
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      const tctx = tmp.getContext('2d', { willReadFrequently: true });
+      tctx.drawImage(matteImg, 0, 0, w, h);
+      const matteRGBA = tctx.getImageData(0, 0, w, h).data;
+      tctx.clearRect(0, 0, w, h);
+      tctx.drawImage(shadeImg, 0, 0, w, h);
+      const shadeRGBA = tctx.getImageData(0, 0, w, h).data;
+      const n = w * h;
+      const matte = new Uint8ClampedArray(n);
+      const shade = new Uint8ClampedArray(n);
+      for (let i = 0; i < n; i++) { matte[i] = matteRGBA[i * 4]; shade[i] = shadeRGBA[i * 4]; }
+      const entry = { plate, matte, shade, w, h, meta };
+      onModelCache.set(meta.id, entry);
+      return entry;
+    }
+
+    // Recolours the garment into a standalone RGBA canvas. Only redone when the
+    // template or shirt colour changes — dragging the design reuses this.
+    function buildOnModelGarment(entry, hex) {
+      const { matte, shade, w, h, meta } = entry;
+      const tr = parseInt(hex.slice(1, 3), 16);
+      const tg = parseInt(hex.slice(3, 5), 16);
+      const tb = parseInt(hex.slice(5, 7), 16);
+      const tLum = (tr + tg + tb) / 765;
+      const LO = 0.30 + 0.36 * tLum;
+      const HI = 1.00 + 0.055 * tLum;
+      const TINT = 0.40 * tLum;
+      const [ar, ag, ab] = meta.ambientTint;
+
+      const cnv = document.createElement('canvas');
+      cnv.width = w; cnv.height = h;
+      const c = cnv.getContext('2d');
+      const out = c.createImageData(w, h);
+      const d = out.data;
+      const n = w * h;
+      for (let i = 0; i < n; i++) {
+        const a = matte[i];
+        const o = i * 4;
+        if (a === 0) { d[o + 3] = 0; continue; }
+        const t = shade[i] / 255;
+        const f = LO + (HI - LO) * t;
+        const wgt = (1 - t) * TINT;
+        d[o] = Math.min(255, tr * f * (1 - wgt + wgt * ar));
+        d[o + 1] = Math.min(255, tg * f * (1 - wgt + wgt * ag));
+        d[o + 2] = Math.min(255, tb * f * (1 - wgt + wgt * ab));
+        d[o + 3] = a;
+      }
+      c.putImageData(out, 0, 0);
+      return cnv;
+    }
+
+    // Maps the shared 0-1000 artboard design transform onto the template's
+    // print quad, so the same drag/scale/rotate controls drive both modes.
+    function drawOnModelDesign(targetCtx, entry, scale) {
+      if (!designImage) return;
+      const { meta, w, h } = entry;
+      const q = meta.quad;
+      const cx = (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4;
+      const cy = (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4;
+      const quadW = Math.hypot(q.tr[0] - q.tl[0], q.tr[1] - q.tl[1]);
+      const quadH = Math.hypot(q.bl[0] - q.tl[0], q.bl[1] - q.tl[1]);
+
+      const layer = document.createElement('canvas');
+      layer.width = w; layer.height = h;
+      const lc = layer.getContext('2d');
+
+      // Design box, sized against the quad the same way the flat-lay path sizes
+      // it against the 1000-unit artboard.
+      const dAspect = designImage.width / designImage.height;
+      let dW = quadW * (designScale / 0.35) * 0.75;
+      let dH = dW / dAspect;
+      if (dAspect <= 1) { dH = quadH * (designScale / 0.35) * 0.75; dW = dH * dAspect; }
+
+      // designPos is authored in artboard units around (500, 420); carry that
+      // offset across proportionally rather than pinning the design dead-centre.
+      const offX = (designPos.x - 500) / 1000 * quadW;
+      const offY = (designPos.y - 420) / 1000 * quadH;
+
+      const srcGraphic = isDesignTransparent ? designImage : processedDesignBuffer;
+      if (!srcGraphic) return;
+      const placeDesign = () => {
+        lc.save();
+        lc.translate(cx + offX, cy + offY);
+        lc.rotate(designRotation);
+        lc.drawImage(srcGraphic, -dW / 2, -dH / 2, dW, dH);
+        lc.restore();
+      };
+
+      lc.globalAlpha = designOpacity;
+      placeDesign();
+      lc.globalAlpha = 1;
+
+      // Fold shading over the print. 'multiply' also paints where the layer is
+      // still transparent, so the shade map has to be clipped back to the
+      // design's own alpha immediately afterwards — otherwise it floods the
+      // whole garment and hides the recoloured fabric underneath.
+      if (useRealisticBlending) {
+        lc.globalCompositeOperation = 'multiply';
+        lc.globalAlpha = Math.min(1, shadowDepth + 0.25);
+        lc.drawImage(onModelShadeCanvas(entry), 0, 0);
+        lc.globalAlpha = 1;
+        lc.globalCompositeOperation = 'destination-in';
+        placeDesign();
+      }
+      // Finally clip to the garment silhouette so nothing spills onto skin.
+      lc.globalCompositeOperation = 'destination-in';
+      lc.drawImage(onModelMatteCanvas(entry), 0, 0);
+
+      targetCtx.drawImage(layer, 0, 0, w * scale, h * scale);
+    }
+
+    // Lazily materialised greyscale canvases, kept on the cache entry so the
+    // multiply/clip passes above don't rebuild them every frame.
+    function onModelShadeCanvas(entry) {
+      if (entry._shadeCanvas) return entry._shadeCanvas;
+      const { shade, w, h } = entry;
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cx = c.getContext('2d');
+      const img = cx.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) {
+        // Lift toward white so the multiply darkens folds without dimming the
+        // whole print — mid illumination should read as roughly neutral.
+        const v = 150 + (shade[i] / 255) * 105;
+        img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+      }
+      cx.putImageData(img, 0, 0);
+      entry._shadeCanvas = c;
+      return c;
+    }
+    function onModelMatteCanvas(entry) {
+      if (entry._matteCanvas) return entry._matteCanvas;
+      const { matte, w, h } = entry;
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cx = c.getContext('2d');
+      const img = cx.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) {
+        img.data[i * 4] = 255; img.data[i * 4 + 1] = 255; img.data[i * 4 + 2] = 255;
+        img.data[i * 4 + 3] = matte[i];
+      }
+      cx.putImageData(img, 0, 0);
+      entry._matteCanvas = c;
+      return c;
+    }
+
+    function drawOnModelScene(targetCtx, frameW, frameH) {
+      const entry = onModelCache.get(activeOnModelId);
+      if (!entry) return false;
+
+      const key = activeOnModelId + '|' + shirtColor;
+      if (onModelGarmentKey !== key) {
+        onModelGarment = buildOnModelGarment(entry, shirtColor);
+        onModelGarmentKey = key;
+      }
+
+      // Fit the portrait template inside the frame, centred, with the normal
+      // backdrop filling any letterbox margin.
+      const k = Math.min(frameW / entry.w, frameH / entry.h);
+      const dw = entry.w * k, dh = entry.h * k;
+      const ox = (frameW - dw) / 2, oy = (frameH - dh) / 2;
+
+      drawBackground(targetCtx, frameW, frameH, false);
+      targetCtx.save();
+      targetCtx.translate(ox, oy);
+      targetCtx.scale(k, k);
+      targetCtx.drawImage(entry.plate, 0, 0, entry.w, entry.h);
+      targetCtx.drawImage(onModelGarment, 0, 0);
+      drawOnModelDesign(targetCtx, entry, 1);
+      targetCtx.restore();
+      return true;
+    }
+
+    async function setMockupStyle(style) {
+      mockupStyle = style;
+      document.querySelectorAll('#mockup-style-toggle .style-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.style === style);
+      });
+      const onModelSection = document.getElementById('on-model-section');
+      const garmentSection = document.getElementById('garment-type-section');
+      const canvasSizeSection = document.getElementById('canvas-size-section');
+      const propsSection = document.getElementById('aesthetic-props-section');
+      if (onModelSection) onModelSection.style.display = style === 'onmodel' ? '' : 'none';
+      // Garment type, canvas presets and props are flat-lay concepts; an
+      // on-model template already fixes the garment, framing and setting.
+      if (garmentSection) garmentSection.style.display = style === 'onmodel' ? 'none' : '';
+      if (canvasSizeSection) canvasSizeSection.style.display = style === 'onmodel' ? 'none' : '';
+      if (propsSection) propsSection.style.display = style === 'onmodel' ? 'none' : '';
+
+      if (style === 'onmodel') {
+        if (!activeOnModelId && onModelTemplates.length) activeOnModelId = onModelTemplates[0].id;
+        const meta = onModelTemplates.find(t => t.id === activeOnModelId);
+        if (meta) {
+          if (canvasLoading) canvasLoading.style.display = 'flex';
+          try {
+            const entry = await loadOnModelTemplate(meta);
+            canvas.width = Math.round(entry.w * 0.75);
+            canvas.height = Math.round(entry.h * 0.75);
+            onModelGarmentKey = '';
+          } finally { if (canvasLoading) canvasLoading.style.display = 'none'; }
+        }
+      } else {
+        applyCanvasAspect();
+      }
+      render();
+    }
+
+    function buildOnModelSelector() {
+      const host = document.getElementById('on-model-selector');
+      if (!host) return;
+      host.innerHTML = onModelTemplates.map(t => `
+        <button class="garment-card${t.id === activeOnModelId ? ' active' : ''}" data-template="${t.id}" title="${t.scene}">
+          <span class="garment-icon" aria-hidden="true">${t.model === 'female' ? '👩' : '👨'}</span>
+          <span class="garment-name">${t.label}</span>
+        </button>`).join('');
+      host.querySelectorAll('.garment-card').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          activeOnModelId = btn.dataset.template;
+          host.querySelectorAll('.garment-card').forEach(b => b.classList.toggle('active', b === btn));
+          const meta = onModelTemplates.find(t => t.id === activeOnModelId);
+          if (!meta) return;
+          if (canvasLoading) canvasLoading.style.display = 'flex';
+          try {
+            const entry = await loadOnModelTemplate(meta);
+            canvas.width = Math.round(entry.w * 0.75);
+            canvas.height = Math.round(entry.h * 0.75);
+            onModelGarmentKey = '';
+          } finally { if (canvasLoading) canvasLoading.style.display = 'none'; }
+          render();
+        });
+      });
+    }
+
+    async function initOnModel() {
+      try {
+        const res = await fetch('/assets/on-model/templates.json');
+        if (!res.ok) return;
+        onModelTemplates = await res.json();
+        if (onModelTemplates.length) activeOnModelId = onModelTemplates[0].id;
+        buildOnModelSelector();
+      } catch (e) {
+        console.warn('on-model templates unavailable', e);
+      }
+      document.querySelectorAll('#mockup-style-toggle .style-btn').forEach(btn => {
+        btn.addEventListener('click', () => setMockupStyle(btn.dataset.style));
+      });
+    }
+
     function render(showHandles = true) {
       if (!isShirtLoaded) return;
 
       const w = canvas.width;
       const h = canvas.height;
+
+      if (mockupStyle === 'onmodel') {
+        if (drawOnModelScene(ctx, w, h)) return;
+      }
 
       // Draw scene at 1x scale
       drawScene(ctx, w, h, 1, false);
@@ -2973,7 +3285,17 @@
         // export at their fixed resolution regardless of the quality choice)
         const isExtraHigh = (quality === 'extra-high');
         const scaleFactor = getExportScaleFactor(isExtraHigh ? 2 : 1);
-        const { frameW: exportWidth, frameH: exportHeight } = getFrameDims(scaleFactor);
+        let { frameW: exportWidth, frameH: exportHeight } = getFrameDims(scaleFactor);
+
+        // On-model exports use the template photo's own aspect and native
+        // resolution — the canvas-aspect presets are a flat-lay concept, and
+        // upscaling past the source pixels would only soften the print.
+        const onModelEntry = mockupStyle === 'onmodel' ? onModelCache.get(activeOnModelId) : null;
+        if (onModelEntry) {
+          const k = isExtraHigh ? 1 : Math.min(1, 2048 / Math.max(onModelEntry.w, onModelEntry.h));
+          exportWidth = Math.round(onModelEntry.w * k);
+          exportHeight = Math.round(onModelEntry.h * k);
+        }
 
         // 2. Create offscreen canvas for quality export
         const exportCanvas = document.createElement('canvas');
@@ -2986,7 +3308,9 @@
 
         setTimeout(() => {
           // 3. Render mockup at selected scale/dimension
-          drawScene(exportCtx, exportWidth, exportHeight, scaleFactor, true);
+          if (!(onModelEntry && drawOnModelScene(exportCtx, exportWidth, exportHeight))) {
+            drawScene(exportCtx, exportWidth, exportHeight, scaleFactor, true);
+          }
 
           // 4. Extract data URL
           const imageURL = exportCanvas.toDataURL('image/png');
