@@ -237,12 +237,21 @@ const TEMPLATES = [
         }
         return dst;
       }
-      // A centred ramp is the physically correct coverage: half the pixel's light
-      // came from fabric, half from behind it. That only works because the plate
-      // below is inpainted with real background rather than reconstructed from
-      // the edge, so there is nothing left to bleed through on the inward side.
-      let alpha = a2;
-      for (let pass = 0; pass < 3; pass++) alpha = boxBlur(alpha);
+      // A centred ramp is the physically correct coverage at the silhouette:
+      // half the pixel's light came from fabric, half from behind it.
+      let ramp = a2;
+      for (let pass = 0; pass < 3; pass++) ramp = boxBlur(ramp);
+
+      // But cotton is opaque. Anywhere the key is confident the pixel is mostly
+      // fabric, alpha has to reach 1 — a dark crease where the hue signal went
+      // soft must not let the plate behind it show through, and now that the
+      // plate holds pale inpainted background that bleed is glaring on a dark
+      // garment. Only the outermost band keeps its fractional coverage.
+      let solid = new Uint8Array(N);
+      for (let i = 0; i < N; i++) solid[i] = a2[i] >= 0.5 ? 1 : 0;
+      for (let i = 0; i < FEATHER + 1; i++) solid = ero(solid);
+      const alpha = new Float32Array(N);
+      for (let i = 0; i < N; i++) alpha[i] = solid[i] ? 1 : ramp[i];
 
       // 7. illumination normalisation + scene ambient
       const cV = [], cR = [], cG = [], cB = [];
@@ -286,7 +295,13 @@ const TEMPLATES = [
       // directly against known background, so the interpolation there is close
       // to exact. Deeper into the hole it degrades to a smooth gradient, which
       // is fine — the garment covers it completely.
-      const holeR = Math.max(4, Math.round(W / 150));
+      // Just wide enough to swallow the violet-contaminated fringe and its JPEG
+      // bleed. A fat margin looks harmless on open background but destroys real
+      // pixels inside narrow gaps — the slot between an arm and the torso can be
+      // only a few dozen pixels across, and once both sides are eaten there is
+      // nothing left to interpolate from, so the fill invents a flat panel where
+      // the photo had a soft shadow.
+      const holeR = Math.max(2, Math.round(W / 400));
       let hole = new Uint8Array(N);
       for (let i = 0; i < N; i++) hole[i] = a2[i] > 0.02 ? 1 : 0;
       for (let i = 0; i < holeR; i++) hole = dil(hole);
