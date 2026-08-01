@@ -431,11 +431,12 @@ const TEMPLATES = [
       const ring = new Uint8Array(N);
       for (let i = 0; i < N; i++) if (outside[i] && distC[i] > 0) ring[i] = 1;
 
-      const diffuseInto = (seedMask, channels) => {
+      const diffuseInto = (seedMask) => {
         const out = new Float32Array(N * 3);
+        const fd = new Int16Array(N).fill(-1);
         const have = new Uint8Array(N);
         for (let i = 0; i < N; i++) if (seedMask(i)) {
-          have[i] = 1; const o = i * 4;
+          have[i] = 1; fd[i] = 0; const o = i * 4;
           out[i * 3] = src[o]; out[i * 3 + 1] = src[o + 1]; out[i * 3 + 2] = src[o + 2];
         }
         for (let pass = 0; pass < RING + 6; pass++) {
@@ -445,16 +446,18 @@ const TEMPLATES = [
             if (have[i] || !ring[i]) continue;
             let sr = 0, sg = 0, sb2 = 0, c = 0;
             for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sr += out[ni * 3]; sg += out[ni * 3 + 1]; sb2 += out[ni * 3 + 2]; c++; }
-            if (c) { out[i * 3] = sr / c; out[i * 3 + 1] = sg / c; out[i * 3 + 2] = sb2 / c; nh[i] = 1; }
+            if (c) { out[i * 3] = sr / c; out[i * 3 + 1] = sg / c; out[i * 3 + 2] = sb2 / c; nh[i] = 1; fd[i] = pass + 1; }
           }
           have.set(nh);
         }
-        return out;
+        return { c: out, fd };
       };
-      const bgC = diffuseInto(i => outside[i] && !ring[i]);
-      const fgC = diffuseInto(i => !outside[i]);
+      const bgF = diffuseInto(i => outside[i] && !ring[i]);
+      const fgF = diffuseInto(i => !outside[i]);
+      const bgC = bgF.c, fgC = fgF.c;
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
+      let wedgePx = 0;
       for (let i = 0; i < N; i++) if (ring[i]) {
         const o = i * 4;
         const fr = fgC[i * 3] - bgC[i * 3], fg2 = fgC[i * 3 + 1] - bgC[i * 3 + 1], fb = fgC[i * 3 + 2] - bgC[i * 3 + 2];
@@ -465,7 +468,15 @@ const TEMPLATES = [
         a2 = Math.max(0, Math.min(1, a2));
         const er = dr - a2 * fr, eg = dg - a2 * fg2, eb = db - a2 * fb;
         const err = Math.sqrt((er * er + eg * eg + eb * eb) / 3);
-        const conf = 1 - smooth(err, 14, 42);
+        // In a narrow wedge (underarm gap, under hair) no clean background is
+        // reachable — the diffused estimate is a guess from far away, and matting
+        // against a wrong endpoint paints skin green or leaves speckle. Distance
+        // the estimate had to travel is measured directly, and confidence dies
+        // with it: wedge pixels stay uniformly photographic, a natural shadow.
+        let conf = 1 - smooth(err, 14, 42);
+        conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING + 1, RING + 4);
+        if (fgF.fd[i] < 0) conf = 0;
+        if (vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING + 1)) wedgePx++;
         alphaA[i] = a2; confA[i] = conf;
         wMap[i] = conf * a2 + (1 - conf) * wMap[i];
         evAny[i] = Math.max(evAny[i], wMap[i]);
@@ -652,7 +663,7 @@ const TEMPLATES = [
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, edgeDark, edgeBright, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
+        qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -683,7 +694,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
