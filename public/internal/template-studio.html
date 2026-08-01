@@ -673,16 +673,17 @@ function analyze(img) {
     wMap[i] = Math.max(clipIn, wRaw[i], wide, dark, enclosed);
   }
   wMap = boxBlur(wMap, 1);
-  // Background-side weight follows the violet actually present per pixel.
-  // Three evidence paths: the strict key (smooth taper — a hard cutoff makes
-  // a jagged edge), a hue+saturation path with no value gate (dark seam
-  // pixels where the garment meets skin or hair), and a mixture term for the
-  // mauve/pink corridor (fabric mixed with skin drifts up to +80 magenta-ward
-  // at low saturation, but its violet content shows as blue exceeding green,
-  // which skin, foliage and warm walls never do). The mixture term is
-  // confined to the clip ring and hard-off toward blue so denim never
-  // qualifies.
+  // Background-side recolour weight follows the strict key only, smoothly
+  // tapered (a hard cutoff makes a jagged edge; painting further out risks a
+  // glowing target-coloured rim on pale shirts). All other background-side
+  // violet — bloom scattered off the fabric, compression bleed, seam pixels
+  // mixed with skin (mauve corridor: hue up to +80 magenta-ward, violet
+  // content showing as blue exceeding green, which skin, foliage and warm
+  // walls never have) — is NEUTRALISED IN THE PHOTO: chroma pulled toward
+  // the pixel's own luminance in proportion to the evidence. That is
+  // target-independent, so it can never glow and never paint.
   const evAny = new Float32Array(N);
+  const neut = new Float32Array(N);
   for (let i = 0; i < N; i++) if (outside[i]) {
     const d2 = sgn(hA[i]);
     const lim2 = d2 >= 0 ? 65 : 45;
@@ -690,15 +691,19 @@ function analyze(img) {
     const hueClose = a2 <= 30 ? 1 : a2 >= lim2 ? 0 : 0.5 + 0.5 * Math.cos((a2 - 30) / (lim2 - 30) * Math.PI);
     const evChroma = hueClose * smooth(sA[i], 0.05, 0.18);
     const o = i * 4;
-    const bx = (src[o + 2] - src[o + 1]) / 255;
+    // green-deficit: violet content pushes both R and B above G; skin,
+    // foliage and warm walls never do. Catches mauve seam mixes whose
+    // blue-excess alone is masked by the skin's red dominance.
+    const gd = Math.max(0, (src[o] + src[o + 2]) / 2 - src[o + 1]) / 255;
     const hueMix = d2 >= -10 && d2 <= 70 ? 1
-      : d2 > 70 && d2 < 85 ? 0.5 + 0.5 * Math.cos((d2 - 70) / 15 * Math.PI)
+      : d2 > 70 && d2 < 90 ? 0.5 + 0.5 * Math.cos((d2 - 70) / 20 * Math.PI)
       : d2 < -10 && d2 > -25 ? 0.5 + 0.5 * Math.cos((-10 - d2) / 15 * Math.PI)
       : 0;
-    const evMix = hueMix * smooth(bx, 0.02, 0.10) * smooth(clip[i], 0.01, 0.12);
-    const ev = Math.max(smooth(wRaw[i], 0.008, 0.05), evChroma);
-    wMap[i] = Math.max(wMap[i] * ev, evMix);
-    evAny[i] = Math.max(ev, evMix);
+    const evMix = hueMix * smooth(gd, 0.015, 0.07) * smooth(clip[i], 0.01, 0.12);
+    const tap = smooth(wRaw[i], 0.008, 0.05);
+    wMap[i] *= tap;
+    neut[i] = Math.max(evChroma, evMix);
+    evAny[i] = Math.max(tap, evChroma, evMix);
   }
 
   const cV = [], cR = [], cG = [], cB = [];
@@ -738,7 +743,10 @@ function analyze(img) {
         if (have[i] || !gate[i] || !outside[i]) continue;
         let sum = 0, c = 0;
         for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
-        if (c) { shadeVal[i] = sum / c; nh[i] = 1; }
+        // min(): propagation may only DARKEN — it corrects bright-background
+        // contamination; a dark seam pixel keeps its own shade or the model
+        // subtracts a lit violet from a dark pixel and the seam clamps navy
+        if (c) { shadeVal[i] = Math.min(shadeVal[i], sum / c); nh[i] = 1; }
       }
       have.set(nh);
     }
@@ -746,14 +754,22 @@ function analyze(img) {
   const shade = new Uint8ClampedArray(N);
   for (let i = 0; i < N; i++) shade[i] = Math.round(shadeVal[i] * 255);
 
-  // photo with baked crease neutralisation (same as builder)
+  // photo with baked crease + background-violet neutralisation (same as builder)
   const photoData = new Uint8ClampedArray(src);
   for (let i = 0; i < N; i++) {
-    if (!gate[i]) continue;
-    const dark = 1 - smooth(vA[i], 0.22, 0.42);
-    const kk = Math.min(1, (1 - wMap[i]) * dark);
-    if (kk > 0) {
-      const o = i * 4;
+    const o = i * 4;
+    if (gate[i]) {
+      const dark = 1 - smooth(vA[i], 0.22, 0.42);
+      const kk = Math.min(1, (1 - wMap[i]) * dark);
+      if (kk > 0) {
+        const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
+        photoData[o] += (L - photoData[o]) * kk;
+        photoData[o + 1] += (L - photoData[o + 1]) * kk;
+        photoData[o + 2] += (L - photoData[o + 2]) * kk;
+      }
+    }
+    if (neut[i] > 0) {
+      const kk = Math.min(1, neut[i] * (1 - wMap[i]));
       const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
       photoData[o] += (L - photoData[o]) * kk;
       photoData[o + 1] += (L - photoData[o + 1]) * kk;

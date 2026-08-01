@@ -288,21 +288,22 @@ const TEMPLATES = [
         wMap[i] = Math.max(clipIn, wRaw[i], wide, dark, enclosed);
       }
       wMap = boxBlur(wMap, 1);
-      // On the background side of the silhouette, weight must follow the violet
-      // actually present in each pixel. A hard cutoff here produces a jagged
-      // edge (adjacent pixels flip between recoloured and untouched). The
-      // strict key alone is not enough either: seam pixels where the garment
-      // meets skin or hair are dark (value below the strict key's floor) yet
-      // still saturated violet, so they need a hue+saturation path with no
-      // value gate. And a third class needs its own term entirely: fabric
-      // mixed with skin lands in the mauve/pink corridor (hue drifts up to
-      // +80 magenta-ward of the shirt) at low saturation, invisible to every
-      // hue window — but its violet content shows as blue exceeding green,
-      // which skin, foliage and warm walls never do. That term is confined to
-      // the clip ring so it can only act on the seam itself; the hue corridor
-      // is hard-off toward blue so denim never qualifies. Neutral background
-      // stays at zero because it carries no evidence of any kind.
+      // On the background side of the silhouette, RECOLOUR weight follows the
+      // strict key only, smoothly tapered — a hard cutoff makes a jagged
+      // edge, and painting anything further out risks a glowing target-
+      // coloured rim on pale shirts (the delta being added is target-vs-
+      // violet, which is bright for pale targets no matter how violet-tinted
+      // the pixel was). Everything else violet on the background side —
+      // light bloom scattered off the fabric, compression bleed baked into
+      // the source, seam pixels mixed with skin (which drift into a mauve
+      // corridor: hue up to +80 magenta-ward, violet content showing as
+      // blue exceeding green, a signature skin/foliage/warm walls never
+      // have) — is NEUTRALISED IN THE PHOTO instead: chroma pulled toward
+      // the pixel's own luminance in proportion to the violet evidence. That
+      // is target-independent, so it can never glow and never paint; the
+      // seam ring just becomes achromatic anti-aliasing under every colour.
       const evAny = new Float32Array(N);
+      const neut = new Float32Array(N);
       for (let i = 0; i < N; i++) if (outside[i]) {
         const d2 = sgn(hA[i]);
         const lim2 = d2 >= 0 ? 65 : 45;
@@ -310,15 +311,19 @@ const TEMPLATES = [
         const hueClose = a2 <= 30 ? 1 : a2 >= lim2 ? 0 : 0.5 + 0.5 * Math.cos((a2 - 30) / (lim2 - 30) * Math.PI);
         const evChroma = hueClose * smooth(sA[i], 0.05, 0.18);
         const o = i * 4;
-        const bx = (src[o + 2] - src[o + 1]) / 255;
+        // green-deficit: violet content pushes both R and B above G; skin,
+        // foliage and warm walls never do. Catches mauve seam mixes whose
+        // blue-excess alone is masked by the skin's red dominance.
+        const gd = Math.max(0, (src[o] + src[o + 2]) / 2 - src[o + 1]) / 255;
         const hueMix = d2 >= -10 && d2 <= 70 ? 1
-          : d2 > 70 && d2 < 85 ? 0.5 + 0.5 * Math.cos((d2 - 70) / 15 * Math.PI)
+          : d2 > 70 && d2 < 90 ? 0.5 + 0.5 * Math.cos((d2 - 70) / 20 * Math.PI)
           : d2 < -10 && d2 > -25 ? 0.5 + 0.5 * Math.cos((-10 - d2) / 15 * Math.PI)
           : 0;
-        const evMix = hueMix * smooth(bx, 0.02, 0.10) * smooth(clip[i], 0.01, 0.12);
-        const ev = Math.max(smooth(wRaw[i], 0.008, 0.05), evChroma);
-        wMap[i] = Math.max(wMap[i] * ev, evMix);
-        evAny[i] = Math.max(ev, evMix);
+        const evMix = hueMix * smooth(gd, 0.015, 0.07) * smooth(clip[i], 0.01, 0.12);
+        const tap = smooth(wRaw[i], 0.008, 0.05);
+        wMap[i] *= tap;
+        neut[i] = Math.max(evChroma, evMix);
+        evAny[i] = Math.max(tap, evChroma, evMix);
       }
 
       // illumination reference over confident fabric
@@ -362,6 +367,11 @@ const TEMPLATES = [
             r = r + (L - r) * kk; g = g + (L - g) * kk; b = b + (L - b) * kk;
           }
         }
+        if (neut[i] > 0) {
+          const kk = Math.min(1, neut[i] * (1 - wMap[i]));
+          const L = 0.299 * r + 0.587 * g + 0.114 * b;
+          r = r + (L - r) * kk; g = g + (L - g) * kk; b = b + (L - b) * kk;
+        }
         pd.data[o] = r; pd.data[o + 1] = g; pd.data[o + 2] = b; pd.data[o + 3] = 255;
       }
       pctx.putImageData(pd, 0, 0);
@@ -400,7 +410,11 @@ const TEMPLATES = [
             if (have[i] || !gate[i] || !outside[i]) continue;
             let sum = 0, c = 0;
             for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
-            if (c) { shadeVal[i] = sum / c; nh[i] = 1; }
+            // min(): propagation may only DARKEN. It exists to correct
+            // bright-background contamination; a genuinely dark seam pixel
+            // must keep its own shade, or the model subtracts a lit violet
+            // from a dark pixel and the seam clamps to navy.
+            if (c) { shadeVal[i] = Math.min(shadeVal[i], sum / c); nh[i] = 1; }
           }
           have.set(nh);
         }
