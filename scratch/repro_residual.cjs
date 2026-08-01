@@ -40,7 +40,7 @@ const IDS = process.argv.slice(3);
         const lut = new Float32Array(256 * 3);
         for (let sb = 0; sb < 256; sb++) {
           const rel = (sb / 255) * relMax;
-          const diff = Math.pow(Math.min(rel, 1), GAMMA);
+          const lfT = Math.max(0, Math.min(1, (Math.min(rel, 1) - 0.08) / 0.22)), lf = lfT * lfT * (3 - 2 * lfT); const diff = Math.pow(Math.min(rel, 1), 1 - (1 - GAMMA) * lf);
           const wgt = (1 - diff) * TINT;
           let r = rgb[0] * diff * (1 - wgt + wgt * ar);
           let g = rgb[1] * diff * (1 - wgt + wgt * ag);

@@ -321,7 +321,11 @@ const TEMPLATES = [
           : 0;
         const evMix = hueMix * smooth(gd, 0.015, 0.07) * smooth(clip[i], 0.01, 0.12);
         const tap = smooth(wRaw[i], 0.008, 0.05);
-        wMap[i] *= tap;
+        // deep-dark slivers (crevice shadows in underarm gaps, under hair)
+        // are never painted: isolated painted pixels can't be spatially
+        // coherent next to photographic near-black, and neutralisation
+        // already renders them as natural grey shadow
+        wMap[i] *= tap * smooth(vA[i], 0.10, 0.20);
         neut[i] = Math.max(evChroma, evMix);
         evAny[i] = Math.max(tap, evChroma, evMix);
       }
@@ -350,6 +354,22 @@ const TEMPLATES = [
       const aM = Math.max(...amb);
       const ambientTint = amb.map(c => +(c / aM).toFixed(4));
 
+      // an isolated painted pixel inside dark background-side shadow reads
+      // as speckle; give it its darkest neighbour's weight so crevices are
+      // treated uniformly (photographic penumbra, not dots)
+      {
+        const wm2 = new Float32Array(wMap);
+        for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+          const i = y * W + x;
+          if (!outside[i] || vA[i] > 0.34) continue;
+          let mn = wMap[i];
+          for (const ni of [i - 1, i + 1, i - W, i + W, i - W - 1, i - W + 1, i + W - 1, i + W + 1])
+            if (wMap[ni] < mn) mn = wMap[ni];
+          wm2[i] = mn;
+        }
+        wMap = wm2;
+      }
+
       // Illumination per pixel, needed by the matting bake below and written
       // out as the shade map later. On the background side of the silhouette
       // the shade is propagated outward from the nearest fabric: a boundary
@@ -369,7 +389,13 @@ const TEMPLATES = [
             if (have[i] || !gate[i] || !outside[i]) continue;
             let sum = 0, c = 0;
             for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
-            if (c) { shadeVal[i] = sum / c; nh[i] = 1; }
+            // min(): a boundary pixel takes the fabric shade only when its own
+            // reading is BRIGHTER (background contamination). A dark crevice
+            // pixel keeps its own darkness — assigning it the lit fabric shade
+            // makes the runtime add a lit-target-minus-lit-violet delta to a
+            // dark pixel: green flecks on white. Safe now that the matting bake
+            // keeps subtraction self-consistent at any shade.
+            if (c) { shadeVal[i] = Math.min(shadeVal[i], sum / c); nh[i] = 1; }
           }
           have.set(nh);
         }
@@ -384,7 +410,7 @@ const TEMPLATES = [
         const lut = new Float32Array(256 * 3);
         for (let s2 = 0; s2 < 256; s2++) {
           const rel = (s2 / 255) * REL_MAX;
-          const diff = Math.pow(Math.min(rel, 1), GAMMA);
+          const lfT = Math.max(0, Math.min(1, (Math.min(rel, 1) - 0.08) / 0.22)), lf = lfT * lfT * (3 - 2 * lfT); const diff = Math.pow(Math.min(rel, 1), 1 - (1 - GAMMA) * lf);
           const wgt = (1 - diff) * TINT;
           let r = rgb[0] * diff * (1 - wgt + wgt * ar);
           let g = rgb[1] * diff * (1 - wgt + wgt * ag);
@@ -525,10 +551,16 @@ const TEMPLATES = [
       for (let i = 0; i < N; i++) {
         const o = i * 4;
         wd.data[o] = Math.round(Math.max(0, Math.min(1, wMap[i])) * 255);
-        // clip (the runtime's own-value blend and design clip) must be 0 on
-        // the background side: the matting bake assumed pure model-violet
-        // subtraction there, and the design never reaches the silhouette
-        wd.data[o + 1] = outside[i] ? 0 : Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
+        // clip doubles as the runtime's own-value blend factor. On the
+        // background side it must mirror the matting confidence: a baked
+        // pixel's content is the MODEL's mix (subtract pure model violet,
+        // cl=0), while an unexplainable photographic pixel — deep crevice
+        // shadow, hair — must subtract ITS OWN value (cl=1), because the
+        // model's violet at dark shades is more saturated than the real
+        // pixel and over-subtraction leaves green flecks.
+        wd.data[o + 1] = outside[i]
+          ? Math.round(255 * (1 - Math.max(0, Math.min(1, confA[i]))))
+          : Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
         wd.data[o + 2] = 0; wd.data[o + 3] = 255;
       }
       wctx.putImageData(wd, 0, 0);
@@ -604,7 +636,7 @@ const TEMPLATES = [
       for (let i = 0; i < N; i += 3) {
         if (wMap[i] < 0.9) continue;
         const rel = Math.min(REL_MAX, vA[i] / Math.max(1e-6, vRef));
-        const diff = Math.pow(Math.min(rel, 1), GAV);
+        const lfT = Math.max(0, Math.min(1, (Math.min(rel, 1) - 0.08) / 0.22)), lf = lfT * lfT * (3 - 2 * lfT); const diff = Math.pow(Math.min(rel, 1), 1 - (1 - GAV) * lf);
         const wgt = (1 - diff) * TIV;
         let vr = violetBase[0] * diff * (1 - wgt + wgt * ambientTint[0]);
         let vg = violetBase[1] * diff * (1 - wgt + wgt * ambientTint[1]);
