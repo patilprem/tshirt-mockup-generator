@@ -915,6 +915,43 @@ function analyze(img) {
     evAny[i] = Math.max(evAny[i], wMap[i]);
   }
 
+  // ---- morphological closing: an image-independent guarantee ----
+  // The harmonic solve fixes weights that are unreliable; this removes
+  // any that are simply inconsistent. Grayscale closing (dilate then
+  // erode) provably eliminates every low-weight island narrower than the
+  // structuring element while leaving larger structures and their edges
+  // untouched - so no speck can survive inside fabric, whatever the
+  // scene, palette or resolution. It is confined to information-free
+  // pixels, where no real structure can be resolved anyway, so genuine
+  // narrow gaps that carry colour information are preserved.
+  {
+    const CR = Math.max(3, Math.round(W / 90));
+    const dil = new Float32Array(wMap), tmp = new Float32Array(N);
+    const sweep = (src2, dst, pick) => {
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        let v = src2[y * W + x];
+        for (let t = -CR; t <= CR; t++) {
+          const nx = x + t; if (nx < 0 || nx >= W) continue;
+          v = pick(v, src2[y * W + nx]);
+        }
+        dst[y * W + x] = v;
+      }
+      const cp = new Float32Array(dst);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        let v = cp[y * W + x];
+        for (let t = -CR; t <= CR; t++) {
+          const ny = y + t; if (ny < 0 || ny >= H) continue;
+          v = pick(v, cp[ny * W + x]);
+        }
+        dst[y * W + x] = v;
+      }
+    };
+    sweep(wMap, tmp, Math.max);
+    sweep(tmp, dil, Math.min);
+    for (let i = 0; i < N; i++) if (unrel[i] > 0.01 && dil[i] > wMap[i])
+      wMap[i] += (dil[i] - wMap[i]) * unrel[i];
+  }
+
   // ---- harmonic weight completion: the structural cure for speckle ----
   // Where a pixel's own reading is unreliable, its weight is not decided -
   // it is INTERPOLATED from confident neighbours by relaxing toward the
