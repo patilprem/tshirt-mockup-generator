@@ -134,6 +134,24 @@
     padding: 14px 16px; font-family: var(--mono); font-size: 12.5px;
     white-space: pre-wrap; overflow-x: auto;
   }
+  .insp-drop {
+    border: 2px dashed var(--line); border-radius: 10px; background: var(--sunk);
+    padding: 14px 16px; font-size: 12.5px; color: var(--muted); cursor: pointer;
+    transition: border-color .15s;
+  }
+  .insp-drop:hover { border-color: var(--accent); }
+  .insp-drop.armed { border-color: var(--accent); background: var(--accent-soft); }
+  .insp-drop b { color: var(--ink); }
+  .insp-drop input { display: none; }
+  .insp-out { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 14px; margin-top: 10px; align-items: start; }
+  .insp-out img { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
+    background: var(--sunk); border: 1px solid var(--line); border-radius: 999px;
+    padding: 3px 10px; color: var(--ink);
+  }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
   .hidden { display: none !important; }
   .note { font-size: 12.5px; color: var(--muted); }
   button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
@@ -181,6 +199,20 @@
             <option value="tight">Tight — hips up, design focus</option>
           </select>
         </label>
+      </div>
+      <div class="insp" id="inspZone" style="margin-top:12px">
+        <div class="insp-drop" id="inspDrop">
+          <b>Inspiration image (optional)</b> — click this box, then paste / drop a mockup you like.
+          The scene, light and bottoms fields are drafted from it; edit before building.
+          <input type="file" id="inspFile" accept="image/*">
+        </div>
+        <div class="insp-out hidden" id="inspOut">
+          <img id="inspPreview" alt="Inspiration">
+          <div>
+            <div class="chips" id="inspChips"></div>
+            <p class="note" id="inspNote" style="margin:8px 0 0"></p>
+          </div>
+        </div>
       </div>
       <label class="f" style="margin-top:12px">Scene (describe the background — nothing violet, purple or lilac in it)
         <input type="text" id="pScene" value="a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus">
@@ -315,6 +347,125 @@ document.getElementById('pCopy').addEventListener('click', async () => {
   document.getElementById('pCopied').textContent = 'Copied.';
   setTimeout(() => document.getElementById('pCopied').textContent = '', 1800);
 });
+
+/* ============ STEP 1b — INSPIRATION IMAGE ============ */
+// No vision model runs here — this is deterministic pixel analysis. It reads
+// the background palette, indoor/outdoor signals, background blur, light
+// direction and the bottoms colour, then drafts the scene wording from that.
+// The strict garment/light/pose clauses are never taken from the image.
+const inspDrop = document.getElementById('inspDrop');
+const inspFile = document.getElementById('inspFile');
+let pasteTarget = 'validator'; // window paste routes here; click a zone to arm it
+inspDrop.addEventListener('click', () => { inspFile.click(); armInsp(); });
+function armInsp() { pasteTarget = 'inspiration'; inspDrop.classList.add('armed'); drop.classList.remove('over'); }
+function armValidator() { pasteTarget = 'validator'; inspDrop.classList.remove('armed'); }
+inspDrop.addEventListener('dragover', e => { e.preventDefault(); armInsp(); });
+inspDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) loadInspiration(f);
+});
+inspFile.addEventListener('change', () => { if (inspFile.files[0]) loadInspiration(inspFile.files[0]); });
+
+function loadInspiration(f) {
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = () => runInspiration(img, url);
+  img.src = url;
+}
+
+function runInspiration(img, url) {
+  const k = Math.min(1, 420 / Math.max(img.width, img.height));
+  const W = Math.round(img.width * k), H = Math.round(img.height * k), N = W * H;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d', { willReadFrequently: true });
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(img, 0, 0, W, H);
+  const d = x.getImageData(0, 0, W, H).data;
+
+  // background sample: outer ring (left/right 18%, top 15%)
+  const cats = { foliage: 0, sky: 0, warmWall: 0, wood: 0, white: 0, coolGrey: 0, darkBg: 0 };
+  let bgN = 0, bgV = 0;
+  const lum = new Float32Array(N);
+  for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+    const i = yy * W + xx, o = i * 4;
+    lum[i] = (d[o] * 0.299 + d[o + 1] * 0.587 + d[o + 2] * 0.114) / 255;
+    const isRing = xx < W * 0.18 || xx > W * 0.82 || yy < H * 0.15;
+    if (!isRing) continue;
+    const [h, s2, v] = hsv(d[o], d[o + 1], d[o + 2]);
+    bgN++; bgV += v;
+    if (h > 65 && h < 165 && s2 > 0.15) cats.foliage++;
+    else if (h > 185 && h < 235 && s2 > 0.15 && v > 0.5 && yy < H * 0.4) cats.sky++;
+    else if (s2 < 0.12 && v > 0.72) cats.white++;
+    else if (h > 15 && h < 50 && s2 >= 0.25 && s2 < 0.65 && v > 0.22 && v < 0.7) cats.wood++;
+    else if (h > 18 && h < 58 && s2 >= 0.05 && s2 < 0.3 && v > 0.5) cats.warmWall++;
+    else if (s2 < 0.14 && v >= 0.28 && v <= 0.72) cats.coolGrey++;
+    else if (v < 0.22) cats.darkBg++;
+  }
+  const bgBright = bgV / Math.max(1, bgN);
+  // background blur: mean |horizontal gradient| in the side rings
+  let grad = 0, gN2 = 0;
+  for (let yy = 2; yy < H - 2; yy++) for (let xx = 2; xx < W - 2; xx++) {
+    if (!(xx < W * 0.18 || xx > W * 0.82)) continue;
+    grad += Math.abs(lum[yy * W + xx + 1] - lum[yy * W + xx - 1]); gN2++;
+  }
+  const sharpness = grad / Math.max(1, gN2);
+  const blurred = sharpness < 0.045;
+  // light direction: subject band brightness left vs right
+  let lv = 0, ln = 0, rv = 0, rn = 0;
+  for (let yy = Math.round(H * 0.25); yy < H * 0.75; yy++) {
+    for (let xx = Math.round(W * 0.22); xx < W * 0.46; xx++) { lv += lum[yy * W + xx]; ln++; }
+    for (let xx = Math.round(W * 0.54); xx < W * 0.78; xx++) { rv += lum[yy * W + xx]; rn++; }
+  }
+  const ratio = (lv / Math.max(1, ln)) / Math.max(0.001, rv / Math.max(1, rn));
+  const directional = ratio > 1.30 || ratio < 0.77;
+  // bottoms colour: lower centre band
+  let br = 0, bg2 = 0, bb2 = 0, bn = 0;
+  for (let yy = Math.round(H * 0.80); yy < H * 0.95; yy++)
+    for (let xx = Math.round(W * 0.34); xx < W * 0.66; xx++) {
+      const o = (yy * W + xx) * 4; br += d[o]; bg2 += d[o + 1]; bb2 += d[o + 2]; bn++;
+    }
+  const [bh, bs, bvv] = hsv(br / bn, bg2 / bn, bb2 / bn);
+  let bottoms = 'beige chino trousers';
+  if (bh > 190 && bh < 250 && bs > 0.12) bottoms = bvv > 0.45 ? 'light-wash denim jeans' : 'dark denim jeans';
+  else if (bvv < 0.22) bottoms = 'black trousers';
+  else if (bvv > 0.55 && bs < 0.35 && bh > 15 && bh < 60) bottoms = 'cream trousers';
+
+  // scene sentence from the top background category
+  const order = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  const top = order[0][0], topShare = order[0][1] / Math.max(1, bgN);
+  const blurTail = blurred ? ', background softly out of focus with shallow depth of field' : '';
+  const SCENES = {
+    foliage: 'a leafy outdoor path with soft green foliage far behind' + blurTail,
+    sky: 'a sunlit street with buildings and open sky far behind' + blurTail,
+    white: 'a bright minimal interior with white walls and soft daylight' + blurTail,
+    warmWall: 'a warm cream plaster wall in soft natural daylight',
+    wood: 'a cosy interior with pale wooden furniture and soft daylight' + blurTail,
+    coolGrey: 'a minimal urban space with smooth neutral walls' + blurTail,
+    darkBg: 'a softly lit interior with a deep neutral backdrop' + blurTail,
+  };
+  document.getElementById('pScene').value = SCENES[top] || SCENES.white;
+  document.getElementById('pBottoms').value = bottoms;
+
+  // chips
+  const outdoor = top === 'foliage' || top === 'sky';
+  const chips = [
+    outdoor ? 'outdoor' : 'indoor',
+    'backdrop: ' + { foliage: 'greenery', sky: 'street & sky', white: 'white interior', warmWall: 'warm wall', wood: 'wood interior', coolGrey: 'neutral grey', darkBg: 'dark backdrop' }[top] + ' (' + Math.round(topShare * 100) + '%)',
+    bgBright > 0.62 ? 'bright' : bgBright > 0.4 ? 'mid light' : 'moody',
+    blurred ? 'bg out of focus' : 'bg in focus',
+    'bottoms: ' + bottoms,
+  ];
+  const chipHost = document.getElementById('inspChips');
+  chipHost.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+  if (directional) chipHost.innerHTML += `<span class="chip warn">directional light — the prompt forces soft light instead</span>`;
+  if (bgBright < 0.4) chipHost.innerHTML += `<span class="chip warn">dark scene — risky for the shadow QA gate</span>`;
+  document.getElementById('inspPreview').src = url;
+  document.getElementById('inspOut').classList.remove('hidden');
+  document.getElementById('inspNote').textContent =
+    'Scene and bottoms fields were drafted from the image — edit them, pick model, pose and framing, then Build prompt. Garment, light and pose rules are never copied from the inspiration.';
+  inspDrop.querySelector('b').textContent = 'Inspiration loaded — paste another to replace it.';
+}
 
 /* ============ SHARED ANALYSIS (port of the build pipeline) ============ */
 const MAX_EDGE = 1600;
@@ -580,7 +731,8 @@ function analyze(img) {
 /* ============ STEP 2 — VALIDATOR UI ============ */
 const drop = document.getElementById('drop');
 const fileInput = document.getElementById('file');
-drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('click', () => { fileInput.click(); armValidator(); });
+drop.addEventListener('dragover', () => armValidator());
 drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', e => {
@@ -591,7 +743,12 @@ drop.addEventListener('drop', e => {
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 window.addEventListener('paste', e => {
   for (const item of e.clipboardData.items) {
-    if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    if (item.type.startsWith('image/')) {
+      const f = item.getAsFile();
+      if (pasteTarget === 'inspiration') loadInspiration(f);
+      else loadFile(f);
+      break;
+    }
   }
 });
 
