@@ -631,18 +631,29 @@ const TEMPLATES = [
           wMap[i] += (dil[i] - wMap[i]) * unrel[i];
       }
 
-      // ---- harmonic weight completion: the structural cure for speckle ----
-      // Where a pixel's own reading is unreliable, its weight is not decided -
-      // it is INTERPOLATED from confident neighbours by relaxing toward the
-      // average, with confident pixels pinned as boundary conditions. This is a
-      // screened Poisson solve; its solution is harmonic in the unreliable
-      // region, and harmonic functions obey the maximum principle: an interior
-      // point cannot exceed the values around it. An isolated speck differing
-      // from its neighbourhood is therefore impossible BY CONSTRUCTION, at any
-      // resolution, geometry or scene - not merely absent for tuned thresholds.
-      // A crevice enclosed by fabric relaxes to full garment weight; a dark
-      // patch open to the background relaxes to zero; the transition between
-      // them is smooth because a harmonic function has no jumps.
+      // ---- weight completion where the pixel's own reading is unreliable ----
+      // Weight is relaxed toward the neighbour average in proportion to how
+      // little colour information the pixel carries, with informative pixels
+      // holding their own measurement. A crevice walled in by fabric is pulled
+      // toward garment weight and a dark patch open to the scene toward zero,
+      // from their boundaries rather than from any topological test.
+      //
+      // Read the limits honestly before relying on this:
+      //
+      //  - It is SCREENED, not harmonic. Every pixel stays anchored to base[i]
+      //    with weight (1-unrel), so the maximum principle does NOT apply and
+      //    an isolated speck is not impossible by construction. It is damped,
+      //    not excluded. The morphological closing above is what actually
+      //    removes isolated islands.
+      //  - Gauss-Seidel propagates roughly one pixel per sweep, so 700 sweeps
+      //    reach ~26px. A dark region wider than that never hears from its own
+      //    boundary and keeps whatever the thresholded base put there.
+      //
+      // A converged multigrid version was built and measured against this one:
+      // on all five templates the rendered output was identical (mean
+      // |Laplacian(delta)| 2.88 either way), so it was not kept. If a future
+      // template has a dark region wider than ~26px the difference would start
+      // to matter, and that is the point to revisit this.
       {
         const idx = [];
         for (let i = 0; i < N; i++) if (unrel[i] > 0.01) idx.push(i);
