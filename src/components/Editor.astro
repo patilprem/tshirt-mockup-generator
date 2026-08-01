@@ -1816,7 +1816,9 @@
     //   photo  — the photograph itself (violet residue in deep creases is
     //            pre-neutralised, since their look shouldn't depend on colour)
     //   weight — R: how much of each pixel's light came from the shirt;
-    //            G: solid garment coverage, used to clip the printed design
+    //            G: solid garment coverage, used to clip the printed design;
+    //            B: own-value blend — whether the violet subtracted here is
+    //               the modelled one (0) or this pixel's own value (1)
     //   shade  — illumination relative to the fabric's diffuse white point
     //
     // Recolouring never cuts the garment out. Per pixel:

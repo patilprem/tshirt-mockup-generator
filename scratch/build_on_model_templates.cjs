@@ -14,6 +14,16 @@
  *                       light came from the violet fabric (soft, 0..1)
  *                    G: solid garment coverage, used only to clip the printed
  *                       design so it doesn't spill onto skin or background
+ *                    B: own-value blend — which violet the runtime subtracts
+ *                       here, the modelled violet (0) or this pixel's own
+ *                       value (1). Driven by how much colour information the
+ *                       pixel carries, so an information-free crease blends
+ *                       between itself and the target instead of having
+ *                       saturated modelled violet subtracted out of it.
+ *                       Kept separate from G on purpose: coverage and
+ *                       information content are unrelated questions, and
+ *                       conflating them is what put green blotches in
+ *                       underarm creases.
  *   <id>-shade.jpg   illumination relative to the fabric's diffuse white
  *                    point, encoded as rel/REL_MAX
  *
