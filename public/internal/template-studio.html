@@ -165,9 +165,6 @@
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-</head>
-<body>
-
 
 <div class="wrap">
   <header>
@@ -874,7 +871,7 @@ function runValidation(img, url) {
       F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%');
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
       F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px');
-      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%');
+      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%');
     }
     document.getElementById('checks').innerHTML = checks.join('');
     const v = document.getElementById('verdict');
