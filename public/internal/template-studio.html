@@ -674,10 +674,8 @@ function analyze(img) {
     wMap[i] = Math.max(clipIn, wRaw[i], wide, dark, enclosed);
   }
   wMap = boxBlur(wMap, 1);
-  // the denoise blur smears weight one pixel past the silhouette onto
-  // neutral background — re-zero it there; boundary pixels with real
-  // violet content keep theirs
-  for (let i = 0; i < N; i++) if (outside[i] && wRaw[i] < 0.02 && sA[i] < 0.12) wMap[i] = 0;
+  // smooth taper on the background side — a hard cutoff makes a jagged edge
+  for (let i = 0; i < N; i++) if (outside[i]) wMap[i] *= smooth(wRaw[i], 0.008, 0.05);
 
   const cV = [], cR = [], cG = [], cB = [];
   for (let i = 0; i < N; i++) if (core[i]) { const o = i * 4; cV.push(vA[i]); cR.push(src[o]); cG.push(src[o + 1]); cB.push(src[o + 2]); }
@@ -699,11 +697,30 @@ function analyze(img) {
   const aM = Math.max(...amb);
   const ambientTint = amb.map(c => c / aM);
 
-  const shade = new Uint8ClampedArray(N);
+  const shadeVal = new Float32Array(N);
   for (let i = 0; i < N; i++) {
     const rel = vA[i] / Math.max(1e-6, vRef);
-    shade[i] = Math.round(Math.max(0, Math.min(1, rel / REL_MAX)) * 255);
+    shadeVal[i] = Math.max(0, Math.min(1, rel / REL_MAX));
   }
+  // a boundary pixel's own brightness is contaminated by the background behind
+  // it; propagate fabric shade outward so its delta is the fabric's delta
+  {
+    const have = new Uint8Array(N);
+    for (let i = 0; i < N; i++) have[i] = outside[i] ? 0 : 1;
+    for (let pass = 0; pass < 8; pass++) {
+      const nh = new Uint8Array(have);
+      for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        const i = y * W + x;
+        if (have[i] || !gate[i] || !outside[i]) continue;
+        let sum = 0, c = 0;
+        for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
+        if (c) { shadeVal[i] = sum / c; nh[i] = 1; }
+      }
+      have.set(nh);
+    }
+  }
+  const shade = new Uint8ClampedArray(N);
+  for (let i = 0; i < N; i++) shade[i] = Math.round(shadeVal[i] * 255);
 
   // photo with baked crease neutralisation (same as builder)
   const photoData = new Uint8ClampedArray(src);
@@ -728,6 +745,26 @@ function analyze(img) {
     if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
     if (core[i]) { coreN++; if (vA[i] > 0.92 && sA[i] < 0.14) blownN++; }
     if (outside[i] && wMap[i] > 0.08 && wRaw[i] < 0.02 && sA[i] < 0.12) bgPaint++;
+  }
+  // pre-existing halo in the SOURCE (upscaler sharpening ring): compare the
+  // brightness of background hugging the silhouette to background a little
+  // further out — a bright ring shows as a positive difference no recolour
+  // can remove, because it is baked into the photograph itself
+  let haloDelta = 0;
+  {
+    let d3 = core;
+    for (let k = 0; k < 3; k++) d3 = dil(d3);
+    let d6 = d3;
+    for (let k = 0; k < 3; k++) d6 = dil(d6);
+    let d12 = d6;
+    for (let k = 0; k < 6; k++) d12 = dil(d12);
+    let nearV = 0, nearN = 0, farV = 0, farN = 0;
+    for (let i = 0; i < N; i++) {
+      if (!outside[i] || sA[i] > 0.25) continue;
+      if (d3[i] && !core[i]) { nearV += vA[i]; nearN++; }
+      else if (d12[i] && !d6[i]) { farV += vA[i]; farN++; }
+    }
+    if (nearN > 200 && farN > 200) haloDelta = nearV / nearN - farV / farN;
   }
   const tLumV = (violetBase[0] + violetBase[1] + violetBase[2]) / 765;
   const GAV = 1 - 0.55 * tLumV, TIV = 0.35 * tLumV, SPV = 0.28;
@@ -756,7 +793,7 @@ function analyze(img) {
     missed, skin,
     deepShadowPct: 100 * deepN / Math.max(1, gN),
     blownPct: 100 * blownN / Math.max(1, coreN),
-    bgPaint,
+    bgPaint, haloDelta,
     modelFit: fitSum / Math.max(1, fitCnt),
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
@@ -837,6 +874,7 @@ function runValidation(img, url) {
       F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%');
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
       F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px');
+      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%');
     }
     document.getElementById('checks').innerHTML = checks.join('');
     const v = document.getElementById('verdict');

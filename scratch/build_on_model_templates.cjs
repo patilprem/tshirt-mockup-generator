@@ -286,10 +286,12 @@ const TEMPLATES = [
         wMap[i] = Math.max(clipIn, wRaw[i], wide, dark, enclosed);
       }
       wMap = boxBlur(wMap, 1);
-      // the denoise blur smears weight one pixel past the silhouette onto
-      // neutral background — re-zero it there; boundary pixels with real
-      // violet content keep theirs
-      for (let i = 0; i < N; i++) if (outside[i] && wRaw[i] < 0.02 && sA[i] < 0.12) wMap[i] = 0;
+      // On the background side of the silhouette, weight must follow the violet
+      // actually present in each pixel. A hard cutoff here produces a jagged
+      // edge (adjacent pixels flip between recoloured and untouched); a smooth
+      // taper on the strict key keeps genuinely mixed pixels partially
+      // recoloured and takes neutral background to zero continuously.
+      for (let i = 0; i < N; i++) if (outside[i]) wMap[i] *= smooth(wRaw[i], 0.008, 0.05);
 
       // illumination reference over confident fabric
       const cV = [], cR = [], cG = [], cB = [];
@@ -348,14 +350,39 @@ const TEMPLATES = [
       }
       wctx.putImageData(wd, 0, 0);
 
-      // shade map
+      // shade map. A boundary pixel's own brightness is contaminated by the
+      // background behind it — against a bright wall its shade reads high, the
+      // relight then paints it toward the target's lit tone, and a pale fringe
+      // traces the silhouette. On the background side of the silhouette the
+      // shade is therefore propagated outward from the nearest fabric instead
+      // of read from the pixel: the delta applied to a mixed pixel should be
+      // the fabric's delta, scaled by how much fabric is in the pixel (w).
+      const shadeVal = new Float32Array(N);
+      for (let i = 0; i < N; i++) {
+        const rel = vA[i] / Math.max(1e-6, vRef);
+        shadeVal[i] = Math.max(0, Math.min(1, rel / REL_MAX));
+      }
+      {
+        const have = new Uint8Array(N);
+        for (let i = 0; i < N; i++) have[i] = outside[i] ? 0 : 1;
+        for (let pass = 0; pass < 8; pass++) {
+          const nh = new Uint8Array(have);
+          for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+            const i = y * W + x;
+            if (have[i] || !gate[i] || !outside[i]) continue;
+            let sum = 0, c = 0;
+            for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
+            if (c) { shadeVal[i] = sum / c; nh[i] = 1; }
+          }
+          have.set(nh);
+        }
+      }
       const shadeCv = document.createElement('canvas'); shadeCv.width = W; shadeCv.height = H;
       const sctx = shadeCv.getContext('2d');
       const sd = sctx.createImageData(W, H);
       for (let i = 0; i < N; i++) {
         const o = i * 4;
-        const rel = vA[i] / Math.max(1e-6, vRef);
-        const tv = Math.round(Math.max(0, Math.min(1, rel / REL_MAX)) * 255);
+        const tv = Math.round(shadeVal[i] * 255);
         sd.data[o] = tv; sd.data[o + 1] = tv; sd.data[o + 2] = tv; sd.data[o + 3] = 255;
       }
       sctx.putImageData(sd, 0, 0);
