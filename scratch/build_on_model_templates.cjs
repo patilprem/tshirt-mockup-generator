@@ -521,7 +521,9 @@ const TEMPLATES = [
       const RAYS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
       for (let i = 0; i < N; i++) {
         if (!outside[i] || distX[i] < 0 || vA[i] > 0.34) continue;
-        if (Math.abs(sgn(hA[i])) > 90) continue;
+        // Below ~0.14 value the hue reading is sensor/codec noise, so it
+        // cannot be required — enclosure is the evidence there.
+        if (vA[i] > 0.14 && Math.abs(sgn(hA[i])) > 90) continue;
         const px = i % W, py = (i / W) | 0;
         let blocked = 0;
         for (const [dx, dy] of RAYS) {
@@ -531,7 +533,7 @@ const TEMPLATES = [
             if (core[ny * W + nx]) { blocked++; break; }
           }
         }
-        if (blocked >= 6) { crevice[i] = 1; wMap[i] = 1; }
+        if (blocked >= 5) { crevice[i] = 1; wMap[i] = 1; }
       }
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);

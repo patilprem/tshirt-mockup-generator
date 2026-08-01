@@ -45,7 +45,26 @@ const SC = '/tmp/claude-0/-home-user-tshirt-mockup-generator/d14b0f1f-efeb-57ec-
       }
       cph.getContext('2d').putImageData(dp, 0, 0);
       const bb = meta.bbox;
-      // both underarm bands: left and right edges of the bbox, upper third
+      // Precise defect metric: near-black pixels EMBEDDED in bright recoloured
+      // fabric — a dark speck surrounded by white shirt. Background darkness
+      // (hair, scenery) has no bright surround and is not counted.
+      let specks = 0;
+      {
+        const dd = cph.getContext('2d').getImageData(0, 0, W, H).data;
+        const L = k => 0.299 * dd[k * 4] + 0.587 * dd[k * 4 + 1] + 0.114 * dd[k * 4 + 2];
+        const R = 7;
+        for (let y = bb.y; y < bb.y + bb.h; y++) for (let x = bb.x; x < bb.x + bb.w; x++) {
+          const i = y * W + x;
+          if (L(i) > 80) continue;
+          let bright = 0;
+          for (const [dx, dy] of [[R,0],[-R,0],[0,R],[0,-R],[R,R],[R,-R],[-R,R],[-R,-R]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            if (L(ny * W + nx) > 150) bright++;
+          }
+          if (bright >= 5) specks++;
+        }
+      }
       let dark = 0;
       const bands = [
         [Math.max(0, bb.x - 20), bb.y + Math.round(bb.h * 0.15), Math.round(bb.w * 0.38), Math.round(bb.h * 0.3)],
@@ -60,10 +79,10 @@ const SC = '/tmp/claude-0/-home-user-tshirt-mockup-generator/d14b0f1f-efeb-57ec-
         g2.drawImage(cph, rx, ry, rw, rh, 0, 0, rw * Z, rh * Z);
         crops.push(c2.toDataURL('image/png'));
       }
-      return { dark, crops };
+      return { dark, specks, crops };
     }, { meta, photo: du(id + '-photo.jpg'), weight: du(id + '-weight.png'), shade: du(id + '-shade.jpg') });
     out.crops.forEach((c, k) => fs.writeFileSync(`${SC}/ua-${id}-${k}.png`, Buffer.from(c.split(',')[1], 'base64')));
-    console.log(id, 'near-black underarm px on white:', out.dark);
+    console.log(id, 'dark specks embedded in bright fabric:', out.specks, '| underarm-band near-black:', out.dark);
   }
   await b.close();
 })();
