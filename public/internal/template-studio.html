@@ -352,9 +352,27 @@ document.getElementById('pBuild').addEventListener('click', () => {
   document.getElementById('pCopy').disabled = false;
 });
 document.getElementById('pCopy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(document.getElementById('pOut').value);
-  document.getElementById('pCopied').textContent = 'Copied.';
-  setTimeout(() => document.getElementById('pCopied').textContent = '', 1800);
+  const ta = document.getElementById('pOut');
+  const note = document.getElementById('pCopied');
+  const say = t => { note.textContent = t; setTimeout(() => { if (note.textContent === t) note.textContent = ''; }, 2500); };
+  // The async clipboard API is often blocked inside sandboxed iframes, so fall
+  // back to selection + execCommand, and as a last resort leave the prompt
+  // selected so a manual Ctrl/Cmd-C works immediately.
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    say('Copied.');
+    return;
+  } catch (e) { /* fall through */ }
+  try {
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    if (document.execCommand('copy')) { say('Copied.'); return; }
+  } catch (e) { /* fall through */ }
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+  say('Blocked by the browser — the prompt is selected, press Ctrl/Cmd-C.');
 });
 
 /* ============ STEP 1b — INSPIRATION IMAGE ============ */
