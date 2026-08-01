@@ -1,0 +1,756 @@
+<title>Template Studio — internal</title>
+
+<style>
+  :root {
+    --paper: #f6f4f9; --surface: #ffffff; --sunk: #efecf4; --ink: #1b1725;
+    --muted: #6b6480; --line: #e3dfec; --accent: #6d45c4; --accent-soft: #ece5fa;
+    --ok: #1d7a4f; --ok-soft: #e2f3ea; --warn: #9a6b1f; --warn-soft: #faf0dc;
+    --fail: #b03636; --fail-soft: #fbe7e7;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --shadow: 0 1px 2px rgba(27,23,37,.06), 0 8px 24px -12px rgba(27,23,37,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:#121019; --surface:#1b1826; --sunk:#16131f; --ink:#ece9f4;
+      --muted:#968ead; --line:#2d2840; --accent:#a684f0; --accent-soft:#2a2140;
+      --ok:#5ecf96; --ok-soft:#15291f; --warn:#e0b45c; --warn-soft:#2b2313;
+      --fail:#e07a7a; --fail-soft:#301717;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper:#f6f4f9; --surface:#ffffff; --sunk:#efecf4; --ink:#1b1725;
+    --muted:#6b6480; --line:#e3dfec; --accent:#6d45c4; --accent-soft:#ece5fa;
+    --ok:#1d7a4f; --ok-soft:#e2f3ea; --warn:#9a6b1f; --warn-soft:#faf0dc;
+    --fail:#b03636; --fail-soft:#fbe7e7;
+    --shadow: 0 1px 2px rgba(27,23,37,.06), 0 8px 24px -12px rgba(27,23,37,.18);
+  }
+  :root[data-theme="dark"] {
+    --paper:#121019; --surface:#1b1826; --sunk:#16131f; --ink:#ece9f4;
+    --muted:#968ead; --line:#2d2840; --accent:#a684f0; --accent-soft:#2a2140;
+    --ok:#5ecf96; --ok-soft:#15291f; --warn:#e0b45c; --warn-soft:#2b2313;
+    --fail:#e07a7a; --fail-soft:#301717;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 36px 22px 80px; }
+  header { margin-bottom: 26px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  h1 { margin: 6px 0 8px; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.02em; }
+  .lede { margin: 0; color: var(--muted); max-width: 68ch; }
+
+  .steps { display: flex; flex-direction: column; gap: 26px; margin-top: 26px; }
+  .step {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 22px;
+  }
+  .step-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .step-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--accent); letter-spacing: .08em;
+  }
+  .step h2 { margin: 0; font-size: 1.12rem; }
+  .step .sub { color: var(--muted); font-size: 13.5px; margin: 4px 0 16px; max-width: 72ch; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  input[type="text"], select, textarea {
+    font: inherit; color: var(--ink); background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  }
+  textarea { width: 100%; min-height: 190px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; }
+  .btn {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 9px;
+    padding: 9px 16px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+
+  .drop {
+    border: 2px dashed var(--line); border-radius: 12px; background: var(--sunk);
+    padding: 34px 20px; text-align: center; color: var(--muted); cursor: pointer;
+    transition: border-color .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); }
+  .drop b { color: var(--ink); }
+  .drop input { display: none; }
+
+  .val-layout { display: grid; grid-template-columns: 280px minmax(0,1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .val-layout { grid-template-columns: 1fr; } }
+  .val-layout img.preview, .val-layout canvas.preview {
+    width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block;
+  }
+  .checks { display: flex; flex-direction: column; gap: 7px; }
+  .check {
+    display: grid; grid-template-columns: 70px minmax(0,1fr) auto; gap: 10px;
+    align-items: baseline; padding: 8px 12px; border-radius: 8px;
+    background: var(--sunk); font-size: 13.5px;
+  }
+  .check .tag {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    letter-spacing: .08em; padding: 2px 7px; border-radius: 5px; text-align: center;
+  }
+  .check.ok .tag { background: var(--ok-soft); color: var(--ok); }
+  .check.warn .tag { background: var(--warn-soft); color: var(--warn); }
+  .check.fail .tag { background: var(--fail-soft); color: var(--fail); }
+  .check .num { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .verdict {
+    margin-top: 14px; padding: 13px 16px; border-radius: 10px; font-weight: 700;
+  }
+  .verdict.ok { background: var(--ok-soft); color: var(--ok); }
+  .verdict.warn { background: var(--warn-soft); color: var(--warn); }
+  .verdict.fail { background: var(--fail-soft); color: var(--fail); }
+  .verdict small { display: block; font-weight: 400; margin-top: 3px; font-size: 12.5px; }
+
+  .try-layout { display: grid; grid-template-columns: minmax(0,1fr) 230px; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .try-layout { grid-template-columns: 1fr; } }
+  #tryCanvas { width: 100%; max-width: 430px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); display: block; }
+  .swatches { display: grid; grid-template-columns: repeat(6, 34px); gap: 8px; }
+  .sw {
+    width: 34px; height: 34px; border-radius: 50%; cursor: pointer; padding: 0;
+    border: 1px solid var(--line);
+    box-shadow: inset 0 0 0 2px var(--surface);
+  }
+  .sw[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--surface), 0 0 0 2px var(--accent); }
+  .maps { display: flex; gap: 8px; margin-top: 12px; }
+  .maps figure { margin: 0; flex: 1; }
+  .maps canvas { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
+  .maps figcaption { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .06em; }
+
+  .push-code {
+    background: var(--sunk); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; font-family: var(--mono); font-size: 12.5px;
+    white-space: pre-wrap; overflow-x: auto;
+  }
+  .hidden { display: none !important; }
+  .note { font-size: 12.5px; color: var(--muted); }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">FreeTeeMockup · internal</span>
+    <h1>On-Model Template Studio</h1>
+    <p class="lede">
+      The full workflow for adding a template: generate a pipeline-safe prompt, validate the
+      AI image against the exact QA gates the build runs, try recolours live, then hand the
+      approved image over to go live.
+    </p>
+  </header>
+
+  <div class="steps">
+
+    <!-- STEP 1: PROMPT -->
+    <section class="step">
+      <div class="step-head"><span class="step-num">STEP 1</span><h2>Generate the prompt</h2></div>
+      <p class="sub">
+        Every clause in the output maps to a validator check below — the prompt is strict
+        because each rule prevents a specific pipeline failure we've hit before.
+      </p>
+      <div class="grid2">
+        <label class="f">Model
+          <select id="pModel">
+            <option value="woman">Woman</option>
+            <option value="man">Man</option>
+          </select>
+        </label>
+        <label class="f">Pose (all pipeline-safe)
+          <select id="pPose"></select>
+        </label>
+        <label class="f">Bottoms
+          <input type="text" id="pBottoms" value="high-waisted light-wash jeans">
+        </label>
+        <label class="f">Framing
+          <select id="pFraming">
+            <option value="wide">Wide — mid-thigh up</option>
+            <option value="tight">Tight — hips up, design focus</option>
+          </select>
+        </label>
+      </div>
+      <label class="f" style="margin-top:12px">Scene (describe the background — nothing violet, purple or lilac in it)
+        <input type="text" id="pScene" value="a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus">
+      </label>
+      <div class="row">
+        <button class="btn primary" id="pBuild">Build prompt</button>
+        <button class="btn" id="pCopy" disabled>Copy</button>
+        <span class="note" id="pCopied"></span>
+      </div>
+      <textarea id="pOut" readonly placeholder="Prompt appears here…" style="margin-top:12px"></textarea>
+    </section>
+
+    <!-- STEP 2: VALIDATE -->
+    <section class="step">
+      <div class="step-head"><span class="step-num">STEP 2</span><h2>Validate the image</h2></div>
+      <p class="sub">
+        Paste (Ctrl/Cmd-V anywhere on this page), drop, or pick the generated image. This runs
+        the same analysis as the build pipeline — same thresholds, same verdicts. Validate the
+        raw generation first; if it passes, upscale it, remove the watermark, and validate the
+        final file again before handing it over.
+      </p>
+      <div class="drop" id="drop">
+        <b>Paste, drop, or click</b> to load the candidate image<br>
+        <span class="note">JPG / PNG / WebP · portrait · short side ideally ≥ 1300px</span>
+        <input type="file" id="file" accept="image/*">
+      </div>
+      <div class="val-layout hidden" id="valResults" style="margin-top:18px">
+        <div>
+          <img class="preview" id="valPreview" alt="Candidate template">
+          <div class="maps">
+            <figure><canvas id="mapWeight"></canvas><figcaption>weight</figcaption></figure>
+            <figure><canvas id="mapShade"></canvas><figcaption>shade</figcaption></figure>
+          </div>
+        </div>
+        <div>
+          <div class="checks" id="checks"></div>
+          <div class="verdict" id="verdict"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3: TRY -->
+    <section class="step hidden" id="tryStep">
+      <div class="step-head"><span class="step-num">STEP 3</span><h2>Try recolours</h2></div>
+      <p class="sub">
+        Live recolour using the production maths. Check white and near-black hardest —
+        they expose shading and shadow problems that mid colours hide.
+      </p>
+      <div class="try-layout">
+        <canvas id="tryCanvas"></canvas>
+        <div>
+          <div class="swatches" id="trySwatches"></div>
+          <p class="note" style="margin-top:14px">
+            Look for: violet residue anywhere · dark or pale rims along sleeves ·
+            washed patches in shadow folds · anything that pops that isn't in the photo.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 4: PUSH -->
+    <section class="step hidden" id="pushStep">
+      <div class="step-head"><span class="step-num">STEP 4</span><h2>Push it live</h2></div>
+      <p class="sub">
+        Fill in the template details, then send the final image (upscaled, watermark-free)
+        in the Claude session with the generated instruction. The build re-runs the same QA
+        and the template ships only if it still passes.
+      </p>
+      <div class="grid2">
+        <label class="f">ID (kebab-case, ends -f or -m)
+          <input type="text" id="mId" placeholder="cafe-f">
+        </label>
+        <label class="f">Label (shown in the editor)
+          <input type="text" id="mLabel" placeholder="Coffee Shop">
+        </label>
+        <label class="f">Scene note
+          <input type="text" id="mScene" placeholder="Bright cafe, pale wood">
+        </label>
+      </div>
+      <div class="row"><button class="btn primary" id="mBuild">Generate hand-over instruction</button></div>
+      <div class="push-code hidden" id="mOut" style="margin-top:12px"></div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ STEP 1 — PROMPT BUILDER ============ */
+const POSES = {
+  woman: [
+    ['Thumbs in pockets', 'standing relaxed with her weight on one hip, both arms down with her thumbs hooked loosely into the pockets of her BOTTOMS_SHORT and both upper arms resting against her torso, looking away past the camera with a warm natural half-smile'],
+    ['Hands clasped low', 'standing relaxed with her weight on one hip, hands loosely clasped in front of her waist with both upper arms resting against her torso and no gap between her arms and her sides, looking slightly away from the camera with a gentle natural smile'],
+    ['Mid-laugh, one hand in pocket', 'caught mid-laugh looking away from the camera, one hand resting loosely in the pocket of her BOTTOMS_SHORT and the other relaxed at her side, both hands kept away from her chest and both upper arms resting against her torso'],
+  ],
+  man: [
+    ['Both hands in pockets', 'standing at ease with both hands resting in the pockets of his BOTTOMS_SHORT, both upper arms resting against his torso with no gap between his arms and his sides, looking toward the camera with a relaxed easy expression'],
+    ['One hand in pocket, looking aside', 'with one hand in the pocket of his BOTTOMS_SHORT and his other arm relaxed at his side, both upper arms resting against his torso, looking off to the side as if watching something, caught mid-moment like a candid photo'],
+    ['Walking slowly', 'walking slowly with an easy natural stride, one hand in the pocket of his BOTTOMS_SHORT and his other arm swinging naturally close to his side, both upper arms staying close to his torso, looking ahead with a slight easy smile'],
+  ],
+};
+const pModel = document.getElementById('pModel');
+const pPose = document.getElementById('pPose');
+function fillPoses() {
+  pPose.innerHTML = POSES[pModel.value].map((p, i) => `<option value="${i}">${p[0]}</option>`).join('');
+}
+pModel.addEventListener('change', fillPoses);
+fillPoses();
+
+document.getElementById('pBuild').addEventListener('click', () => {
+  const g = pModel.value;
+  const subj = g === 'woman' ? 'a young woman' : 'a young man';
+  const pro = g === 'woman' ? ['She', 'her'] : ['He', 'his'];
+  const bottoms = document.getElementById('pBottoms').value.trim() || 'jeans';
+  const bShort = bottoms.split(' ').slice(-1)[0];
+  const scene = document.getElementById('pScene').value.trim();
+  const pose = POSES[g][+pPose.value][1].replace(/BOTTOMS_SHORT/g, bShort);
+  const framing = document.getElementById('pFraming').value === 'wide'
+    ? 'Framed from mid-thigh up with clear margin around the figure on all sides.'
+    : 'Tightly framed from the hips up so the torso and the chest of the t-shirt fill most of the frame, head still fully in frame, with a small even margin at the left and right edges.';
+  const hair = g === 'woman'
+    ? `, ${pro[1]} hair loose and swept back over ${pro[1]} shoulders, falling down ${pro[1]} back with none of it crossing the front of ${pro[1]} collar`
+    : '';
+  const prompt =
+`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}${hair}. ${pro[0]} wears a violet crew-neck t-shirt with ${bottoms}. The t-shirt is a completely plain blank vivid violet cotton tee — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in a matte cotton jersey knit with no sheen, gloss or silky shine, a classic regular fit with a plain crew neckline, standard set-in short sleeves and a straight body, not oversized or boxy, with natural soft fabric folds. The chest of the shirt stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the shirt. Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve. Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the shirt — every part of the shirt stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — collar, sleeve hems and body hem — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
+  const out = document.getElementById('pOut');
+  out.value = prompt;
+  document.getElementById('pCopy').disabled = false;
+});
+document.getElementById('pCopy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(document.getElementById('pOut').value);
+  document.getElementById('pCopied').textContent = 'Copied.';
+  setTimeout(() => document.getElementById('pCopied').textContent = '', 1800);
+});
+
+/* ============ SHARED ANALYSIS (port of the build pipeline) ============ */
+const MAX_EDGE = 1600;
+function hsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const M = Math.max(r, g, b), m = Math.min(r, g, b), d = M - m;
+  let h = 0;
+  if (d) { if (M === r) h = ((g - b) / d) % 6; else if (M === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+  return [h, M ? d / M : 0, M];
+}
+const ad = (a, b) => { let d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+const smooth = (x, a, b) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+function analyze(img) {
+  const k = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+  const W = Math.round(img.width * k), H = Math.round(img.height * k), N = W * H;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, W, H);
+  const src = ctx.getImageData(0, 0, W, H).data;
+
+  const bins = new Float64Array(36);
+  const hA = new Float32Array(N), sA = new Float32Array(N), vA = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const o = i * 4; const [h, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
+    hA[i] = h; sA[i] = s; vA[i] = v;
+    if (s > 0.25 && v > 0.15) bins[Math.floor(h / 10) % 36] += s * v;
+  }
+  let bb = 0, bv = -1;
+  for (let i = 0; i < 36; i++) if (bins[i] > bv) { bv = bins[i]; bb = i; }
+  const shirtHue = bb * 10 + 5;
+
+  const wRaw = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const hd = ad(hA[i], shirtHue);
+    const wh = hd <= 22 ? 1 : hd >= 40 ? 0 : 0.5 + 0.5 * Math.cos((hd - 22) / 18 * Math.PI);
+    wRaw[i] = wh * smooth(sA[i], 0.08, 0.22) * smooth(vA[i], 0.05, 0.12);
+  }
+
+  const vis = new Uint8Array(N), blobs = [];
+  let best = null, bestN = 0;
+  const qx = new Int32Array(N), qy = new Int32Array(N);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i0 = y * W + x;
+    if (vis[i0] || wRaw[i0] < 0.5) continue;
+    let qh = 0, qt = 0; qx[qt] = x; qy[qt] = y; qt++; vis[i0] = 1;
+    const mem = [i0];
+    while (qh < qt) {
+      const cx = qx[qh], cy = qy[qh]; qh++;
+      for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (vis[ni] || wRaw[ni] < 0.5) continue;
+        vis[ni] = 1; qx[qt] = nx; qy[qt] = ny; qt++; mem.push(ni);
+      }
+    }
+    blobs.push(mem);
+    if (mem.length > bestN) { bestN = mem.length; best = mem; }
+  }
+  if (!best) return { W, H, shirtHue, noGarment: true };
+
+  let bx0 = W, by0 = H, bx1 = 0, by1 = 0;
+  for (const i of best) { const x = i % W, y = (i / W) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+  const PAD = Math.round(Math.max(bx1 - bx0, by1 - by0) * 0.25), FMIN = bestN * 0.002;
+  const kept = [];
+  let strayViolet = 0;
+  for (const m of blobs) {
+    if (m === best) { kept.push(m); continue; }
+    if (m.length < FMIN) { continue; }
+    let ccx = 0, ccy = 0;
+    for (const i of m) { ccx += i % W; ccy += (i / W) | 0; }
+    ccx /= m.length; ccy /= m.length;
+    if (ccx >= bx0 - PAD && ccx <= bx1 + PAD && ccy >= by0 - PAD && ccy <= by1 + PAD) kept.push(m);
+    else strayViolet += m.length;
+  }
+  const fragments = kept.length;
+  const blob = kept.flat();
+
+  const dil = m => { const o = new Uint8Array(N); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (m[i] || (x + 1 < W && m[i + 1]) || (x > 0 && m[i - 1]) || (y + 1 < H && m[i + W]) || (y > 0 && m[i - W])) o[i] = 1; } return o; };
+  const ero = m => { const o = new Uint8Array(N); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; const l = x > 0 ? m[i - 1] : 0, rr = x + 1 < W ? m[i + 1] : 0, u = y > 0 ? m[i - W] : 0, d = y + 1 < H ? m[i + W] : 0; o[i] = (m[i] && l && rr && u && d) ? 1 : 0; } return o; };
+
+  const isDarkShadow = i => { const v = vA[i]; if (v >= 0.32) return false; if (v < 0.12 && sA[i] < 0.15) return true; return ad(hA[i], shirtHue) < 100; };
+  const plausible = new Uint8Array(N);
+  for (let i = 0; i < N; i++) plausible[i] = (wRaw[i] > 0.02 || isDarkShadow(i)) ? 1 : 0;
+  let core = new Uint8Array(N);
+  for (const i of blob) core[i] = 1;
+  const CR = Math.max(3, Math.round(W / 220));
+  let cl = core;
+  for (let i = 0; i < CR; i++) cl = dil(cl);
+  for (let i = 0; i < CR; i++) cl = ero(cl);
+  for (let i = 0; i < N; i++) core[i] = (cl[i] && plausible[i]) ? 1 : 0;
+
+  const FEATHER = Math.max(1, Math.round(W / 1000));
+  function boxBlur(srcArr, R) {
+    const tmp = new Float32Array(N), dst = new Float32Array(N);
+    for (let y = 0; y < H; y++) {
+      let acc = 0;
+      for (let x = -R; x <= R; x++) acc += srcArr[y * W + Math.min(W - 1, Math.max(0, x))];
+      for (let x = 0; x < W; x++) {
+        tmp[y * W + x] = acc / (R * 2 + 1);
+        const out = Math.min(W - 1, Math.max(0, x - R));
+        const inn = Math.min(W - 1, Math.max(0, x + R + 1));
+        acc += srcArr[y * W + inn] - srcArr[y * W + out];
+      }
+    }
+    for (let x = 0; x < W; x++) {
+      let acc = 0;
+      for (let y = -R; y <= R; y++) acc += tmp[Math.min(H - 1, Math.max(0, y)) * W + x];
+      for (let y = 0; y < H; y++) {
+        dst[y * W + x] = acc / (R * 2 + 1);
+        const out = Math.min(H - 1, Math.max(0, y - R));
+        const inn = Math.min(H - 1, Math.max(0, y + R + 1));
+        acc += tmp[inn * W + x] - tmp[out * W + x];
+      }
+    }
+    return dst;
+  }
+  let clip = new Float32Array(N);
+  for (let i = 0; i < N; i++) clip[i] = core[i] ? 1 : 0;
+  for (let p = 0; p < 3; p++) clip = boxBlur(clip, FEATHER);
+
+  const gate = new Uint8Array(N);
+  {
+    const DMX = Math.max(30, Math.round(W / 8));
+    const dist = new Int16Array(N).fill(-1);
+    let fh = 0, ft = 0;
+    const fx2 = new Int32Array(N), fy2 = new Int32Array(N);
+    for (let i = 0; i < N; i++) if (core[i]) { dist[i] = 0; fx2[ft] = i % W; fy2[ft] = (i / W) | 0; ft++; }
+    while (fh < ft) {
+      const cx2 = fx2[fh], cy2 = fy2[fh]; fh++;
+      const dd = dist[cy2 * W + cx2];
+      if (dd >= DMX) continue;
+      for (const [nx, ny] of [[cx2 + 1, cy2], [cx2 - 1, cy2], [cx2, cy2 + 1], [cx2, cy2 - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (dist[ni] !== -1 || !plausible[ni]) continue;
+        dist[ni] = dd + 1; fx2[ft] = nx; fy2[ft] = ny; ft++;
+      }
+    }
+    let gm = new Uint8Array(N);
+    for (let i = 0; i < N; i++) gm[i] = dist[i] !== -1 ? 1 : 0;
+    const GR = Math.max(3, Math.round(W / 150));
+    for (let i = 0; i < GR; i++) gm = dil(gm);
+    gate.set(gm);
+  }
+
+  const outside = new Uint8Array(N);
+  {
+    let fh2 = 0, ft2 = 0;
+    const ox = new Int32Array(N), oy = new Int32Array(N);
+    const push = (x, y) => { const i = y * W + x; if (!outside[i] && !core[i]) { outside[i] = 1; ox[ft2] = x; oy[ft2] = y; ft2++; } };
+    for (let x = 0; x < W; x++) { push(x, 0); push(x, H - 1); }
+    for (let y = 0; y < H; y++) { push(0, y); push(W - 1, y); }
+    while (fh2 < ft2) {
+      const cx2 = ox[fh2], cy2 = oy[fh2]; fh2++;
+      for (const [nx, ny] of [[cx2 + 1, cy2], [cx2 - 1, cy2], [cx2, cy2 + 1], [cx2, cy2 - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        push(nx, ny);
+      }
+    }
+  }
+
+  const sgn = h => ((h - shirtHue + 540) % 360) - 180;
+  let wMap = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    if (!gate[i]) continue;
+    const d = sgn(hA[i]);
+    const lim = d >= 0 ? 65 : 45;
+    const a = Math.abs(d);
+    const wide = (a <= 30 ? 1 : a >= lim ? 0 : 0.5 + 0.5 * Math.cos((a - 30) / (lim - 30) * Math.PI))
+      * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08);
+    const dark = (a < 80 ? 1 : 0) * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34));
+    const enclosed = (!core[i] && !outside[i])
+      ? (1 - smooth(sA[i], 0.10, 0.20)) * (1 - smooth(vA[i], 0.16, 0.28)) : 0;
+    wMap[i] = Math.max(clip[i], wRaw[i], wide, dark, enclosed);
+  }
+  wMap = boxBlur(wMap, 1);
+
+  const cV = [], cR = [], cG = [], cB = [];
+  for (let i = 0; i < N; i++) if (core[i]) { const o = i * 4; cV.push(vA[i]); cR.push(src[o]); cG.push(src[o + 1]); cB.push(src[o + 2]); }
+  cV.sort((x, y) => x - y);
+  const pct = p => cV[Math.min(cV.length - 1, Math.floor(cV.length * p))];
+  const vRef = pct(0.88), REL_MAX = 1.45;
+  const med = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+  const shirtRGB = [med(cR), med(cG), med(cB)];
+  const chromaMax = Math.max(...shirtRGB);
+  const violetBase = shirtRGB.map(c => c / chromaMax * vRef * 255);
+
+  const aR = [], aG = [], aB = [];
+  for (let i = 0; i < N; i += 5) {
+    if (gate[i]) continue;
+    const o = i * 4; const [h, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
+    if (s < 0.18 && v > 0.55) { aR.push(src[o]); aG.push(src[o + 1]); aB.push(src[o + 2]); }
+  }
+  const amb = aR.length > 500 ? [med(aR), med(aG), med(aB)] : [200, 198, 194];
+  const aM = Math.max(...amb);
+  const ambientTint = amb.map(c => c / aM);
+
+  const shade = new Uint8ClampedArray(N);
+  for (let i = 0; i < N; i++) {
+    const rel = vA[i] / Math.max(1e-6, vRef);
+    shade[i] = Math.round(Math.max(0, Math.min(1, rel / REL_MAX)) * 255);
+  }
+
+  // photo with baked crease neutralisation (same as builder)
+  const photoData = new Uint8ClampedArray(src);
+  for (let i = 0; i < N; i++) {
+    if (!gate[i]) continue;
+    const dark = 1 - smooth(vA[i], 0.22, 0.42);
+    const kk = Math.min(1, (1 - wMap[i]) * dark);
+    if (kk > 0) {
+      const o = i * 4;
+      const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
+      photoData[o] += (L - photoData[o]) * kk;
+      photoData[o + 1] += (L - photoData[o + 1]) * kk;
+      photoData[o + 2] += (L - photoData[o + 2]) * kk;
+    }
+  }
+
+  // metrics
+  let missed = 0, skin = 0, gN = 0, deepN = 0, blownN = 0, coreN = 0;
+  for (let i = 0; i < N; i++) {
+    if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
+    if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
+    if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
+    if (core[i]) { coreN++; if (vA[i] > 0.92 && sA[i] < 0.14) blownN++; }
+  }
+  const tLumV = (violetBase[0] + violetBase[1] + violetBase[2]) / 765;
+  const GAV = 1 - 0.55 * tLumV, TIV = 0.35 * tLumV, SPV = 0.28;
+  let fitSum = 0, fitCnt = 0;
+  for (let i = 0; i < N; i += 3) {
+    if (wMap[i] < 0.9) continue;
+    const rel = Math.min(REL_MAX, vA[i] / Math.max(1e-6, vRef));
+    const diff = Math.pow(Math.min(rel, 1), GAV);
+    const wgt = (1 - diff) * TIV;
+    let vr = violetBase[0] * diff * (1 - wgt + wgt * ambientTint[0]);
+    let vg = violetBase[1] * diff * (1 - wgt + wgt * ambientTint[1]);
+    let vb2 = violetBase[2] * diff * (1 - wgt + wgt * ambientTint[2]);
+    if (rel > 1) { const sp = Math.min(1, (rel - 1) / (REL_MAX - 1)) * SPV; vr += (255 - vr) * sp; vg += (255 - vg) * sp; vb2 += (255 - vb2) * sp; }
+    const o = i * 4;
+    fitSum += (Math.abs(src[o] - vr) + Math.abs(src[o + 1] - vg) + Math.abs(src[o + 2] - vb2)) / 3;
+    fitCnt++;
+  }
+
+  const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
+  for (let i = 0; i < N; i++) { wArr[i] = Math.round(Math.max(0, Math.min(1, wMap[i])) * 255); clipArr[i] = Math.round(Math.max(0, Math.min(1, clip[i])) * 255); }
+
+  return {
+    W, H, shirtHue, fragments,
+    coverage: 100 * coreN / N,
+    strayVioletPct: 100 * strayViolet / N,
+    missed, skin,
+    deepShadowPct: 100 * deepN / Math.max(1, gN),
+    blownPct: 100 * blownN / Math.max(1, coreN),
+    modelFit: fitSum / Math.max(1, fitCnt),
+    srcW: img.width, srcH: img.height,
+    ambientTint, relMax: REL_MAX, violetBase,
+    photoData, wArr, clipArr, shade,
+  };
+}
+
+/* ============ STEP 2 — VALIDATOR UI ============ */
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('over');
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+window.addEventListener('paste', e => {
+  for (const item of e.clipboardData.items) {
+    if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+  }
+});
+
+let analysis = null;
+function loadFile(f) {
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = () => { runValidation(img, url); };
+  img.src = url;
+}
+
+function checkRow(status, label, num) {
+  return `<div class="check ${status}"><span class="tag">${status.toUpperCase()}</span><span>${label}</span><span class="num">${num}</span></div>`;
+}
+
+function runValidation(img, url) {
+  drop.querySelector('b').textContent = 'Analysing… (a few seconds)';
+  setTimeout(() => {
+    const a = analyze(img);
+    analysis = a;
+    document.getElementById('valResults').classList.remove('hidden');
+    document.getElementById('valPreview').src = url;
+    const checks = [];
+    let fails = 0, warns = 0;
+    const F = (cond, warnCond, label, num) => {
+      const st = cond ? 'fail' : (warnCond ? 'warn' : 'ok');
+      if (st === 'fail') fails++; if (st === 'warn') warns++;
+      checks.push(checkRow(st, label, num));
+    };
+
+    if (a.noGarment) {
+      checks.push(checkRow('fail', 'No violet garment found in the image', '—'));
+      fails++;
+    } else {
+      const short = Math.min(a.srcW, a.srcH);
+      F(short < 900, short < 1300, 'Resolution (short side)', short + 'px');
+      F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°');
+      F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%');
+      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)');
+      F(false, a.fragments > 1, 'Garment is one connected piece', a.fragments + (a.fragments > 1 ? ' fragments (occlusion?)' : ' piece'));
+      F(a.strayVioletPct > 0.5, a.strayVioletPct > 0.05, 'No other violet objects in scene', a.strayVioletPct.toFixed(2) + '%');
+      F(false, a.missed > 500, 'Violet fully captured by the key', a.missed + ' px missed');
+      F(a.skin > 2000, a.skin > 200, 'No skin captured as garment', a.skin + ' px');
+      F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%');
+      F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
+    }
+    document.getElementById('checks').innerHTML = checks.join('');
+    const v = document.getElementById('verdict');
+    if (fails) {
+      v.className = 'verdict fail';
+      v.innerHTML = 'FAIL — regenerate the image.<small>Fix the failing condition via the prompt; do not upscale or hand this one over.</small>';
+      document.getElementById('tryStep').classList.add('hidden');
+      document.getElementById('pushStep').classList.add('hidden');
+    } else if (warns) {
+      v.className = 'verdict warn';
+      v.innerHTML = 'PASS WITH WARNINGS — try recolours below before deciding.<small>Warnings usually show up as visible flaws in white or black. Judge Step 3 carefully.</small>';
+      setupTry();
+    } else {
+      v.className = 'verdict ok';
+      v.innerHTML = 'PASS — try recolours below, then hand it over.<small>If this was the raw generation: upscale, remove the watermark, and validate the final file too.</small>';
+      setupTry();
+    }
+    drop.querySelector('b').textContent = 'Paste, drop, or click';
+    // maps
+    if (!a.noGarment) {
+      const mw = document.getElementById('mapWeight'), ms = document.getElementById('mapShade');
+      for (const [cnv, arr] of [[mw, a.wArr], [ms, a.shade]]) {
+        cnv.width = a.W; cnv.height = a.H;
+        const x = cnv.getContext('2d');
+        const im = x.createImageData(a.W, a.H);
+        for (let i = 0; i < a.W * a.H; i++) { const v2 = arr[i]; im.data[i*4]=v2; im.data[i*4+1]=v2; im.data[i*4+2]=v2; im.data[i*4+3]=255; }
+        x.putImageData(im, 0, 0);
+      }
+    }
+  }, 30);
+}
+
+/* ============ STEP 3 — TRY RECOLOURS ============ */
+const TRY_COLOURS = ['#ffffff', '#212121', '#b23a2f', '#1e3b8a', '#4b533f', '#d9c9a3'];
+let tryColour = '#ffffff';
+function relightLut(rgb, meta) {
+  const [ar, ag, ab] = meta.ambientTint;
+  const rm = meta.relMax;
+  const tL = (rgb[0] + rgb[1] + rgb[2]) / 765;
+  const GA = 1 - 0.55 * tL, TI = 0.35 * tL, SP = 0.28;
+  const L = new Float32Array(768);
+  for (let s = 0; s < 256; s++) {
+    const rel = (s / 255) * rm;
+    const diff = Math.pow(Math.min(rel, 1), GA);
+    const w = (1 - diff) * TI;
+    let r = rgb[0] * diff * (1 - w + w * ar);
+    let g = rgb[1] * diff * (1 - w + w * ag);
+    let b = rgb[2] * diff * (1 - w + w * ab);
+    if (rel > 1) { const sp = Math.min(1, (rel - 1) / (rm - 1)) * SP; r += (255 - r) * sp; g += (255 - g) * sp; b += (255 - b) * sp; }
+    L[s * 3] = r; L[s * 3 + 1] = g; L[s * 3 + 2] = b;
+  }
+  return L;
+}
+function renderTry() {
+  const a = analysis;
+  if (!a || a.noGarment) return;
+  const hex = tryColour;
+  const tr = parseInt(hex.slice(1, 3), 16), tg = parseInt(hex.slice(3, 5), 16), tb = parseInt(hex.slice(5, 7), 16);
+  const lutT = relightLut([tr, tg, tb], a);
+  const lutV = a._lutV || (a._lutV = relightLut(a.violetBase, a));
+  const c = document.getElementById('tryCanvas');
+  c.width = a.W; c.height = a.H;
+  const x = c.getContext('2d');
+  const out = x.createImageData(a.W, a.H);
+  const d = out.data;
+  d.set(a.photoData);
+  const n = a.W * a.H;
+  for (let i = 0; i < n; i++) {
+    const wv = a.wArr[i];
+    if (!wv) continue;
+    const ww = wv / 255, cl2 = a.clipArr[i] / 255;
+    const sb = a.shade[i] * 3, o = i * 4;
+    d[o] = d[o] + ww * (lutT[sb] - cl2 * d[o] - (1 - cl2) * lutV[sb]);
+    d[o + 1] = d[o + 1] + ww * (lutT[sb + 1] - cl2 * d[o + 1] - (1 - cl2) * lutV[sb + 1]);
+    d[o + 2] = d[o + 2] + ww * (lutT[sb + 2] - cl2 * d[o + 2] - (1 - cl2) * lutV[sb + 2]);
+  }
+  x.putImageData(out, 0, 0);
+}
+function setupTry() {
+  document.getElementById('tryStep').classList.remove('hidden');
+  document.getElementById('pushStep').classList.remove('hidden');
+  const host = document.getElementById('trySwatches');
+  host.innerHTML = '';
+  TRY_COLOURS.forEach(hex => {
+    const b = document.createElement('button');
+    b.className = 'sw'; b.type = 'button';
+    b.style.background = hex; b.title = hex;
+    b.setAttribute('aria-label', 'Shirt colour ' + hex);
+    b.setAttribute('aria-pressed', String(hex === tryColour));
+    b.addEventListener('click', () => {
+      tryColour = hex;
+      host.querySelectorAll('.sw').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      renderTry();
+    });
+    host.appendChild(b);
+  });
+  renderTry();
+}
+
+/* ============ STEP 4 — HAND-OVER ============ */
+document.getElementById('mBuild').addEventListener('click', () => {
+  const id = (document.getElementById('mId').value.trim() || 'new-template');
+  const label = document.getElementById('mLabel').value.trim() || 'New Scene';
+  const scene = document.getElementById('mScene').value.trim() || label;
+  const model = id.endsWith('-m') ? 'male' : 'female';
+  const out = document.getElementById('mOut');
+  out.classList.remove('hidden');
+  out.textContent =
+`Attach the final image (upscaled, watermark removed) in the Claude session with this message:
+
+Add this on-model template:
+{ id: '${id}', file: '${id}.webp', label: '${label}', model: '${model}', scene: '${scene}' }
+
+Claude will: save it to scratch/on-model-src/, run scratch/build_on_model_templates.cjs
+(the same QA gates re-run — it only ships if it still passes), verify renders, commit and push.`;
+});
+</script>
