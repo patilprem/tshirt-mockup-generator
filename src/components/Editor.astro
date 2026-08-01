@@ -1886,14 +1886,16 @@
       const shadeRGBA = tctx.getImageData(0, 0, w, h).data;
       const wArr = new Uint8ClampedArray(n);
       const clipArr = new Uint8ClampedArray(n);
+      const ownArr = new Uint8ClampedArray(n);
       const shade = new Uint8ClampedArray(n);
       for (let i = 0; i < n; i++) {
         wArr[i] = weightRGBA[i * 4];
         clipArr[i] = weightRGBA[i * 4 + 1];
+        ownArr[i] = weightRGBA[i * 4 + 2];
         shade[i] = shadeRGBA[i * 4];
       }
       const entry = {
-        photo: photoImg, photoData, wArr, clipArr, shade, w, h, meta,
+        photo: photoImg, photoData, wArr, clipArr, ownArr, shade, w, h, meta,
         lutV: onModelRelightLut(meta.violetBase, meta),
       };
       onModelCache.set(meta.id, entry);
@@ -1908,7 +1910,7 @@
       const tb = parseInt(hex.slice(5, 7), 16);
       const lutT = onModelRelightLut([tr, tg, tb], entry.meta);
       const lutV = entry.lutV;
-      const { photoData, wArr, clipArr, shade, w, h } = entry;
+      const { photoData, wArr, ownArr, shade, w, h } = entry;
       const cnv = document.createElement('canvas');
       cnv.width = w; cnv.height = h;
       const c = cnv.getContext('2d');
@@ -1922,12 +1924,20 @@
       // shadow side of a window-lit shirt runs bluer than the median violet,
       // and using the model there leaves violet patches). At the boundary the
       // pixel is part background, so its own value must NOT be subtracted in
-      // full; there the model reference takes over, faded in by the clip ramp.
+      // full; there the model reference takes over, faded in by the ramp.
+      //
+      // That blend factor is the weight map's B channel, decided by how much
+      // colour information the pixel carries — NOT by the design clip in G,
+      // which answers the unrelated question of where the graphic prints.
+      // Where a pixel is information-free (a near-black underarm crease) B is
+      // 1, so the output is a convex blend of the pixel and T(shade): it can
+      // never leave the gamut spanned by those two, which is what stops
+      // modelled violet being over-subtracted into green blotches.
       for (let i = 0; i < n; i++) {
         const wv = wArr[i];
         if (wv === 0) continue;
         const ww = wv / 255;
-        const cl = clipArr[i] / 255;
+        const cl = ownArr[i] / 255;
         const sb = shade[i] * 3;
         const o = i * 4;
         d[o] = d[o] + ww * (lutT[sb] - cl * d[o] - (1 - cl) * lutV[sb]);

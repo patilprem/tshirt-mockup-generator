@@ -538,7 +538,15 @@ const TEMPLATES = [
       const crevice = new Uint8Array(N);
       const unrel = new Float32Array(N);
       for (let i = 0; i < N; i++) {
-        if (core[i]) continue;
+        // Measured for EVERY pixel, core included. How much colour information
+        // a pixel carries is a property of the pixel, not of which label the
+        // segmentation gave it — and a dark pixel just inside the core is as
+        // information-free as one just outside. Skipping core here left those
+        // pixels falling back to the blurred coverage ramp (~0.5) as their
+        // own-value blend, so half the modelled violet was still subtracted
+        // from a near-neutral hem shadow and it rendered green.
+        // Bright core pixels are unaffected: high value drives u to 0.
+        //
         // A warm or green cast IS information: it identifies hair, skin or
         // foliage, none of which are violet fabric. Only a dark pixel that is
         // also chromatically neutral tells us nothing at all.
@@ -546,7 +554,7 @@ const TEMPLATES = [
         const chroma = Math.max(src[o2] - src[o2 + 2], src[o2 + 1] - Math.max(src[o2], src[o2 + 2]));
         const u = (1 - smooth(vA[i], 0.12, 0.36)) * (1 - smooth(chroma, 4, 14));
         unrel[i] = u;
-        if (u > 0.5) crevice[i] = 1;
+        if (u > 0.5 && !core[i]) crevice[i] = 1;
       }
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
@@ -684,17 +692,32 @@ const TEMPLATES = [
       for (let i = 0; i < N; i++) {
         const o = i * 4;
         wd.data[o] = Math.round(Math.max(0, Math.min(1, wMap[i])) * 255);
-        // clip doubles as the runtime's own-value blend factor. On the
-        // background side it must mirror the matting confidence: a baked
-        // pixel's content is the MODEL's mix (subtract pure model violet,
-        // cl=0), while an unexplainable photographic pixel — deep crevice
-        // shadow, hair — must subtract ITS OWN value (cl=1), because the
-        // model's violet at dark shades is more saturated than the real
-        // pixel and over-subtraction leaves green flecks.
-        wd.data[o + 1] = outside[i]
-          ? Math.round(255 * Math.max(unrel[i], 1 - Math.max(0, Math.min(1, confA[i]))))
-          : Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
-        wd.data[o + 2] = 0; wd.data[o + 3] = 255;
+        // G = design clip, and nothing else: how much of the printed graphic
+        // survives here. Purely a coverage question.
+        wd.data[o + 1] = Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
+        // B = own-value blend. What violet does the runtime subtract — the
+        // MODEL's violet (b=0) or THIS PIXEL's own value (b=1)?
+        //
+        // It must be 1 wherever the pixel carries no colour information.
+        // lutV at a dark shade is still saturated violet (G much lower than
+        // R and B), but an information-free crease pixel is near-neutral
+        // black. Subtracting modelled violet from neutral black over-
+        // subtracts G and the pixel renders GREEN — the mint blotches in
+        // underarm creases. Subtracting the pixel's own value instead makes
+        // the output a convex blend of that pixel and T(shade): neutral by
+        // construction, in gamut for every target colour.
+        //
+        // Crucially this is decided by information content alone, never by
+        // topology. Previously the unrel guard applied only on the 'outside'
+        // branch, so whether a crease pixel was protected depended on whether
+        // the crease happened to squeeze through to the image border — which
+        // is pose-dependent, and is why fixing one photo broke another.
+        wd.data[o + 2] = Math.round(255 * Math.max(0, Math.min(1, Math.max(
+          clip[i],
+          unrel[i],
+          outside[i] ? 1 - Math.max(0, Math.min(1, confA[i])) : 0,
+        ))));
+        wd.data[o + 3] = 255;
       }
       wctx.putImageData(wd, 0, 0);
 

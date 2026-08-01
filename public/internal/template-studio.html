@@ -885,7 +885,14 @@ function analyze(img) {
   const crevice = new Uint8Array(N);
   const unrel = new Float32Array(N);
   for (let i = 0; i < N; i++) {
-    if (core[i]) continue;
+    // Measured for EVERY pixel, core included. Information content is a
+    // property of the pixel, not of the label the segmentation gave it — a
+    // dark pixel just inside the core is as information-free as one just
+    // outside, and skipping core left those falling back to the blurred
+    // coverage ramp as their own-value blend, which still subtracted half the
+    // modelled violet from a near-neutral hem shadow and rendered it green.
+    // Bright core pixels are unaffected: high value drives u to 0.
+    //
     // A warm or green cast IS information: it identifies hair, skin or
     // foliage, none of which are violet fabric. Only a dark pixel that is
     // also chromatically neutral tells us nothing at all.
@@ -893,7 +900,7 @@ function analyze(img) {
     const chroma = Math.max(src[o2] - src[o2 + 2], src[o2 + 1] - Math.max(src[o2], src[o2 + 2]));
     const u = (1 - smooth(vA[i], 0.12, 0.36)) * (1 - smooth(chroma, 4, 14));
     unrel[i] = u;
-    if (u > 0.5) crevice[i] = 1;
+    if (u > 0.5 && !core[i]) crevice[i] = 1;
   }
 
   const alphaA = new Float32Array(N), confA = new Float32Array(N);
@@ -1069,15 +1076,23 @@ function analyze(img) {
   }
 
   const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
-  // background-side clip mirrors matting confidence: baked pixels subtract
-  // the model's violet (cl=0), photographic pixels subtract their own value
-  // (cl=1) — the model's violet at dark shades over-subtracts and leaves
-  // green flecks in crevice shadows otherwise
+  const ownArr = new Uint8ClampedArray(N);
+  // clipArr is design coverage and nothing else. ownArr is the separate
+  // question of which violet the runtime subtracts: the MODEL's (0) or THIS
+  // PIXEL's own value (1). It goes to 1 wherever the pixel carries no colour
+  // information, because lutV at a dark shade is still saturated violet while
+  // an information-free crease pixel is near-neutral black — subtracting the
+  // former from the latter over-subtracts green and blotches the crease.
+  // Decided by information content alone, never by topology, so a crease that
+  // happens to reach the image border behaves identically to one that doesn't.
   for (let i = 0; i < N; i++) {
     wArr[i] = Math.round(Math.max(0, Math.min(1, wMap[i])) * 255);
-    clipArr[i] = outside[i]
-      ? Math.round(255 * Math.max(unrel[i], 1 - Math.max(0, Math.min(1, confA[i]))))
-      : Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
+    clipArr[i] = Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
+    ownArr[i] = Math.round(255 * Math.max(0, Math.min(1, Math.max(
+      clip[i],
+      unrel[i],
+      outside[i] ? 1 - Math.max(0, Math.min(1, confA[i])) : 0,
+    ))));
   }
 
   // edge audit: recolour the ring to WHITE via the runtime formula and count
@@ -1113,7 +1128,7 @@ function analyze(img) {
     modelFit: fitSum / Math.max(1, fitCnt),
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
-    photoData, wArr, clipArr, shade,
+    photoData, wArr, clipArr, ownArr, shade,
   };
 }
 
@@ -1263,7 +1278,7 @@ function renderTry() {
   for (let i = 0; i < n; i++) {
     const wv = a.wArr[i];
     if (!wv) continue;
-    const ww = wv / 255, cl2 = a.clipArr[i] / 255;
+    const ww = wv / 255, cl2 = a.ownArr[i] / 255;
     const sb = a.shade[i] * 3, o = i * 4;
     d[o] = d[o] + ww * (lutT[sb] - cl2 * d[o] - (1 - cl2) * lutV[sb]);
     d[o + 1] = d[o + 1] + ww * (lutT[sb + 1] - cl2 * d[o + 1] - (1 - cl2) * lutV[sb + 1]);
