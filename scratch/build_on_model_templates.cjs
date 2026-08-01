@@ -62,7 +62,9 @@ const TEMPLATES = [
     const b64 = fs.readFileSync(srcPath).toString('base64');
     process.stdout.write(`${tpl.id} ... `);
 
-    const r = await page.evaluate(async ({ b64, MAX_EDGE }) => {
+    const dbgPx = (tpl.id === process.env.DBG_ID && process.env.DBG_PX)
+      ? process.env.DBG_PX.split(';').map(t => t.split(',').map(Number)) : [];
+    const r = await page.evaluate(async ({ b64, MAX_EDGE, dbgPx }) => {
       const load = s => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = s; });
       const img = await load('data:image/webp;base64,' + b64);
       const k = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
@@ -288,10 +290,36 @@ const TEMPLATES = [
       wMap = boxBlur(wMap, 1);
       // On the background side of the silhouette, weight must follow the violet
       // actually present in each pixel. A hard cutoff here produces a jagged
-      // edge (adjacent pixels flip between recoloured and untouched); a smooth
-      // taper on the strict key keeps genuinely mixed pixels partially
-      // recoloured and takes neutral background to zero continuously.
-      for (let i = 0; i < N; i++) if (outside[i]) wMap[i] *= smooth(wRaw[i], 0.008, 0.05);
+      // edge (adjacent pixels flip between recoloured and untouched). The
+      // strict key alone is not enough either: seam pixels where the garment
+      // meets skin or hair are dark (value below the strict key's floor) yet
+      // still saturated violet, so they need a hue+saturation path with no
+      // value gate. And a third class needs its own term entirely: fabric
+      // mixed with skin lands in the mauve/pink corridor (hue drifts up to
+      // +80 magenta-ward of the shirt) at low saturation, invisible to every
+      // hue window — but its violet content shows as blue exceeding green,
+      // which skin, foliage and warm walls never do. That term is confined to
+      // the clip ring so it can only act on the seam itself; the hue corridor
+      // is hard-off toward blue so denim never qualifies. Neutral background
+      // stays at zero because it carries no evidence of any kind.
+      const evAny = new Float32Array(N);
+      for (let i = 0; i < N; i++) if (outside[i]) {
+        const d2 = sgn(hA[i]);
+        const lim2 = d2 >= 0 ? 65 : 45;
+        const a2 = Math.abs(d2);
+        const hueClose = a2 <= 30 ? 1 : a2 >= lim2 ? 0 : 0.5 + 0.5 * Math.cos((a2 - 30) / (lim2 - 30) * Math.PI);
+        const evChroma = hueClose * smooth(sA[i], 0.05, 0.18);
+        const o = i * 4;
+        const bx = (src[o + 2] - src[o + 1]) / 255;
+        const hueMix = d2 >= -10 && d2 <= 70 ? 1
+          : d2 > 70 && d2 < 85 ? 0.5 + 0.5 * Math.cos((d2 - 70) / 15 * Math.PI)
+          : d2 < -10 && d2 > -25 ? 0.5 + 0.5 * Math.cos((-10 - d2) / 15 * Math.PI)
+          : 0;
+        const evMix = hueMix * smooth(bx, 0.02, 0.10) * smooth(clip[i], 0.01, 0.12);
+        const ev = Math.max(smooth(wRaw[i], 0.008, 0.05), evChroma);
+        wMap[i] = Math.max(wMap[i] * ev, evMix);
+        evAny[i] = Math.max(ev, evMix);
+      }
 
       // illumination reference over confident fabric
       const cV = [], cR = [], cG = [], cB = [];
@@ -463,22 +491,35 @@ const TEMPLATES = [
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
         if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
         if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
-        // neutral background pixels that would nonetheless be recoloured —
-        // exactly the class that painted a bright rim around the silhouette
-        if (outside[i] && wMap[i] > 0.08 && wRaw[i] < 0.02 && sA[i] < 0.12) bgPaint++;
+        // background pixels that would be recoloured with no violet evidence
+        // of any kind — exactly the class that painted a bright rim around
+        // the silhouette
+        if (outside[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
       }
       const deepShadowPct = +(100 * deepN / Math.max(1, gN)).toFixed(2);
 
+      const dbg = dbgPx.map(([x, y]) => {
+        const i = y * W + x, o = i * 4;
+        const d2 = sgn(hA[i]);
+        const lim2 = d2 >= 0 ? 65 : 45;
+        const a2 = Math.abs(d2);
+        const hueClose = a2 <= 30 ? 1 : a2 >= lim2 ? 0 : 0.5 + 0.5 * Math.cos((a2 - 30) / (lim2 - 30) * Math.PI);
+        return { x, y, rgb: [src[o], src[o+1], src[o+2]], h: +hA[i].toFixed(1), s: +sA[i].toFixed(3), v: +vA[i].toFixed(3),
+          wRaw: +wRaw[i].toFixed(3), core: core[i], outside: outside[i], gate: gate[i],
+          clip: +clip[i].toFixed(3), hueClose: +hueClose.toFixed(3),
+          ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue };
+      });
       return {
-        W, H, shirtHue, fragments, ambientTint, quad,
+        dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
         qa: { missed, skin, bgPaint, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
-        photo: photo.toDataURL('image/jpeg', 0.92),
+        photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
       };
-    }, { b64, MAX_EDGE });
+    }, { b64, MAX_EDGE, dbgPx });
+    if (r.dbg && r.dbg.length) console.log('\nDBG', JSON.stringify(r.dbg, null, 1));
 
     // QA gate, mechanising the guide's "no hard shadow band" rule. A garment
     // whose deep-shadow fraction is this high has a broad near-black band that
