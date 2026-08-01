@@ -668,9 +668,16 @@ function analyze(img) {
     const dark = (a < 80 ? 1 : 0) * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34));
     const enclosed = (!core[i] && !outside[i])
       ? (1 - smooth(sA[i], 0.10, 0.20)) * (1 - smooth(vA[i], 0.16, 0.28)) : 0;
-    wMap[i] = Math.max(clip[i], wRaw[i], wide, dark, enclosed);
+    // border-connected background never takes the clip floor — letting it
+    // paints the target colour onto the wall as a rim around the silhouette
+    const clipIn = outside[i] ? 0 : clip[i];
+    wMap[i] = Math.max(clipIn, wRaw[i], wide, dark, enclosed);
   }
   wMap = boxBlur(wMap, 1);
+  // the denoise blur smears weight one pixel past the silhouette onto
+  // neutral background — re-zero it there; boundary pixels with real
+  // violet content keep theirs
+  for (let i = 0; i < N; i++) if (outside[i] && wRaw[i] < 0.02 && sA[i] < 0.12) wMap[i] = 0;
 
   const cV = [], cR = [], cG = [], cB = [];
   for (let i = 0; i < N; i++) if (core[i]) { const o = i * 4; cV.push(vA[i]); cR.push(src[o]); cG.push(src[o + 1]); cB.push(src[o + 2]); }
@@ -714,12 +721,13 @@ function analyze(img) {
   }
 
   // metrics
-  let missed = 0, skin = 0, gN = 0, deepN = 0, blownN = 0, coreN = 0;
+  let missed = 0, skin = 0, gN = 0, deepN = 0, blownN = 0, coreN = 0, bgPaint = 0;
   for (let i = 0; i < N; i++) {
     if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
     if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
     if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
     if (core[i]) { coreN++; if (vA[i] > 0.92 && sA[i] < 0.14) blownN++; }
+    if (outside[i] && wMap[i] > 0.08 && wRaw[i] < 0.02 && sA[i] < 0.12) bgPaint++;
   }
   const tLumV = (violetBase[0] + violetBase[1] + violetBase[2]) / 765;
   const GAV = 1 - 0.55 * tLumV, TIV = 0.35 * tLumV, SPV = 0.28;
@@ -748,6 +756,7 @@ function analyze(img) {
     missed, skin,
     deepShadowPct: 100 * deepN / Math.max(1, gN),
     blownPct: 100 * blownN / Math.max(1, coreN),
+    bgPaint,
     modelFit: fitSum / Math.max(1, fitCnt),
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
@@ -827,6 +836,7 @@ function runValidation(img, url) {
       F(a.skin > 2000, a.skin > 200, 'No skin captured as garment', a.skin + ' px');
       F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%');
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
+      F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px');
     }
     document.getElementById('checks').innerHTML = checks.join('');
     const v = document.getElementById('verdict');

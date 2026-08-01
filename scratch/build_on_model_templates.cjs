@@ -275,9 +275,21 @@ const TEMPLATES = [
         const enclosed = (!core[i] && !outside[i])
           ? (1 - smooth(sA[i], 0.10, 0.20)) * (1 - smooth(vA[i], 0.16, 0.28))
           : 0;
-        wMap[i] = Math.max(clip[i], wRaw[i], wide, dark, enclosed);
+        // clip's sigmoid deliberately reaches a few pixels past the core so the
+        // printed design gets a soft edge — but those outer pixels are pure
+        // background, and letting clip feed the recolour weight there paints
+        // the target colour onto the wall as a bright rim around the whole
+        // silhouette. Border-connected background never takes the clip floor;
+        // genuine boundary pixels keep their weight through wRaw, which
+        // measures the violet actually present in them.
+        const clipIn = outside[i] ? 0 : clip[i];
+        wMap[i] = Math.max(clipIn, wRaw[i], wide, dark, enclosed);
       }
       wMap = boxBlur(wMap, 1);
+      // the denoise blur smears weight one pixel past the silhouette onto
+      // neutral background — re-zero it there; boundary pixels with real
+      // violet content keep theirs
+      for (let i = 0; i < N; i++) if (outside[i] && wRaw[i] < 0.02 && sA[i] < 0.12) wMap[i] = 0;
 
       // illumination reference over confident fabric
       const cV = [], cR = [], cG = [], cB = [];
@@ -419,11 +431,14 @@ const TEMPLATES = [
         fitSum += (Math.abs(src[o] - vr) + Math.abs(src[o + 1] - vg) + Math.abs(src[o + 2] - vb)) / 3;
         fitCnt++;
       }
-      let missed = 0, skin = 0, gN = 0, deepN = 0;
+      let missed = 0, skin = 0, gN = 0, deepN = 0, bgPaint = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
         if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
         if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
+        // neutral background pixels that would nonetheless be recoloured —
+        // exactly the class that painted a bright rim around the silhouette
+        if (outside[i] && wMap[i] > 0.08 && wRaw[i] < 0.02 && sA[i] < 0.12) bgPaint++;
       }
       const deepShadowPct = +(100 * deepN / Math.max(1, gN)).toFixed(2);
 
@@ -431,7 +446,7 @@ const TEMPLATES = [
         W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
+        qa: { missed, skin, bgPaint, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
         photo: photo.toDataURL('image/jpeg', 0.92),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -461,7 +476,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
