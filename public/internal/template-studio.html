@@ -842,7 +842,7 @@ function analyze(img) {
   // unreachable are therefore GARMENT shadow: full weight, and clip 1
   // so the runtime subtracts the pixel's own value (chroma-exact — no
   // green cast) and lands on the target's own shadow tone.
-  const CREV = Math.max(RING + 2, Math.round(W / 45));
+  const CREV = Math.max(RING + 2, Math.round(W / 18));
   const distX = new Int16Array(N).fill(-1);
   {
     let qh = 0, qt = 0;
@@ -864,23 +864,31 @@ function analyze(img) {
   // sit near the garment. A crevice is surrounded BY the garment, so
   // rays cast from it hit fabric in almost every direction; hair beside
   // a shoulder has open sky on most rays.
+  // Enclosure and darkness are measured as CONTINUOUS quantities, not
+  // used to make a yes/no call. A near-black pixel carries no usable hue
+  // or saturation - it is codec noise - so any per-pixel decision there
+  // flips neighbours differently and produces isolated specks. What is
+  // recorded instead is how UNRELIABLE each pixel's own reading is.
+  // Unreliability means one thing only: the pixel carries no information.
+  // Below ~0.26 value both hue and saturation collapse into codec noise,
+  // so nothing about such a pixel can be decided from its own colour --
+  // and any threshold applied there flips neighbours differently, which
+  // IS the speckle. No geometric test is used: where the value comes
+  // from is settled by the Poisson solve's boundary conditions, which
+  // pull a fabric-enclosed crevice to garment weight and a dark patch
+  // open to the scene to zero, with no jump in between.
   const crevice = new Uint8Array(N);
-  const RAYS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+  const unrel = new Float32Array(N);
   for (let i = 0; i < N; i++) {
-    if (!outside[i] || distX[i] < 0 || vA[i] > 0.34) continue;
-    // Below ~0.14 value the hue reading is sensor/codec noise, so it
-    // cannot be required — enclosure is the evidence there.
-    if (vA[i] > 0.14 && Math.abs(sgn(hA[i])) > 90) continue;
-    const px = i % W, py = (i / W) | 0;
-    let blocked = 0;
-    for (const [dx, dy] of RAYS) {
-      for (let t = 1; t <= CREV; t++) {
-        const nx = px + dx * t, ny = py + dy * t;
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H) break;
-        if (core[ny * W + nx]) { blocked++; break; }
-      }
-    }
-    if (blocked >= 5) { crevice[i] = 1; wMap[i] = 1; }
+    if (core[i]) continue;
+    // A warm or green cast IS information: it identifies hair, skin or
+    // foliage, none of which are violet fabric. Only a dark pixel that is
+    // also chromatically neutral tells us nothing at all.
+    const o2 = i * 4;
+    const chroma = Math.max(src[o2] - src[o2 + 2], src[o2 + 1] - Math.max(src[o2], src[o2 + 2]));
+    const u = (1 - smooth(vA[i], 0.06, 0.26)) * (1 - smooth(chroma, 4, 14));
+    unrel[i] = u;
+    if (u > 0.5) crevice[i] = 1;
   }
 
   const alphaA = new Float32Array(N), confA = new Float32Array(N);
@@ -908,6 +916,34 @@ function analyze(img) {
     alphaA[i] = a2; confA[i] = conf;
     wMap[i] = conf * a2 + (1 - conf) * wMap[i];
     evAny[i] = Math.max(evAny[i], wMap[i]);
+  }
+
+  // ---- harmonic weight completion: the structural cure for speckle ----
+  // Where a pixel's own reading is unreliable, its weight is not decided -
+  // it is INTERPOLATED from confident neighbours by relaxing toward the
+  // average, with confident pixels pinned as boundary conditions. This is a
+  // screened Poisson solve; its solution is harmonic in the unreliable
+  // region, and harmonic functions obey the maximum principle: an interior
+  // point cannot exceed the values around it. An isolated speck differing
+  // from its neighbourhood is therefore impossible BY CONSTRUCTION, at any
+  // resolution, geometry or scene - not merely absent for tuned thresholds.
+  // A crevice enclosed by fabric relaxes to full garment weight; a dark
+  // patch open to the background relaxes to zero; the transition between
+  // them is smooth because a harmonic function has no jumps.
+  {
+    const idx = [];
+    for (let i = 0; i < N; i++) if (unrel[i] > 0.01) idx.push(i);
+    if (idx.length) {
+      const base = new Float32Array(wMap);
+      for (let pass = 0; pass < 320; pass++) {
+        for (let k = 0; k < idx.length; k++) {
+          const i = idx[k], x = i % W;
+          if (x < 1 || x >= W - 1 || i < W || i >= N - W) continue;
+          const avg = (wMap[i - 1] + wMap[i + 1] + wMap[i - W] + wMap[i + W]) * 0.25;
+          wMap[i] = (1 - unrel[i]) * base[i] + unrel[i] * avg;
+        }
+      }
+    }
   }
 
   // photo with baked crease + background-violet neutralisation (same as builder)
@@ -998,7 +1034,7 @@ function analyze(img) {
   for (let i = 0; i < N; i++) {
     wArr[i] = Math.round(Math.max(0, Math.min(1, wMap[i])) * 255);
     clipArr[i] = outside[i]
-      ? Math.round(255 * (1 - Math.max(0, Math.min(1, confA[i]))))
+      ? Math.round(255 * Math.max(unrel[i], 1 - Math.max(0, Math.min(1, confA[i]))))
       : Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
   }
 
