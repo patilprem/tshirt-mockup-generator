@@ -810,8 +810,14 @@ function runValidation(img, url) {
       checks.push(checkRow('fail', 'No violet garment found in the image', '—'));
       fails++;
     } else {
+      // Raw generations arrive small (Grok outputs ~768px) and get upscaled
+      // later, so low resolution is a warning at this stage, not a failure —
+      // it only blocks hand-over. Truly tiny images still fail because the
+      // analysis itself stops being trustworthy below ~640px.
       const short = Math.min(a.srcW, a.srcH);
-      F(short < 900, short < 1300, 'Resolution (short side)', short + 'px');
+      F(short < 640, short < 1300,
+        short < 1300 ? 'Resolution — fine for a raw generation, upscale to ≥1300px before hand-over' : 'Resolution (short side)',
+        short + 'px');
       F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°');
       F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%');
       F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)');
