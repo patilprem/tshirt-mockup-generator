@@ -350,6 +350,127 @@ const TEMPLATES = [
       const aM = Math.max(...amb);
       const ambientTint = amb.map(c => +(c / aM).toFixed(4));
 
+      // Illumination per pixel, needed by the matting bake below and written
+      // out as the shade map later. On the background side of the silhouette
+      // the shade is propagated outward from the nearest fabric: a boundary
+      // pixel's own brightness is contaminated by whatever is behind it.
+      const shadeVal = new Float32Array(N);
+      for (let i = 0; i < N; i++) {
+        const rel = vA[i] / Math.max(1e-6, vRef);
+        shadeVal[i] = Math.max(0, Math.min(1, rel / REL_MAX));
+      }
+      {
+        const have = new Uint8Array(N);
+        for (let i = 0; i < N; i++) have[i] = outside[i] ? 0 : 1;
+        for (let pass = 0; pass < 8; pass++) {
+          const nh = new Uint8Array(have);
+          for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+            const i = y * W + x;
+            if (have[i] || !gate[i] || !outside[i]) continue;
+            let sum = 0, c = 0;
+            for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
+            if (c) { shadeVal[i] = sum / c; nh[i] = 1; }
+          }
+          have.set(nh);
+        }
+      }
+
+      // The same relight model the runtime uses — the bake must cancel against
+      // the runtime's own violet reference exactly.
+      const mkRelight = (rgb) => {
+        const [ar, ag, ab] = ambientTint;
+        const tLum = (rgb[0] + rgb[1] + rgb[2]) / 765;
+        const GAMMA = 1 - 0.55 * tLum, TINT = 0.35 * tLum, SPEC = 0.28;
+        const lut = new Float32Array(256 * 3);
+        for (let s2 = 0; s2 < 256; s2++) {
+          const rel = (s2 / 255) * REL_MAX;
+          const diff = Math.pow(Math.min(rel, 1), GAMMA);
+          const wgt = (1 - diff) * TINT;
+          let r = rgb[0] * diff * (1 - wgt + wgt * ar);
+          let g = rgb[1] * diff * (1 - wgt + wgt * ag);
+          let b = rgb[2] * diff * (1 - wgt + wgt * ab);
+          if (rel > 1) { const sp = Math.min(1, (rel - 1) / (REL_MAX - 1)) * SPEC; r += (255 - r) * sp; g += (255 - g) * sp; b += (255 - b) * sp; }
+          lut[s2 * 3] = r; lut[s2 * 3 + 1] = g; lut[s2 * 3 + 2] = b;
+        }
+        return lut;
+      };
+      const lutVm = mkRelight(violetBase);
+
+      // ---- boundary alpha matting: the definitive edge treatment ----
+      // Every silhouette pixel is a physical mix a*fabric + (1-a)*background.
+      // The builder knows both endpoints (fabric colour diffused from the
+      // garment side, background colour diffused from beyond the ring), so a
+      // is SOLVED per pixel, not guessed from hue heuristics. The photo is
+      // then baked to a*V(shade) + (1-a)*background — the model's own violet —
+      // and the runtime, with weight a and clip 0, reconstructs
+      //   out = (1-a)*background + a*T(shade)
+      // — a convex combination of two correct endpoints. A dark outline, a
+      // pale halo, a glow, or leftover violet are all outside that hull and
+      // therefore impossible, for every target colour. Pixels the mix model
+      // cannot explain (hair strands crossing the edge, real seam shadows)
+      // fall back to the taper + neutralise path via a residual-based
+      // confidence, keeping their photographic reality.
+      const RING = Math.max(4, Math.round(W / 220));
+      const distC = new Int16Array(N).fill(-1);
+      {
+        let qh = 0, qt = 0;
+        const qxx = new Int32Array(N), qyy = new Int32Array(N);
+        for (let i = 0; i < N; i++) if (core[i]) { distC[i] = 0; qxx[qt] = i % W; qyy[qt] = (i / W) | 0; qt++; }
+        while (qh < qt) {
+          const cx3 = qxx[qh], cy3 = qyy[qh]; qh++;
+          const dd = distC[cy3 * W + cx3];
+          if (dd >= RING) continue;
+          for (const [nx, ny] of [[cx3 + 1, cy3], [cx3 - 1, cy3], [cx3, cy3 + 1], [cx3, cy3 - 1]]) {
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            const ni = ny * W + nx;
+            if (distC[ni] !== -1) continue;
+            distC[ni] = dd + 1; qxx[qt] = nx; qyy[qt] = ny; qt++;
+          }
+        }
+      }
+      const ring = new Uint8Array(N);
+      for (let i = 0; i < N; i++) if (outside[i] && distC[i] > 0) ring[i] = 1;
+
+      const diffuseInto = (seedMask, channels) => {
+        const out = new Float32Array(N * 3);
+        const have = new Uint8Array(N);
+        for (let i = 0; i < N; i++) if (seedMask(i)) {
+          have[i] = 1; const o = i * 4;
+          out[i * 3] = src[o]; out[i * 3 + 1] = src[o + 1]; out[i * 3 + 2] = src[o + 2];
+        }
+        for (let pass = 0; pass < RING + 6; pass++) {
+          const nh = new Uint8Array(have);
+          for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+            const i = y * W + x;
+            if (have[i] || !ring[i]) continue;
+            let sr = 0, sg = 0, sb2 = 0, c = 0;
+            for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sr += out[ni * 3]; sg += out[ni * 3 + 1]; sb2 += out[ni * 3 + 2]; c++; }
+            if (c) { out[i * 3] = sr / c; out[i * 3 + 1] = sg / c; out[i * 3 + 2] = sb2 / c; nh[i] = 1; }
+          }
+          have.set(nh);
+        }
+        return out;
+      };
+      const bgC = diffuseInto(i => outside[i] && !ring[i]);
+      const fgC = diffuseInto(i => !outside[i]);
+
+      const alphaA = new Float32Array(N), confA = new Float32Array(N);
+      for (let i = 0; i < N; i++) if (ring[i]) {
+        const o = i * 4;
+        const fr = fgC[i * 3] - bgC[i * 3], fg2 = fgC[i * 3 + 1] - bgC[i * 3 + 1], fb = fgC[i * 3 + 2] - bgC[i * 3 + 2];
+        const den = fr * fr + fg2 * fg2 + fb * fb;
+        if (den < 100) continue;
+        const dr = src[o] - bgC[i * 3], dg = src[o + 1] - bgC[i * 3 + 1], db = src[o + 2] - bgC[i * 3 + 2];
+        let a2 = (dr * fr + dg * fg2 + db * fb) / den;
+        a2 = Math.max(0, Math.min(1, a2));
+        const er = dr - a2 * fr, eg = dg - a2 * fg2, eb = db - a2 * fb;
+        const err = Math.sqrt((er * er + eg * eg + eb * eb) / 3);
+        const conf = 1 - smooth(err, 14, 42);
+        alphaA[i] = a2; confA[i] = conf;
+        wMap[i] = conf * a2 + (1 - conf) * wMap[i];
+        evAny[i] = Math.max(evAny[i], wMap[i]);
+      }
+
       // photo, with violet residue in deep low-weight creases neutralised —
       // those pixels keep their photographic darkness under every target
       // colour, and a violet cast there would read as a defect on pale shirts
@@ -372,6 +493,16 @@ const TEMPLATES = [
           const L = 0.299 * r + 0.587 * g + 0.114 * b;
           r = r + (L - r) * kk; g = g + (L - g) * kk; b = b + (L - b) * kk;
         }
+        // matting bake: replace the pixel with the model's own mix so the
+        // runtime subtraction cancels exactly, leaving (1-a)*bg + a*target
+        if (ring[i] && confA[i] > 0) {
+          const sbB = Math.round(shadeVal[i] * 255) * 3;
+          const a2 = alphaA[i], cf = confA[i];
+          const br2 = a2 * lutVm[sbB] + (1 - a2) * bgC[i * 3];
+          const bg2 = a2 * lutVm[sbB + 1] + (1 - a2) * bgC[i * 3 + 1];
+          const bb2 = a2 * lutVm[sbB + 2] + (1 - a2) * bgC[i * 3 + 2];
+          r = r + (br2 - r) * cf; g = g + (bg2 - g) * cf; b = b + (bb2 - b) * cf;
+        }
         pd.data[o] = r; pd.data[o + 1] = g; pd.data[o + 2] = b; pd.data[o + 3] = 255;
       }
       pctx.putImageData(pd, 0, 0);
@@ -383,42 +514,14 @@ const TEMPLATES = [
       for (let i = 0; i < N; i++) {
         const o = i * 4;
         wd.data[o] = Math.round(Math.max(0, Math.min(1, wMap[i])) * 255);
-        wd.data[o + 1] = Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
+        // clip (the runtime's own-value blend and design clip) must be 0 on
+        // the background side: the matting bake assumed pure model-violet
+        // subtraction there, and the design never reaches the silhouette
+        wd.data[o + 1] = outside[i] ? 0 : Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
         wd.data[o + 2] = 0; wd.data[o + 3] = 255;
       }
       wctx.putImageData(wd, 0, 0);
 
-      // shade map. A boundary pixel's own brightness is contaminated by the
-      // background behind it — against a bright wall its shade reads high, the
-      // relight then paints it toward the target's lit tone, and a pale fringe
-      // traces the silhouette. On the background side of the silhouette the
-      // shade is therefore propagated outward from the nearest fabric instead
-      // of read from the pixel: the delta applied to a mixed pixel should be
-      // the fabric's delta, scaled by how much fabric is in the pixel (w).
-      const shadeVal = new Float32Array(N);
-      for (let i = 0; i < N; i++) {
-        const rel = vA[i] / Math.max(1e-6, vRef);
-        shadeVal[i] = Math.max(0, Math.min(1, rel / REL_MAX));
-      }
-      {
-        const have = new Uint8Array(N);
-        for (let i = 0; i < N; i++) have[i] = outside[i] ? 0 : 1;
-        for (let pass = 0; pass < 8; pass++) {
-          const nh = new Uint8Array(have);
-          for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
-            const i = y * W + x;
-            if (have[i] || !gate[i] || !outside[i]) continue;
-            let sum = 0, c = 0;
-            for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
-            // min(): propagation may only DARKEN. It exists to correct
-            // bright-background contamination; a genuinely dark seam pixel
-            // must keep its own shade, or the model subtracts a lit violet
-            // from a dark pixel and the seam clamps to navy.
-            if (c) { shadeVal[i] = Math.min(shadeVal[i], sum / c); nh[i] = 1; }
-          }
-          have.set(nh);
-        }
-      }
       const shadeCv = document.createElement('canvas'); shadeCv.width = W; shadeCv.height = H;
       const sctx = shadeCv.getContext('2d');
       const sd = sctx.createImageData(W, H);
@@ -500,6 +603,28 @@ const TEMPLATES = [
         fitSum += (Math.abs(src[o] - vr) + Math.abs(src[o + 1] - vg) + Math.abs(src[o + 2] - vb)) / 3;
         fitCnt++;
       }
+      // edge audit: recolour the ring to WHITE via the exact runtime formula
+      // and count matte-confident pixels landing outside the convex hull of
+      // their two endpoints — the "dark outline / halo on light colours"
+      // defect class. Non-zero here means the matting is broken.
+      let edgeDark = 0, edgeBright = 0;
+      {
+        const lutW = mkRelight([255, 255, 255]);
+        for (let i = 0; i < N; i++) {
+          if (!ring[i] || confA[i] < 0.5) continue;
+          const o = i * 4, ww = wMap[i];
+          const sbB = Math.round(shadeVal[i] * 255) * 3;
+          const lum = (r2, g2, b2) => 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+          const outL = lum(
+            pd.data[o] + ww * (lutW[sbB] - lutVm[sbB]),
+            pd.data[o + 1] + ww * (lutW[sbB + 1] - lutVm[sbB + 1]),
+            pd.data[o + 2] + ww * (lutW[sbB + 2] - lutVm[sbB + 2]));
+          const bL = lum(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]);
+          const tL = lum(lutW[sbB], lutW[sbB + 1], lutW[sbB + 2]);
+          if (outL < Math.min(bL, tL) - 18) edgeDark++;
+          if (outL > Math.max(bL, tL) + 18) edgeBright++;
+        }
+      }
       let missed = 0, skin = 0, gN = 0, deepN = 0, bgPaint = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
@@ -527,7 +652,7 @@ const TEMPLATES = [
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
+        qa: { missed, skin, bgPaint, edgeDark, edgeBright, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -558,7 +683,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
