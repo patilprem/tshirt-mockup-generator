@@ -321,13 +321,18 @@ const TEMPLATES = [
           : 0;
         const evMix = hueMix * smooth(gd, 0.015, 0.07) * smooth(clip[i], 0.01, 0.12);
         const tap = smooth(wRaw[i], 0.008, 0.05);
-        // deep-dark slivers (crevice shadows in underarm gaps, under hair)
-        // are never painted: isolated painted pixels can't be spatially
-        // coherent next to photographic near-black, and neutralisation
-        // already renders them as natural grey shadow
-        wMap[i] *= tap * smooth(vA[i], 0.10, 0.20);
+        // A deep underarm or hem crevice is GARMENT in shadow, not an edge
+        // mix: the strict key drops it (hue drifts and the value floor
+        // cuts it) but it is still strongly saturated violet, which a
+        // fabric/background mixture never is — a mixed pixel's saturation
+        // is diluted by the background. High saturation inside the violet
+        // hue corridor therefore means fabric, and it keeps full weight so
+        // the crevice recolours to a dark tone of the target instead of
+        // staying black under a white shirt.
+        const fabricEv = hueClose * smooth(sA[i], 0.18, 0.32);
+        wMap[i] *= Math.max(tap, fabricEv);
         neut[i] = Math.max(evChroma, evMix);
-        evAny[i] = Math.max(tap, evChroma, evMix);
+        evAny[i] = Math.max(tap, fabricEv, evChroma, evMix);
       }
 
       // illumination reference over confident fabric
@@ -361,7 +366,7 @@ const TEMPLATES = [
         const wm2 = new Float32Array(wMap);
         for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
           const i = y * W + x;
-          if (!outside[i] || vA[i] > 0.34) continue;
+          if (!outside[i] || vA[i] > 0.34 || evAny[i] > 0.25) continue;
           let mn = wMap[i];
           for (const ni of [i - 1, i + 1, i - W, i + W, i - W - 1, i - W + 1, i + W - 1, i + W + 1])
             if (wMap[ni] < mn) mn = wMap[ni];
@@ -410,7 +415,7 @@ const TEMPLATES = [
         const lut = new Float32Array(256 * 3);
         for (let s2 = 0; s2 < 256; s2++) {
           const rel = (s2 / 255) * REL_MAX;
-          const lfT = Math.max(0, Math.min(1, (Math.min(rel, 1) - 0.08) / 0.22)), lf = lfT * lfT * (3 - 2 * lfT); const diff = Math.pow(Math.min(rel, 1), 1 - (1 - GAMMA) * lf);
+          const diff = Math.pow(Math.min(rel, 1), GAMMA);
           const wgt = (1 - diff) * TINT;
           let r = rgb[0] * diff * (1 - wgt + wgt * ar);
           let g = rgb[1] * diff * (1 - wgt + wgt * ag);
@@ -482,6 +487,53 @@ const TEMPLATES = [
       const fgF = diffuseInto(i => !outside[i]);
       const bgC = bgF.c, fgC = fgF.c;
 
+      // A deep crevice (underarm gap, hem fold) is enclosed by garment: no
+      // real background is reachable, yet the border flood labelled it
+      // 'outside' by squeezing through the gap. Left alone it keeps the
+      // photograph's near-black violet and reads as a black hole under a
+      // white shirt. Dark pixels close to the garment whose background is
+      // unreachable are therefore GARMENT shadow: full weight, and clip 1
+      // so the runtime subtracts the pixel's own value (chroma-exact — no
+      // green cast) and lands on the target's own shadow tone.
+      const CREV = Math.max(RING + 2, Math.round(W / 45));
+      const distX = new Int16Array(N).fill(-1);
+      {
+        let qh = 0, qt = 0;
+        const ax = new Int32Array(N), ay = new Int32Array(N);
+        for (let i = 0; i < N; i++) if (core[i]) { distX[i] = 0; ax[qt] = i % W; ay[qt] = (i / W) | 0; qt++; }
+        while (qh < qt) {
+          const cx4 = ax[qh], cy4 = ay[qh]; qh++;
+          const dd = distX[cy4 * W + cx4];
+          if (dd >= CREV) continue;
+          for (const [nx, ny] of [[cx4 + 1, cy4], [cx4 - 1, cy4], [cx4, cy4 + 1], [cx4, cy4 - 1]]) {
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            const ni = ny * W + nx;
+            if (distX[ni] !== -1) continue;
+            distX[ni] = dd + 1; ax[qt] = nx; ay[qt] = ny; qt++;
+          }
+        }
+      }
+      // Proximity alone is not enclosure — dark hair and dark scenery also
+      // sit near the garment. A crevice is surrounded BY the garment, so
+      // rays cast from it hit fabric in almost every direction; hair beside
+      // a shoulder has open sky on most rays.
+      const crevice = new Uint8Array(N);
+      const RAYS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+      for (let i = 0; i < N; i++) {
+        if (!outside[i] || distX[i] < 0 || vA[i] > 0.34) continue;
+        if (Math.abs(sgn(hA[i])) > 90) continue;
+        const px = i % W, py = (i / W) | 0;
+        let blocked = 0;
+        for (const [dx, dy] of RAYS) {
+          for (let t = 1; t <= CREV; t++) {
+            const nx = px + dx * t, ny = py + dy * t;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) break;
+            if (core[ny * W + nx]) { blocked++; break; }
+          }
+        }
+        if (blocked >= 6) { crevice[i] = 1; wMap[i] = 1; }
+      }
+
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
       let wedgePx = 0;
       for (let i = 0; i < N; i++) if (ring[i]) {
@@ -503,6 +555,7 @@ const TEMPLATES = [
         conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING + 1, RING + 4);
         if (fgF.fd[i] < 0) conf = 0;
         if (vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING + 1)) wedgePx++;
+        if (crevice[i]) continue;
         alphaA[i] = a2; confA[i] = conf;
         wMap[i] = conf * a2 + (1 - conf) * wMap[i];
         evAny[i] = Math.max(evAny[i], wMap[i]);
@@ -636,7 +689,7 @@ const TEMPLATES = [
       for (let i = 0; i < N; i += 3) {
         if (wMap[i] < 0.9) continue;
         const rel = Math.min(REL_MAX, vA[i] / Math.max(1e-6, vRef));
-        const lfT = Math.max(0, Math.min(1, (Math.min(rel, 1) - 0.08) / 0.22)), lf = lfT * lfT * (3 - 2 * lfT); const diff = Math.pow(Math.min(rel, 1), 1 - (1 - GAV) * lf);
+        const diff = Math.pow(Math.min(rel, 1), GAV);
         const wgt = (1 - diff) * TIV;
         let vr = violetBase[0] * diff * (1 - wgt + wgt * ambientTint[0]);
         let vg = violetBase[1] * diff * (1 - wgt + wgt * ambientTint[1]);
@@ -676,7 +729,7 @@ const TEMPLATES = [
         // background pixels that would be recoloured with no violet evidence
         // of any kind — exactly the class that painted a bright rim around
         // the silhouette
-        if (outside[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
+        if (outside[i] && !crevice[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
       }
       const deepShadowPct = +(100 * deepN / Math.max(1, gN)).toFixed(2);
 
