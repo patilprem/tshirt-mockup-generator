@@ -652,7 +652,12 @@ function analyze(img) {
   for (let i = 0; i < N; i++) {
     if (!gate[i]) continue;
     const d = sgn(hA[i]);
-    const lim = d >= 0 ? 65 : 45;
+    // Shadows shift blue-ward: in a deep fold the ambient sky/room bounce
+        // dominates over the direct light, so violet fabric reads up to ~70deg
+        // bluer than in full light. A fixed limit clips exactly those pixels and
+        // leaves half-recoloured specks in creases. Denim stays excluded because
+        // the widening only applies to dark pixels and denim is bright.
+        const lim = d >= 0 ? 65 : 45 + 25 * (1 - smooth(vA[i], 0.10, 0.30));
     const a = Math.abs(d);
     const wide = (a <= 30 ? 1 : a >= lim ? 0 : 0.5 + 0.5 * Math.cos((a - 30) / (lim - 30) * Math.PI))
       * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08);
@@ -678,7 +683,7 @@ function analyze(img) {
   const neut = new Float32Array(N);
   for (let i = 0; i < N; i++) if (outside[i]) {
     const d2 = sgn(hA[i]);
-    const lim2 = d2 >= 0 ? 65 : 45;
+    const lim2 = d2 >= 0 ? 65 : 45 + 25 * (1 - smooth(vA[i], 0.10, 0.30));
     const a2 = Math.abs(d2);
     const hueClose = a2 <= 30 ? 1 : a2 >= lim2 ? 0 : 0.5 + 0.5 * Math.cos((a2 - 30) / (lim2 - 30) * Math.PI);
     const evChroma = hueClose * smooth(sA[i], 0.05, 0.18);
@@ -878,7 +883,7 @@ function analyze(img) {
     // also chromatically neutral tells us nothing at all.
     const o2 = i * 4;
     const chroma = Math.max(src[o2] - src[o2 + 2], src[o2 + 1] - Math.max(src[o2], src[o2 + 2]));
-    const u = (1 - smooth(vA[i], 0.06, 0.26)) * (1 - smooth(chroma, 4, 14));
+    const u = (1 - smooth(vA[i], 0.12, 0.36)) * (1 - smooth(chroma, 4, 14));
     unrel[i] = u;
     if (u > 0.5) crevice[i] = 1;
   }
@@ -927,7 +932,7 @@ function analyze(img) {
     for (let i = 0; i < N; i++) if (unrel[i] > 0.01) idx.push(i);
     if (idx.length) {
       const base = new Float32Array(wMap);
-      for (let pass = 0; pass < 320; pass++) {
+      for (let pass = 0; pass < 700; pass++) {
         for (let k = 0; k < idx.length; k++) {
           const i = idx[k], x = i % W;
           if (x < 1 || x >= W - 1 || i < W || i >= N - W) continue;
