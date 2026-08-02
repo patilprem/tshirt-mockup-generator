@@ -158,6 +158,21 @@
     padding: 3px 10px; color: var(--ink);
   }
   .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .fix-head { display: flex; align-items: center; gap: 10px; }
+  .fix-head b { font-size: 13px; }
+  #fixOut {
+    width: 100%; min-height: 150px; font-family: var(--mono); font-size: 12px;
+    line-height: 1.6; color: var(--ink); background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+  }
+  .meta-preview {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+  }
+  .meta-preview span {
+    font-family: var(--mono); font-size: 11.5px; background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px;
+  }
+  .meta-preview b { color: var(--accent); font-weight: 700; }
   .lock-row {
     display: flex; gap: 9px; align-items: flex-start; margin-top: 10px;
     font-size: 12.5px; color: var(--muted); cursor: pointer; line-height: 1.5;
@@ -284,6 +299,17 @@
         <div>
           <div class="checks" id="checks"></div>
           <div class="verdict" id="verdict"></div>
+          <div class="hidden" id="fixWrap" style="margin-top:14px">
+            <div class="fix-head">
+              <b>Corrected prompt</b>
+              <button class="btn" id="fixCopy">Copy</button>
+              <span class="note" id="fixCopied"></span>
+            </div>
+            <p class="note" style="margin:4px 0 8px">Same brief, with the clauses that
+            just failed restated and hardened. Regenerate with this, then drop the new
+            image back in.</p>
+            <textarea id="fixOut" readonly></textarea>
+          </div>
         </div>
       </div>
     </section>
@@ -307,26 +333,19 @@
       </div>
     </section>
 
-    <!-- STEP 4: PUSH -->
+    <!-- STEP 4: SHIP -->
     <section class="step hidden" id="pushStep">
-      <div class="step-head"><span class="step-num">STEP 4</span><h2>Push it live</h2></div>
+      <div class="step-head"><span class="step-num">STEP 4</span><h2>Ship it</h2></div>
       <p class="sub">
-        Fill in the template details, then send the final image (upscaled, watermark-free)
-        in the Claude session with the generated instruction. The build re-runs the same QA
-        and the template ships only if it still passes.
+        The id, label and scene note are worked out from the image and your Step 1
+        choices — nothing to fill in. Press the button, paste into the Claude session,
+        and attach the final image (upscaled, watermark-free).
       </p>
-      <div class="grid2">
-        <label class="f">ID (kebab-case, ends -f or -m)
-          <input type="text" id="mId" placeholder="cafe-f">
-        </label>
-        <label class="f">Label (shown in the editor)
-          <input type="text" id="mLabel" placeholder="Coffee Shop">
-        </label>
-        <label class="f">Scene note
-          <input type="text" id="mScene" placeholder="Bright cafe, pale wood">
-        </label>
+      <div class="meta-preview" id="mPreview"></div>
+      <div class="row">
+        <button class="btn primary" id="mBuild">Copy hand-over instruction</button>
+        <span class="note" id="mCopied"></span>
       </div>
-      <div class="row"><button class="btn primary" id="mBuild">Generate hand-over instruction</button></div>
       <div class="push-code hidden" id="mOut" style="margin-top:12px"></div>
     </section>
 
@@ -388,7 +407,7 @@ pLook.innerHTML = LOOKS.map((l, i) => `<option value="${i}">${l[0]}</option>`).j
 pModel.addEventListener('change', fillPoses);
 fillPoses();
 
-document.getElementById('pBuild').addEventListener('click', () => {
+function buildPrompt(extra) {
   const g = pModel.value;
   const subj = g === 'woman' ? 'a young woman' : 'a young man';
   const pro = g === 'woman' ? ['She', 'her'] : ['He', 'his'];
@@ -406,8 +425,10 @@ document.getElementById('pBuild').addEventListener('click', () => {
   const hair = HAIR[g][+pHair.value][1];
   const prompt =
 `Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet crew-neck t-shirt with ${bottoms}${eyewearClause}. The t-shirt is a completely plain blank vivid violet cotton tee — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in a matte cotton jersey knit with no sheen, gloss or silky shine, a classic regular fit with a plain crew neckline, standard set-in short sleeves and a straight body, not oversized or boxy, with natural soft fabric folds. The chest of the shirt stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the shirt. Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve. Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the shirt — every part of the shirt stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — collar, sleeve hems and body hem — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
-  const out = document.getElementById('pOut');
-  out.value = prompt;
+  return extra ? prompt + extra : prompt;
+}
+document.getElementById('pBuild').addEventListener('click', () => {
+  document.getElementById('pOut').value = buildPrompt('');
   document.getElementById('pCopy').disabled = false;
 });
 document.getElementById('pCopy').addEventListener('click', async () => {
@@ -1310,9 +1331,11 @@ function runValidation(img, url) {
     document.getElementById('valPreview').src = url;
     const checks = [];
     let fails = 0, warns = 0;
-    const F = (cond, warnCond, label, num) => {
+    const broke = [];
+    const F = (cond, warnCond, label, num, fix) => {
       const st = cond ? 'fail' : (warnCond ? 'warn' : 'ok');
       if (st === 'fail') fails++; if (st === 'warn') warns++;
+      if (st !== 'ok' && fix) broke.push(fix);
       checks.push(checkRow(st, label, num));
     };
 
@@ -1327,36 +1350,41 @@ function runValidation(img, url) {
       const short = Math.min(a.srcW, a.srcH);
       F(short < 640, short < 1300,
         short < 1300 ? 'Resolution — fine for a raw generation, upscale to ≥1300px before hand-over' : 'Resolution (short side)',
-        short + 'px');
-      F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°');
-      F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%');
-      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)');
-      F(false, a.fragments > 1, 'Garment is one connected piece', a.fragments + (a.fragments > 1 ? ' fragments (occlusion?)' : ' piece'));
-      F(a.strayVioletPct > 0.5, a.strayVioletPct > 0.05, 'No other violet objects in scene', a.strayVioletPct.toFixed(2) + '%');
-      F(false, a.missed > 500, 'Violet fully captured by the key', a.missed + ' px missed');
-      F(a.skin > 2000, a.skin > 200, 'No skin captured as garment', a.skin + ' px');
-      F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%');
+        short + 'px', 'Render at the highest resolution available — the short side must be at least 1300 pixels.');
+      F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°', 'The t-shirt must be a VIVID VIOLET — a strong purple, clearly more blue than magenta. Not lilac, not lavender, not pink, not indigo, and not washed out.');
+      F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%', 'Frame so the t-shirt occupies roughly a third of the picture: the whole torso visible, with clear margin around the figure on every side.');
+      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)', 'Light the torso with SOFT EVEN DIFFUSED light from the front. No hard shadow line across the chest, no dark band down either side of the shirt. Every part of the shirt must stay clearly lit — shadow on it may only be a slightly darker violet, never near-black and never grey.');
+      F(false, a.fragments > 1, 'Garment is one connected piece', a.fragments + (a.fragments > 1 ? ' fragments (occlusion?)' : ' piece'), 'Both shoulders and both sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.');
+      F(a.strayVioletPct > 0.5, a.strayVioletPct > 0.05, 'No other violet objects in scene', a.strayVioletPct.toFixed(2) + '%', 'NOTHING else anywhere in the frame may be violet, purple, lilac, mauve or magenta — not clothing, not props, not flowers, not background.');
+      F(false, a.missed > 500, 'Violet fully captured by the key', a.missed + ' px missed', 'The shirt must be a single flat uniformly saturated violet across the whole garment, with no gradient, ombre, heather, marl or two-tone effect and no sheen.');
+      F(a.skin > 2000, a.skin > 200, 'No skin captured as garment', a.skin + ' px', 'Keep bare skin away from the shirt: both upper arms rest against the torso, hands stay out of the chest area, and no skin overlaps the garment.');
+      F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%', 'No blown-out or burnt-out highlights on the fabric. Keep the shirt off pure white anywhere — no specular hotspot, no direct hard light source on it.');
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
-      F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px');
-      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%');
-      F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px');
-      F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px');
+      F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', 'The garment edges — collar, sleeve hems and body hem — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.');
+      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
+      F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
+      F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm, and hair stays behind the shoulders so it casts no dark shadow onto the shirt.');
     }
     document.getElementById('checks').innerHTML = checks.join('');
     const v = document.getElementById('verdict');
     if (fails) {
       v.className = 'verdict fail';
-      v.innerHTML = 'FAIL — regenerate the image.<small>Fix the failing condition via the prompt; do not upscale or hand this one over.</small>';
+      v.innerHTML = 'FAIL — regenerate with the corrected prompt below.<small>Do not upscale or hand this one over.</small>';
       document.getElementById('tryStep').classList.add('hidden');
       document.getElementById('pushStep').classList.add('hidden');
+      showFixPrompt(broke);
     } else if (warns) {
       v.className = 'verdict warn';
       v.innerHTML = 'PASS WITH WARNINGS — try recolours below before deciding.<small>Warnings usually show up as visible flaws in white or black. Judge Step 3 carefully.</small>';
+      showFixPrompt(broke);
       setupTry();
+      renderMeta();
     } else {
       v.className = 'verdict ok';
-      v.innerHTML = 'PASS — try recolours below, then hand it over.<small>If this was the raw generation: upscale, remove the watermark, and validate the final file too.</small>';
+      v.innerHTML = 'PASS — try recolours below, then ship it.<small>If this was the raw generation: upscale, remove the watermark, and validate the final file too.</small>';
+      document.getElementById('fixWrap').classList.add('hidden');
       setupTry();
+      renderMeta();
     }
     drop.querySelector('b').textContent = 'Paste, drop, or click';
     // maps
@@ -1441,21 +1469,96 @@ function setupTry() {
 }
 
 /* ============ STEP 4 — HAND-OVER ============ */
-document.getElementById('mBuild').addEventListener('click', () => {
-  const id = (document.getElementById('mId').value.trim() || 'new-template');
-  const label = document.getElementById('mLabel').value.trim() || 'New Scene';
-  const scene = document.getElementById('mScene').value.trim() || label;
-  const model = id.endsWith('-m') ? 'male' : 'female';
+// The corrected prompt: the same brief, with every clause that just failed or
+// warned restated and hardened at the end. Image models weight late, emphatic
+// instructions heavily, and the validator already knows exactly which rule
+// broke — so there is no reason to make the operator work out the wording.
+function showFixPrompt(broke) {
+  const wrap = document.getElementById('fixWrap');
+  if (!broke || !broke.length) { wrap.classList.add('hidden'); return; }
+  const seen = [], list = [];
+  for (const b of broke) { if (!seen.includes(b)) { seen.push(b); list.push('- ' + b); } }
+  const extra = '\n\nTHE PREVIOUS ATTEMPT FAILED ON THESE POINTS. They are the reason '
+    + 'the image was rejected, so treat each one as a hard requirement:\n' + list.join('\n');
+  document.getElementById('fixOut').value = buildPrompt(extra);
+  wrap.classList.remove('hidden');
+}
+document.getElementById('fixCopy').addEventListener('click', () => {
+  copyFrom('fixOut', 'fixCopied');
+});
+
+// Shared clipboard path: the async API is blocked inside sandboxed iframes, so
+// fall back to selection + execCommand, and failing that leave the text
+// selected so a manual Ctrl/Cmd-C works.
+async function copyFrom(taId, noteId) {
+  const ta = document.getElementById(taId);
+  const note = document.getElementById(noteId);
+  const say = t => { note.textContent = t; setTimeout(() => { if (note.textContent === t) note.textContent = ''; }, 2500); };
+  try { await navigator.clipboard.writeText(ta.value); say('Copied.'); return; } catch (e) {}
+  try {
+    ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+    if (document.execCommand('copy')) { say('Copied.'); return; }
+  } catch (e) {}
+  ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+  say('Blocked by the browser — text is selected, press Ctrl/Cmd-C.');
+}
+
+/* ============ STEP 4 — SHIP ============ */
+// id, label and scene note are derived, not typed. Everything they need is
+// already known: the model from Step 1, the scene from the reference reader or
+// the scene text, and the suffix from the two ids the build already uses.
+const STOP = ['a','an','the','with','and','in','on','of','at','soft','softly','out','focus',
+  'shallow','depth','field','background','natural','daylight','light','far','behind','some'];
+function deriveMeta() {
+  const g = document.getElementById('pModel').value;
+  const suffix = g === 'woman' ? '-f' : '-m';
+  const sceneText = document.getElementById('pScene').value.trim();
+  const words = sceneText.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 2 && !STOP.includes(w));
+  const key = words.slice(0, 2);
+  const id = (key.join('-') || 'new-scene') + suffix;
+  const title = w => w.charAt(0).toUpperCase() + w.slice(1);
+  const label = key.map(title).join(' ') || 'New Scene';
+  // scene note: the first clause of the scene sentence, trimmed short
+  let note = sceneText.split(',')[0].replace(/^(a|an|the)\s+/i, '');
+  note = note.charAt(0).toUpperCase() + note.slice(1);
+  if (note.length > 46) note = note.slice(0, 44).replace(/\s+\S*$/, '') + '…';
+  return { id, label, scene: note || label, model: g === 'woman' ? 'female' : 'male' };
+}
+function renderMeta() {
+  const m = deriveMeta();
+  document.getElementById('mPreview').innerHTML =
+    `<span>id <b>${m.id}</b></span><span>label <b>${m.label}</b></span>` +
+    `<span>model <b>${m.model}</b></span><span>scene <b>${m.scene}</b></span>`;
+  return m;
+}
+document.getElementById('mBuild').addEventListener('click', async () => {
+  const m = renderMeta();
   const out = document.getElementById('mOut');
   out.classList.remove('hidden');
-  out.textContent =
-`Attach the final image (upscaled, watermark removed) in the Claude session with this message:
+  const text =
+`Add this on-model template:
+{ id: '${m.id}', file: '${m.id}.webp', label: '${m.label}', model: '${m.model}', scene: '${m.scene}' }`;
+  out.textContent = text + `
 
-Add this on-model template:
-{ id: '${id}', file: '${id}.webp', label: '${label}', model: '${model}', scene: '${scene}' }
-
-Claude will: save it to scratch/on-model-src/, run scratch/build_on_model_templates.cjs
-(the same QA gates re-run — it only ships if it still passes), verify renders, commit and push.`;
+Paste that into the Claude session and attach the final image (upscaled,
+watermark removed). Claude saves it to scratch/on-model-src/, runs the builder
+— the same QA gates re-run, so it only ships if it still passes — then rebuilds
+the preview and pushes.`;
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  const note = document.getElementById('mCopied');
+  try {
+    await navigator.clipboard.writeText(text);
+    note.textContent = 'Copied — paste it into the Claude session.';
+  } catch (e) {
+    ta.focus(); ta.select();
+    try { document.execCommand('copy'); note.textContent = 'Copied — paste it into the Claude session.'; }
+    catch (e2) { note.textContent = 'Copy the block below manually.'; }
+  }
+  setTimeout(() => { note.textContent = ''; }, 4000);
+  ta.remove();
 });
 </script>
 
