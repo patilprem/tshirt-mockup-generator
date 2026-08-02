@@ -934,6 +934,27 @@ const TEMPLATES = [
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
+        // Thumbnail-sized copies of the same three maps. The picker recolours
+        // its thumbnails with the live shirt colour, which needs weight and
+        // shade as well as the photo — and downloading three full-size maps per
+        // template just to draw a 112px tile would cost megabytes on a page
+        // that otherwise loads one template on demand. About 10KB each instead.
+        ...(() => {
+          const TW = 112, TH = 168;
+          const small = (srcCv, type, q) => {
+            const c = document.createElement('canvas');
+            c.width = TW; c.height = TH;
+            const x = c.getContext('2d');
+            x.imageSmoothingQuality = 'high';
+            x.drawImage(srcCv, 0, 0, TW, TH);
+            return c.toDataURL(type, q);
+          };
+          return {
+            thumbPhoto: small(photo, 'image/jpeg', 0.86),
+            thumbWeight: small(wpng, 'image/png'),
+            thumbShade: small(shadeCv, 'image/jpeg', 0.84),
+          };
+        })(),
       };
     }, { b64, MAX_EDGE, dbgPx });
     if (r.dbg && r.dbg.length) console.log('\nDBG', JSON.stringify(r.dbg, null, 1));
@@ -967,6 +988,9 @@ const TEMPLATES = [
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-photo.jpg`), Buffer.from(r.photo.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-weight.png`), Buffer.from(r.weight.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-shade.jpg`), Buffer.from(r.shade.split(',')[1], 'base64'));
+    fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-thumb-photo.jpg`), Buffer.from(r.thumbPhoto.split(',')[1], 'base64'));
+    fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-thumb-weight.png`), Buffer.from(r.thumbWeight.split(',')[1], 'base64'));
+    fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-thumb-shade.jpg`), Buffer.from(r.thumbShade.split(',')[1], 'base64'));
 
     manifest.push({
       id: tpl.id, label: tpl.label, model: tpl.model, scene: tpl.scene,
@@ -974,6 +998,10 @@ const TEMPLATES = [
       photo: `/assets/on-model/${tpl.id}-photo.jpg`,
       weight: `/assets/on-model/${tpl.id}-weight.png`,
       shade: `/assets/on-model/${tpl.id}-shade.jpg`,
+      thumbPhoto: `/assets/on-model/${tpl.id}-thumb-photo.jpg`,
+      thumbWeight: `/assets/on-model/${tpl.id}-thumb-weight.png`,
+      thumbShade: `/assets/on-model/${tpl.id}-thumb-shade.jpg`,
+      thumbWidth: 112, thumbHeight: 168,
       ambientTint: r.ambientTint, relMax: r.relMax, violetBase: r.violetBase,
       quad: r.quad, bbox: r.bbox,
     });

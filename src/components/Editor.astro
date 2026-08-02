@@ -46,7 +46,7 @@
     <div class="panel-section" id="on-model-section" style="display: none;">
       <h3 class="panel-title">Model &amp; Scene</h3>
       <div class="control-group">
-        <div class="garment-grid" id="on-model-selector"></div>
+        <div class="on-model-gallery" id="on-model-selector"></div>
       </div>
     </div>
 
@@ -1836,6 +1836,12 @@
     const onModelCache = new Map(); // id -> { photo, photoData, wArr, clipArr, shade, lutV, w, h, meta }
     let onModelComposed = null;     // cached recoloured full-frame canvas
     let onModelComposedKey = '';    // invalidation key: templateId + colour
+    // Maps template pixels to canvas pixels for the current frame, so a pointer
+    // event can be inverted back into the template's own coordinates.
+    let onModelView = { k: 1, ox: 0, oy: 0 };
+    let onModelSelected = false;    // handles show only while the print is selected
+    let onModelThumbColour = '';    // last colour the picker thumbnails were painted in
+    let onModelDrag = null;
 
     // 256-entry relight LUT: shade byte -> RGB for a given base colour. Shared
     // by the target colour and the violet reference so model errors cancel.
@@ -1952,30 +1958,50 @@
 
     // Maps the shared 0-1000 artboard design transform onto the template's
     // print quad, so the same drag/scale/rotate controls drive both modes.
-    function drawOnModelDesign(targetCtx, entry, scale) {
-      if (!designImage) return;
-      const { meta, w, h } = entry;
-      const q = meta.quad;
-      const cx = (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4;
-      const cy = (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4;
+    // Where the print sits on this template, in template pixels. Shared by the
+    // draw pass and by hit-testing, so what the user grabs is by construction
+    // what they see — the two cannot drift apart.
+    function onModelDesignBox(entry) {
+      const q = entry.meta.quad;
+      const qcx = (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4;
+      const qcy = (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4;
       const quadW = Math.hypot(q.tr[0] - q.tl[0], q.tr[1] - q.tl[1]);
       const quadH = Math.hypot(q.bl[0] - q.tl[0], q.bl[1] - q.tl[1]);
+      // The quad is measured from the torso itself, so a design at the default
+      // scale should simply fill it — that is what a chest print is.
+      const dAspect = designImage ? designImage.width / designImage.height : 1;
+      let dW = quadW * (designScale / 0.35);
+      let dH = dW / dAspect;
+      if (dAspect <= 1) { dH = quadH * (designScale / 0.35); dW = dH * dAspect; }
+      // designPos is authored in artboard units around (500, 420); carry that
+      // offset across proportionally rather than pinning the design dead-centre.
+      return {
+        cx: qcx + (designPos.x - 500) / 1000 * quadW,
+        cy: qcy + (designPos.y - 420) / 1000 * quadH,
+        w: dW, h: dH, qcx, qcy, quadW, quadH,
+      };
+    }
+    // Corners of the placed print, rotation applied: [TL, TR, BR, BL].
+    const ON_MODEL_CORNER_SIGN = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    function onModelBoxCorners(b) {
+      const co = Math.cos(designRotation), si = Math.sin(designRotation);
+      return ON_MODEL_CORNER_SIGN.map(([sx, sy]) => {
+        const x = sx * b.w / 2, y = sy * b.h / 2;
+        return { x: b.cx + x * co - y * si, y: b.cy + x * si + y * co };
+      });
+    }
+
+    function drawOnModelDesign(targetCtx, entry, scale) {
+      if (!designImage) return;
+      const { w, h } = entry;
+      const box = onModelDesignBox(entry);
+      const cx = box.qcx, cy = box.qcy;
+      const dW = box.w, dH = box.h;
+      const offX = box.cx - box.qcx, offY = box.cy - box.qcy;
 
       const layer = document.createElement('canvas');
       layer.width = w; layer.height = h;
       const lc = layer.getContext('2d');
-
-      // The quad is measured from the torso itself, so a design at the default
-      // scale should simply fill it — that is what a chest print is.
-      const dAspect = designImage.width / designImage.height;
-      let dW = quadW * (designScale / 0.35);
-      let dH = dW / dAspect;
-      if (dAspect <= 1) { dH = quadH * (designScale / 0.35); dW = dH * dAspect; }
-
-      // designPos is authored in artboard units around (500, 420); carry that
-      // offset across proportionally rather than pinning the design dead-centre.
-      const offX = (designPos.x - 500) / 1000 * quadW;
-      const offY = (designPos.y - 420) / 1000 * quadH;
 
       const srcGraphic = isDesignTransparent ? designImage : processedDesignBuffer;
       if (!srcGraphic) return;
@@ -2013,7 +2039,13 @@
           // clamp so an unusually steep gradient cannot tear the print apart
           const ux = gx[i] / ref, uy = gy[i] / ref;
           const m = Math.hypot(ux, uy), lim = m > 2.5 ? 2.5 / m : 1;
-          const sx = x - ux * lim * K, sy = y - uy * lim * K;
+          // Fade the displacement out at the silhouette. The shade gradient
+          // there is the edge of the garment, not a fold, and it is far
+          // steeper than any crease — left alone it shoves the print off the
+          // body, where the coverage clip then deletes it. A design dragged
+          // near the sleeve lost its last letter to exactly this.
+          const att = (entry.clipArr[i] / 255) ** 2;
+          const sx = x - ux * lim * K * att, sy = y - uy * lim * K * att;
           const fx = Math.max(0, Math.min(w - 1.001, sx)), fy = Math.max(0, Math.min(h - 1.001, sy));
           const ix = fx | 0, iy = fy | 0, tx = fx - ix, ty = fy - iy;
           const o00 = (iy * w + ix) * 4, o10 = o00 + 4, o01 = o00 + w * 4, o11 = o01 + 4;
@@ -2192,6 +2224,8 @@
       const dw = entry.w * k, dh = entry.h * k;
       const ox = (frameW - dw) / 2, oy = (frameH - dh) / 2;
 
+      onModelView = { k, ox, oy };
+
       drawBackground(targetCtx, frameW, frameH, false);
       targetCtx.save();
       targetCtx.translate(ox, oy);
@@ -2199,12 +2233,167 @@
       targetCtx.drawImage(onModelComposed, 0, 0);
       drawOnModelDesign(targetCtx, entry, 1);
       targetCtx.restore();
+      // Handles are chrome: drawn after restore, in canvas pixels, so they stay
+      // a constant size on screen and are never clipped to the garment.
+      drawOnModelHandles(targetCtx, entry);
       return true;
     }
 
 
+    const ON_MODEL_HANDLE = 7;      // canvas pixels, half-size
+    const ON_MODEL_ROT_GAP = 30;
+
+    function onModelToCanvas(p) {
+      return { x: onModelView.ox + p.x * onModelView.k, y: onModelView.oy + p.y * onModelView.k };
+    }
+    function onModelToTemplate(e) {
+      const rect = canvas.getBoundingClientRect();
+      const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: ((clientX - rect.left) * sx - onModelView.ox) / onModelView.k,
+        y: ((clientY - rect.top) * sy - onModelView.oy) / onModelView.k,
+      };
+    }
+    function onModelRotHandle(b) {
+      const co = Math.cos(designRotation), si = Math.sin(designRotation);
+      const gap = ON_MODEL_ROT_GAP / onModelView.k;
+      const y = -b.h / 2 - gap;
+      return { x: b.cx - y * si, y: b.cy + y * co };
+    }
+
+    function drawOnModelHandles(targetCtx, entry) {
+      if (!designImage || !onModelSelected) return;
+      const b = onModelDesignBox(entry);
+      const pts = onModelBoxCorners(b).map(onModelToCanvas);
+      const rot = onModelToCanvas(onModelRotHandle(b));
+      targetCtx.save();
+      targetCtx.strokeStyle = '#3b82f6';
+      targetCtx.lineWidth = 2;
+      targetCtx.beginPath();
+      targetCtx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < 4; i++) targetCtx.lineTo(pts[i].x, pts[i].y);
+      targetCtx.closePath();
+      targetCtx.stroke();
+      const top = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      targetCtx.beginPath();
+      targetCtx.moveTo(top.x, top.y);
+      targetCtx.lineTo(rot.x, rot.y);
+      targetCtx.stroke();
+      targetCtx.fillStyle = '#ffffff';
+      for (const p of pts) {
+        targetCtx.beginPath();
+        targetCtx.rect(p.x - ON_MODEL_HANDLE, p.y - ON_MODEL_HANDLE, ON_MODEL_HANDLE * 2, ON_MODEL_HANDLE * 2);
+        targetCtx.fill(); targetCtx.stroke();
+      }
+      targetCtx.beginPath();
+      targetCtx.arc(rot.x, rot.y, ON_MODEL_HANDLE + 1, 0, Math.PI * 2);
+      targetCtx.fill(); targetCtx.stroke();
+      targetCtx.restore();
+    }
+
+    function onModelHitTest(pt, entry) {
+      if (!designImage) return null;
+      const b = onModelDesignBox(entry);
+      const tol = (ON_MODEL_HANDLE + 5) / onModelView.k;
+      const near = (a, c, r) => Math.hypot(a.x - c.x, a.y - c.y) <= r;
+      if (onModelSelected) {
+        if (near(pt, onModelRotHandle(b), tol + 2 / onModelView.k)) return { mode: 'rotate' };
+        const pts = onModelBoxCorners(b);
+        for (let i = 0; i < 4; i++) if (near(pt, pts[i], tol)) return { mode: 'scale', corner: i };
+      }
+      const co = Math.cos(designRotation), si = Math.sin(designRotation);
+      const dx = pt.x - b.cx, dy = pt.y - b.cy;
+      const lx = dx * co + dy * si, ly = -dx * si + dy * co;
+      if (Math.abs(lx) <= b.w / 2 && Math.abs(ly) <= b.h / 2) return { mode: 'move' };
+      return null;
+    }
+
+    // Writes a template-space centre back into the shared artboard designPos,
+    // so the sidebar's own position readout and the flat-lay state stay in step.
+    function onModelSetCentre(b, x, y) {
+      designPos.x = 500 + (x - b.qcx) / b.quadW * 1000;
+      designPos.y = 420 + (y - b.qcy) / b.quadH * 1000;
+    }
+
+    function onModelPointerStart(e) {
+      const entry = onModelCache.get(activeOnModelId);
+      if (!entry || !designImage) return;
+      const pt = onModelToTemplate(e);
+      const hit = onModelHitTest(pt, entry);
+      if (!hit) {                      // click outside deselects, as in flat-lay
+        if (onModelSelected) { onModelSelected = false; render(); }
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      if (!onModelSelected) onModelSelected = true;
+      const b = onModelDesignBox(entry);
+      onModelDrag = { ...hit, start: pt, cx0: b.cx, cy0: b.cy, scale0: designScale,
+                      w0: b.w, h0: b.h, rot0: designRotation };
+      if (hit.mode === 'scale') {
+        const pts = onModelBoxCorners(b);
+        onModelDrag.anchorIdx = (hit.corner + 2) % 4;
+        onModelDrag.anchor = pts[onModelDrag.anchorIdx];
+        onModelDrag.grab0 = Math.max(1e-3, Math.hypot(
+          pts[hit.corner].x - onModelDrag.anchor.x, pts[hit.corner].y - onModelDrag.anchor.y));
+      }
+      if (hit.mode === 'rotate') onModelDrag.a0 = Math.atan2(pt.y - b.cy, pt.x - b.cx) - designRotation;
+      render();
+    }
+
+    function onModelPointerMove(e) {
+      const entry = onModelCache.get(activeOnModelId);
+      if (!entry) return;
+      if (!onModelDrag) {
+        if (!designImage) { canvas.style.cursor = 'default'; return; }
+        const h = onModelHitTest(onModelToTemplate(e), entry);
+        canvas.style.cursor = !h ? 'default' : h.mode === 'move' ? 'move'
+          : h.mode === 'rotate' ? 'crosshair' : 'nwse-resize';
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      const pt = onModelToTemplate(e);
+      const b = onModelDesignBox(entry);
+      if (onModelDrag.mode === 'move') {
+        let nx = onModelDrag.cx0 + (pt.x - onModelDrag.start.x);
+        let ny = onModelDrag.cy0 + (pt.y - onModelDrag.start.y);
+        const snap = 9 / onModelView.k;
+        if (Math.abs(nx - b.qcx) < snap) nx = b.qcx;   // snap to the chest centre
+        if (Math.abs(ny - b.qcy) < snap) ny = b.qcy;
+        onModelSetCentre(b, nx, ny);
+      } else if (onModelDrag.mode === 'scale') {
+        const k = Math.max(0.06, Math.hypot(pt.x - onModelDrag.anchor.x, pt.y - onModelDrag.anchor.y) / onModelDrag.grab0);
+        designScale = Math.max(0.05, Math.min(2.5, onModelDrag.scale0 * k));
+        // Keep the opposite corner pinned: the anchor sits at its own local
+        // offset from the centre, so the centre is the anchor MINUS that offset
+        // at the new size, through the current rotation.
+        const co = Math.cos(designRotation), si = Math.sin(designRotation);
+        const [sx, sy] = ON_MODEL_CORNER_SIGN[onModelDrag.anchorIdx];
+        const ax = sx * (onModelDrag.w0 * k) / 2, ay = sy * (onModelDrag.h0 * k) / 2;
+        onModelSetCentre(b, onModelDrag.anchor.x - (ax * co - ay * si),
+                            onModelDrag.anchor.y - (ax * si + ay * co));
+        if (typeof scaleSlider !== 'undefined' && scaleSlider) scaleSlider.value = Math.round(designScale * 100);
+        if (typeof scaleManual !== 'undefined' && scaleManual) scaleManual.value = Math.round(designScale * 100);
+      } else {
+        let deg = (Math.atan2(pt.y - onModelDrag.cy0, pt.x - onModelDrag.cx0) - onModelDrag.a0) * 180 / Math.PI;
+        if (deg > 180) deg -= 360;
+        if (deg < -180) deg += 360;
+        designRotation = snapAngleDeg(deg) * (Math.PI / 180);
+        if (typeof rotationSlider !== 'undefined' && rotationSlider) rotationSlider.value = Math.round(designRotation * 180 / Math.PI);
+        if (typeof rotationManual !== 'undefined' && rotationManual) rotationManual.value = Math.round(designRotation * 180 / Math.PI);
+      }
+      render();
+    }
+
+    function onModelPointerEnd() {
+      if (onModelDrag) { onModelDrag = null; render(); }
+    }
+
     async function setMockupStyle(style) {
       mockupStyle = style;
+      onModelSelected = false;
+      onModelDrag = null;
       document.querySelectorAll('#mockup-style-toggle .style-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.style === style);
       });
@@ -2237,18 +2426,86 @@
       render();
     }
 
+    // Thumbnail maps, kept separate from the full-size ones. They are a few KB
+    // each, so the picker can show every model recoloured without pulling five
+    // full templates onto a page that otherwise loads one on demand.
+    const onModelThumbs = new Map();
+    async function loadOnModelThumb(meta) {
+      if (onModelThumbs.has(meta.id)) return onModelThumbs.get(meta.id);
+      const loadImg = src => new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('failed to load ' + src));
+        i.src = src;
+      });
+      const [ph, wt, sh] = await Promise.all([
+        loadImg(meta.thumbPhoto), loadImg(meta.thumbWeight), loadImg(meta.thumbShade),
+      ]);
+      const w = meta.thumbWidth || 112, h = meta.thumbHeight || 168, n = w * h;
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      const tc = tmp.getContext('2d', { willReadFrequently: true });
+      tc.drawImage(ph, 0, 0, w, h);
+      const photo = new Uint8ClampedArray(tc.getImageData(0, 0, w, h).data);
+      tc.clearRect(0, 0, w, h); tc.drawImage(wt, 0, 0, w, h);
+      const wd = tc.getImageData(0, 0, w, h).data;
+      tc.clearRect(0, 0, w, h); tc.drawImage(sh, 0, 0, w, h);
+      const sd = tc.getImageData(0, 0, w, h).data;
+      const wArr = new Uint8ClampedArray(n), ownArr = new Uint8ClampedArray(n), shade = new Uint8ClampedArray(n);
+      for (let i = 0; i < n; i++) {
+        wArr[i] = wd[i * 4]; ownArr[i] = wd[i * 4 + 2]; shade[i] = sd[i * 4];
+      }
+      const entry = { w, h, photo, wArr, ownArr, shade, lutV: onModelRelightLut(meta.violetBase, meta) };
+      onModelThumbs.set(meta.id, entry);
+      return entry;
+    }
+
+    // Same recolour as the main frame, so a thumbnail is an honest preview of
+    // what selecting it produces rather than a tinted stand-in.
+    function paintOnModelThumb(cv, th, meta, hex) {
+      const tr = parseInt(hex.slice(1, 3), 16);
+      const tg = parseInt(hex.slice(3, 5), 16);
+      const tb = parseInt(hex.slice(5, 7), 16);
+      const lutT = onModelRelightLut([tr, tg, tb], meta);
+      const { w, h, photo, wArr, ownArr, shade, lutV } = th;
+      cv.width = w; cv.height = h;
+      const cx = cv.getContext('2d');
+      const out = cx.createImageData(w, h), d = out.data;
+      d.set(photo);
+      for (let i = 0, n = w * h; i < n; i++) {
+        const wv = wArr[i]; if (wv === 0) continue;
+        const ww = wv / 255, cl = ownArr[i] / 255, sb = shade[i] * 3, o = i * 4;
+        d[o]     = d[o]     + ww * (lutT[sb]     - cl * d[o]     - (1 - cl) * lutV[sb]);
+        d[o + 1] = d[o + 1] + ww * (lutT[sb + 1] - cl * d[o + 1] - (1 - cl) * lutV[sb + 1]);
+        d[o + 2] = d[o + 2] + ww * (lutT[sb + 2] - cl * d[o + 2] - (1 - cl) * lutV[sb + 2]);
+      }
+      cx.putImageData(out, 0, 0);
+    }
+
+    async function repaintOnModelThumbs() {
+      const host = document.getElementById('on-model-selector');
+      if (!host) return;
+      for (const btn of host.querySelectorAll('.on-model-card')) {
+        const meta = onModelTemplates.find(t => t.id === btn.dataset.template);
+        if (!meta || !meta.thumbPhoto) continue;
+        try {
+          const th = await loadOnModelThumb(meta);
+          paintOnModelThumb(btn.querySelector('canvas'), th, meta, shirtColor);
+        } catch (e) { /* a missing thumbnail must not break the picker */ }
+      }
+    }
+
     function buildOnModelSelector() {
       const host = document.getElementById('on-model-selector');
       if (!host) return;
       host.innerHTML = onModelTemplates.map(t => `
-        <button class="garment-card${t.id === activeOnModelId ? ' active' : ''}" data-template="${t.id}" title="${t.scene}">
-          <span class="garment-icon" aria-hidden="true">${t.model === 'female' ? '👩' : '👨'}</span>
-          <span class="garment-name">${t.label}</span>
-        </button>`).join('');
-      host.querySelectorAll('.garment-card').forEach(btn => {
+        <button class="on-model-card" data-template="${t.id}"
+                title="${t.label} — ${t.scene}" aria-label="${t.label}"
+                aria-pressed="${t.id === activeOnModelId}"><canvas width="112" height="168"></canvas></button>`).join('');
+      host.querySelectorAll('.on-model-card').forEach(btn => {
         btn.addEventListener('click', async () => {
           activeOnModelId = btn.dataset.template;
-          host.querySelectorAll('.garment-card').forEach(b => b.classList.toggle('active', b === btn));
+          host.querySelectorAll('.on-model-card').forEach(b => b.setAttribute('aria-pressed', b === btn));
           const meta = onModelTemplates.find(t => t.id === activeOnModelId);
           if (!meta) return;
           if (canvasLoading) canvasLoading.style.display = 'flex';
@@ -2261,6 +2518,7 @@
           render();
         });
       });
+      repaintOnModelThumbs();
     }
 
     async function initOnModel() {
@@ -2285,6 +2543,12 @@
       const h = canvas.height;
 
       if (mockupStyle === 'onmodel') {
+        // Repaint the picker only when the colour actually changed — render()
+        // also runs on every pointer move during a drag.
+        if (onModelThumbColour !== shirtColor) {
+          onModelThumbColour = shirtColor;
+          repaintOnModelThumbs();
+        }
         if (drawOnModelScene(ctx, w, h)) return;
       }
 
@@ -2983,14 +3247,22 @@
     }
 
     // Attach Mouse Events
+    // On-model works in the template's own pixel space, not the flat-lay
+    // 0-1000 artboard, so it takes the raw event and inverts its own transform.
     canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
+      if (mockupStyle === 'onmodel') { onModelPointerStart(e); return; }
       handleStart(getCanvasCoords(e));
     });
     window.addEventListener('mousemove', (e) => {
+      if (mockupStyle === 'onmodel') {
+        if (onModelDrag || e.target === canvas) onModelPointerMove(e);
+        return;
+      }
       handleMove(getCanvasCoords(e));
     });
     window.addEventListener('mouseup', () => {
+      if (mockupStyle === 'onmodel') { onModelPointerEnd(); return; }
       handleEnd();
     });
 
@@ -2998,20 +3270,28 @@
     canvas.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         e.preventDefault();
+        if (mockupStyle === 'onmodel') { onModelPointerStart(e); return; }
         handleStart(getCanvasCoords(e));
       }
     });
     window.addEventListener('touchmove', (e) => {
+      if (mockupStyle === 'onmodel') { if (onModelDrag) onModelPointerMove(e); return; }
       if (isDragging || isScaling || isRotating || draggedPropType || isScalingProp || isRotatingProp) {
         handleMove(getCanvasCoords(e));
       }
     }, { passive: false });
     window.addEventListener('touchend', () => {
+      if (mockupStyle === 'onmodel') { onModelPointerEnd(); return; }
       handleEnd();
     });
 
     // Global click/touch listener to clear selection when clicking outside
     const handleOutsideClick = (e) => {
+      if (mockupStyle === 'onmodel' && onModelSelected &&
+          canvas && !canvas.contains(e.target) && !e.target.closest('.sidebar')) {
+        onModelSelected = false;
+        render();
+      }
       if (canvas && !canvas.contains(e.target) &&
           !e.target.closest('.sidebar') &&
           !e.target.closest('.viewport-export-panel') &&
