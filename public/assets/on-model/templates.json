@@ -253,5 +253,56 @@
       "w": 607,
       "h": 718
     }
+  },
+  {
+    "id": "home-f",
+    "label": "New Scene",
+    "model": "female",
+    "scene": "home indoor",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/home-f-photo.jpg",
+    "weight": "/assets/on-model/home-f-weight.png",
+    "shade": "/assets/on-model/home-f-shade.jpg",
+    "thumbPhoto": "/assets/on-model/home-f-thumb-photo.jpg",
+    "thumbWeight": "/assets/on-model/home-f-thumb-weight.png",
+    "thumbShade": "/assets/on-model/home-f-thumb-shade.jpg",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.995,
+      1,
+      0.9851
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      112,
+      66.9,
+      160
+    ],
+    "quad": {
+      "tl": [
+        403.20000000000005,
+        711
+      ],
+      "tr": [
+        721.8,
+        711
+      ],
+      "br": [
+        741.3,
+        1057
+      ],
+      "bl": [
+        422.70000000000005,
+        1057
+      ]
+    },
+    "bbox": {
+      "x": 161,
+      "y": 525,
+      "w": 792,
+      "h": 887
+    }
   }
 ]
