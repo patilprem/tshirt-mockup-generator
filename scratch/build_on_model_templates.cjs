@@ -59,6 +59,7 @@ const TEMPLATES = [
   { id: 'home-f', file: 'home-f.webp', label: 'New Scene', model: 'female', scene: 'home indoor' },
   { id: 'bright-airy-f', file: 'bright-airy-f.webp', label: 'Bright Airy', model: 'female', scene: 'Bright airy coffee shop, pale wood' },
   { id: 'miami-f', file: 'miami-f.webp', label: 'Miami Street', model: 'female', scene: 'palm-lined street' },
+  { id: 'bright-minimal-m', file: 'bright-minimal-m.webp', label: 'Bright Minimal', model: 'male', scene: 'Bright minimal grey walls, soft daylight' },
 ];
 
 (async () => {

@@ -355,5 +355,56 @@
       "w": 740,
       "h": 832
     }
+  },
+  {
+    "id": "bright-minimal-m",
+    "label": "Bright Minimal",
+    "model": "male",
+    "scene": "Bright minimal grey walls, soft daylight",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/bright-minimal-m-photo.jpg",
+    "weight": "/assets/on-model/bright-minimal-m-weight.png",
+    "shade": "/assets/on-model/bright-minimal-m-shade.jpg",
+    "thumbPhoto": "/assets/on-model/bright-minimal-m-thumb-photo.jpg",
+    "thumbWeight": "/assets/on-model/bright-minimal-m-thumb-weight.png",
+    "thumbShade": "/assets/on-model/bright-minimal-m-thumb-shade.jpg",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9947,
+      1,
+      0.984
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      111.8,
+      68.5,
+      143
+    ],
+    "quad": {
+      "tl": [
+        388,
+        737
+      ],
+      "tr": [
+        697,
+        737
+      ],
+      "br": [
+        695.5,
+        1109
+      ],
+      "bl": [
+        386.5,
+        1109
+      ]
+    },
+    "bbox": {
+      "x": 127,
+      "y": 537,
+      "w": 829,
+      "h": 954
+    }
   }
 ]
