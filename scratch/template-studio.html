@@ -158,6 +158,14 @@
     padding: 3px 10px; color: var(--ink);
   }
   .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .lock-row {
+    display: flex; gap: 9px; align-items: flex-start; margin-top: 10px;
+    font-size: 12.5px; color: var(--muted); cursor: pointer; line-height: 1.5;
+  }
+  .lock-row input { accent-color: var(--accent); margin-top: 2px; flex: 0 0 auto; }
+  .lock-row b { color: var(--ink); font-weight: 600; }
+  label.f.locked { opacity: .55; }
+  label.f.locked input, label.f.locked select { cursor: not-allowed; }
   .hidden { display: none !important; }
   .note { font-size: 12.5px; color: var(--muted); }
   button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
@@ -214,6 +222,11 @@
           The scene, light and bottoms fields are drafted from it; edit before building.
           <input type="file" id="inspFile" accept="image/*">
         </div>
+        <label class="lock-row hidden" id="inspLockRow">
+          <input type="checkbox" id="inspLock" checked>
+          <span><b>Take scene, bottoms and framing from the image</b> — those three fields
+          lock so the reference decides them. Untick to edit them by hand.</span>
+        </label>
         <div class="insp-out hidden" id="inspOut">
           <img id="inspPreview" alt="Inspiration">
           <div>
@@ -473,6 +486,28 @@ function runInspiration(img, url) {
   document.getElementById('pScene').value = SCENES[top] || SCENES.white;
   document.getElementById('pBottoms').value = bottoms;
 
+  // Framing, from how much of the frame the subject occupies. Measured against
+  // the background ring's own colour rather than a fixed threshold, so a dark
+  // scene and a bright one are judged the same way.
+  let bgR = 0, bgG = 0, bgB = 0, bgC2 = 0;
+  for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+    if (!(xx < W * 0.12 || xx > W * 0.88 || yy < H * 0.10)) continue;
+    const o = (yy * W + xx) * 4; bgR += d[o]; bgG += d[o + 1]; bgB += d[o + 2]; bgC2++;
+  }
+  bgR /= Math.max(1, bgC2); bgG /= Math.max(1, bgC2); bgB /= Math.max(1, bgC2);
+  let fg = 0, tot = 0;
+  for (let yy = Math.round(H * 0.12); yy < H * 0.95; yy++) for (let xx = 0; xx < W; xx++) {
+    const o = (yy * W + xx) * 4;
+    tot++;
+    if (Math.hypot(d[o] - bgR, d[o + 1] - bgG, d[o + 2] - bgB) > 42) fg++;
+  }
+  const fgFrac = fg / Math.max(1, tot);
+  const framing = fgFrac > 0.46 ? 'tight' : 'wide';
+  document.getElementById('pFraming').value = framing;
+
+  document.getElementById('inspLockRow').classList.remove('hidden');
+  applyInspLock();
+
   // chips
   const outdoor = top === 'foliage' || top === 'sky';
   const chips = [
@@ -481,6 +516,7 @@ function runInspiration(img, url) {
     bgBright > 0.62 ? 'bright' : bgBright > 0.4 ? 'mid light' : 'moody',
     blurred ? 'bg out of focus' : 'bg in focus',
     'bottoms: ' + bottoms,
+    'framing: ' + (framing === 'tight' ? 'tight, hips up' : 'wide, mid-thigh up'),
   ];
   const chipHost = document.getElementById('inspChips');
   chipHost.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
@@ -488,10 +524,29 @@ function runInspiration(img, url) {
   if (bgBright < 0.4) chipHost.innerHTML += `<span class="chip warn">dark scene — risky for the shadow QA gate</span>`;
   document.getElementById('inspPreview').src = url;
   document.getElementById('inspOut').classList.remove('hidden');
-  document.getElementById('inspNote').textContent =
-    'Scene and bottoms fields were drafted from the image — edit them, pick model, pose and framing, then Build prompt. Garment, light and pose rules are never copied from the inspiration.';
   inspDrop.querySelector('b').textContent = 'Inspiration loaded — paste another to replace it.';
 }
+
+// Locks the three fields the reference image supplies. Model and pose are
+// deliberately NOT locked and never read from the image: our pose list is the
+// set that keeps arms against the torso, and a reference photo's pose may be
+// one the pipeline cannot handle. Copying it would defeat the point.
+function applyInspLock() {
+  const on = document.getElementById('inspLock').checked;
+  for (const id of ['pScene', 'pBottoms', 'pFraming']) {
+    const el = document.getElementById(id);
+    el.disabled = on;
+    const lbl = el.closest('label.f');
+    if (lbl) lbl.classList.toggle('locked', on);
+  }
+  const note = document.getElementById('inspNote');
+  if (note) {
+    note.textContent = on
+      ? 'Scene, bottoms and framing are taken from the image and locked. Model and pose stay yours — the pipeline needs a pose from its own safe list, so it is never copied from the reference.'
+      : 'Fields unlocked — edit anything before building. The garment, light and pose rules are fixed either way and never come from the image.';
+  }
+}
+document.getElementById('inspLock').addEventListener('change', applyInspLock);
 
 /* ============ SHARED ANALYSIS (port of the build pipeline) ============ */
 const MAX_EDGE = 1600;
