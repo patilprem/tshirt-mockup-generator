@@ -253,5 +253,56 @@
       "w": 792,
       "h": 887
     }
+  },
+  {
+    "id": "bright-airy-f",
+    "label": "Bright Airy",
+    "model": "female",
+    "scene": "Bright airy coffee shop, pale wood",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/bright-airy-f-photo.jpg",
+    "weight": "/assets/on-model/bright-airy-f-weight.png",
+    "shade": "/assets/on-model/bright-airy-f-shade.jpg",
+    "thumbPhoto": "/assets/on-model/bright-airy-f-thumb-photo.jpg",
+    "thumbWeight": "/assets/on-model/bright-airy-f-thumb-weight.png",
+    "thumbShade": "/assets/on-model/bright-airy-f-thumb-shade.jpg",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9848,
+      1,
+      0.9848
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      119.7,
+      76.7,
+      152
+    ],
+    "quad": {
+      "tl": [
+        342.4,
+        801
+      ],
+      "tr": [
+        691.6,
+        801
+      ],
+      "br": [
+        698.1,
+        1179
+      ],
+      "bl": [
+        348.9,
+        1179
+      ]
+    },
+    "bbox": {
+      "x": 126,
+      "y": 598,
+      "w": 852,
+      "h": 968
+    }
   }
 ]
