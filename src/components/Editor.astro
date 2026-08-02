@@ -2199,8 +2199,33 @@
     }
 
 
-    const ON_MODEL_HANDLE = 7;      // canvas pixels, half-size
-    const ON_MODEL_ROT_GAP = 30;
+    const ON_MODEL_HANDLE = 11;     // CSS pixels on screen, corner circle radius
+    const ON_MODEL_ROT_R = 15;      // CSS pixels, rotate button radius
+    const ON_MODEL_ROT_GAP = 34;    // CSS pixels below the box
+    // Grab tolerance. A mouse pointer is a pixel and can afford a tight
+    // target; a fingertip covers about 44px, so a coarse pointer gets a
+    // radius that adds up to roughly that.
+    const ON_MODEL_HIT = 14;
+    const ON_MODEL_HIT_COARSE = 24;
+
+    // The canvas BITMAP is a fixed size and CSS scales it down to fit — by
+    // 2x on a desktop and 3.4x on a phone. Anything meant to be a constant
+    // size on SCREEN therefore has to be multiplied back up before it is
+    // drawn or hit-tested in canvas pixels. These were plain canvas pixels
+    // before, so a handle specified as 14px rendered at 4.1px on a phone with
+    // a 7px grab radius — a sixth of a fingertip, which is why resizing and
+    // rotating on a model were so hard to land.
+    function onModelCanvasScale() {
+      const shown = canvas.clientWidth;
+      return shown ? canvas.width / shown : 1;
+    }
+    // Never smaller than the handle actually drawn, so a control can always be
+    // grabbed anywhere it is visible, and never smaller than a fingertip needs.
+    function onModelHitTol(drawnRadius) {
+      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      const base = coarse ? ON_MODEL_HIT_COARSE : ON_MODEL_HIT;
+      return Math.max(base, (drawnRadius || 0) + 6) * onModelCanvasScale();
+    }
 
     function onModelToCanvas(p) {
       return { x: onModelView.ox + p.x * onModelView.k, y: onModelView.oy + p.y * onModelView.k };
@@ -2217,8 +2242,11 @@
     }
     function onModelRotHandle(b) {
       const co = Math.cos(designRotation), si = Math.sin(designRotation);
-      const gap = ON_MODEL_ROT_GAP / onModelView.k;
-      const y = -b.h / 2 - gap;
+      // Below the box, not above it: on a chest print the top edge sits near
+      // the collar, where a handle above it lands on the model's face and is
+      // awkward to reach with a thumb.
+      const gap = ON_MODEL_ROT_GAP * onModelCanvasScale() / onModelView.k;
+      const y = b.h / 2 + gap;
       return { x: b.cx - y * si, y: b.cy + y * co };
     }
 
@@ -2227,40 +2255,52 @@
       const b = onModelDesignBox(entry);
       const pts = onModelBoxCorners(b).map(onModelToCanvas);
       const rot = onModelToCanvas(onModelRotHandle(b));
+      // Everything here is screen furniture, so it is scaled to stay the same
+      // size however far CSS shrinks the canvas — otherwise the outline and
+      // handles thin out to nothing on a phone.
+      const s = onModelCanvasScale();
+      const hs = ON_MODEL_HANDLE * s;
       targetCtx.save();
       targetCtx.strokeStyle = '#3b82f6';
-      targetCtx.lineWidth = 2;
+      targetCtx.lineWidth = 2 * s;
       targetCtx.beginPath();
       targetCtx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < 4; i++) targetCtx.lineTo(pts[i].x, pts[i].y);
       targetCtx.closePath();
       targetCtx.stroke();
-      const top = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-      targetCtx.beginPath();
-      targetCtx.moveTo(top.x, top.y);
-      targetCtx.lineTo(rot.x, rot.y);
-      targetCtx.stroke();
+      // Round corner handles and a free-standing rotate button below the box,
+      // after Canva's mobile controls. Circles read as grabbable at a size
+      // where a square starts to look like a bug, and putting rotate on its
+      // own below the selection means it is never crowded by the corners —
+      // on a small print the old knob-on-a-stalk sat almost on top of them.
       targetCtx.fillStyle = '#ffffff';
       for (const p of pts) {
         targetCtx.beginPath();
-        targetCtx.rect(p.x - ON_MODEL_HANDLE, p.y - ON_MODEL_HANDLE, ON_MODEL_HANDLE * 2, ON_MODEL_HANDLE * 2);
+        targetCtx.arc(p.x, p.y, hs, 0, Math.PI * 2);
         targetCtx.fill(); targetCtx.stroke();
       }
       targetCtx.beginPath();
-      targetCtx.arc(rot.x, rot.y, ON_MODEL_HANDLE + 1, 0, Math.PI * 2);
+      targetCtx.arc(rot.x, rot.y, ON_MODEL_ROT_R * s, 0, Math.PI * 2);
       targetCtx.fill(); targetCtx.stroke();
+      // Rotation glyph: an open circular arrow, so the button says what it is.
+      targetCtx.beginPath();
+      targetCtx.lineWidth = 2 * s;
+      const gr = ON_MODEL_ROT_R * s * 0.45;
+      targetCtx.arc(rot.x, rot.y, gr, Math.PI * 0.35, Math.PI * 1.85);
+      targetCtx.stroke();
       targetCtx.restore();
     }
 
     function onModelHitTest(pt, entry) {
       if (!designImage) return null;
       const b = onModelDesignBox(entry);
-      const tol = (ON_MODEL_HANDLE + 5) / onModelView.k;
       const near = (a, c, r) => Math.hypot(a.x - c.x, a.y - c.y) <= r;
       if (onModelSelected) {
-        if (near(pt, onModelRotHandle(b), tol + 2 / onModelView.k)) return { mode: 'rotate' };
+        const rotTol = onModelHitTol(ON_MODEL_ROT_R) / onModelView.k;
+        if (near(pt, onModelRotHandle(b), rotTol)) return { mode: 'rotate' };
+        const cornTol = onModelHitTol(ON_MODEL_HANDLE) / onModelView.k;
         const pts = onModelBoxCorners(b);
-        for (let i = 0; i < 4; i++) if (near(pt, pts[i], tol)) return { mode: 'scale', corner: i };
+        for (let i = 0; i < 4; i++) if (near(pt, pts[i], cornTol)) return { mode: 'scale', corner: i };
       }
       const co = Math.cos(designRotation), si = Math.sin(designRotation);
       const dx = pt.x - b.cx, dy = pt.y - b.cy;
