@@ -670,6 +670,20 @@ const TEMPLATES = [
         }
       }
 
+      // The own-value blend, computed once and shared by the weight map's B
+      // channel and the chroma QA gate below. One array rather than the same
+      // expression written twice: the gate exists to catch this value going
+      // wrong, which it cannot do if it recomputes the value independently and
+      // the two drift apart.
+      const ownBlend = new Float32Array(N);
+      for (let i = 0; i < N; i++) {
+        ownBlend[i] = Math.max(0, Math.min(1, Math.max(
+          clip[i],
+          unrel[i],
+          outside[i] ? 1 - Math.max(0, Math.min(1, confA[i])) : 0,
+        )));
+      }
+
       // photo, with violet residue in deep low-weight creases neutralised —
       // those pixels keep their photographic darkness under every target
       // colour, and a violet cast there would read as a defect on pale shirts
@@ -733,11 +747,7 @@ const TEMPLATES = [
         // branch, so whether a crease pixel was protected depended on whether
         // the crease happened to squeeze through to the image border — which
         // is pose-dependent, and is why fixing one photo broke another.
-        wd.data[o + 2] = Math.round(255 * Math.max(0, Math.min(1, Math.max(
-          clip[i],
-          unrel[i],
-          outside[i] ? 1 - Math.max(0, Math.min(1, confA[i])) : 0,
-        ))));
+        wd.data[o + 2] = Math.round(255 * ownBlend[i]);
         wd.data[o + 3] = 255;
       }
       wctx.putImageData(wd, 0, 0);
@@ -845,6 +855,53 @@ const TEMPLATES = [
           if (outL > Math.max(bL, tL) + 18) edgeBright++;
         }
       }
+      // chroma audit: recolour to WHITE via the exact runtime formula and count
+      // information-free garment pixels that come out CHROMATIC. This is the
+      // defect that actually shipped — modelled violet (G far below R and B)
+      // subtracted from a near-neutral crease over-subtracts G and the pixel
+      // renders green. White is the worst case: it has the largest delta of any
+      // target, so a template clean here is clean for every colour.
+      //
+      // Reported as a fraction of the information-free garment mask, not a raw
+      // count, so the gate means the same thing at any resolution or crop.
+      // For reference, the build that shipped the defect measured 0.72% on
+      // gallery-f and 1.57% on livingroom-m; the fixed build measures under
+      // 0.01% on every template. The gate sits between those, far from both.
+      let chromaPx = 0, chromaMaskPx = 0, chromaWorst = 0;
+      {
+        const lutW = mkRelight([255, 255, 255]);
+        for (let i = 0; i < N; i++) {
+          const o = i * 4;
+          const ww = wMap[i];
+          if (ww < 0.125) continue;                       // not meaningfully recoloured
+          const pl = (0.299 * pd.data[o] + 0.587 * pd.data[o + 1] + 0.114 * pd.data[o + 2]) / 255;
+          if (pl > 0.16) continue;                        // information-free only
+          chromaMaskPx++;
+          const cl = ownBlend[i];
+          const sbB = Math.round(shadeVal[i] * 255) * 3;
+          // clamped exactly as the runtime does — it writes into a
+          // Uint8ClampedArray, so a channel that computes to 260 lands at 255.
+          // Measuring the raw floats invents differences the viewer never sees
+          // and fails clean templates.
+          const cx8 = v => v < 0 ? 0 : v > 255 ? 255 : v;
+          const r2 = cx8(pd.data[o] + ww * (lutW[sbB] - cl * pd.data[o] - (1 - cl) * lutVm[sbB]));
+          const g2 = cx8(pd.data[o + 1] + ww * (lutW[sbB + 1] - cl * pd.data[o + 1] - (1 - cl) * lutVm[sbB + 1]));
+          const b2 = cx8(pd.data[o + 2] + ww * (lutW[sbB + 2] - cl * pd.data[o + 2] - (1 - cl) * lutVm[sbB + 2]));
+          // GREEN excess specifically, not any-channel. The defect has a
+          // signature: violet's G sits far below its R and B, so subtracting
+          // modelled violet from a near-neutral crease lifts G relative to the
+          // others and the pixel goes mint. Measured any-channel this also
+          // counts RED excess, which in this mask is warm skin or hair caught
+          // by the weight — a different defect, already covered by the `skin`
+          // metric, and it swamps the signal: on plaster-f the any-channel
+          // figure is 0.070% of which 0.062% is red and only 0.008% green.
+          const exc = g2 - Math.max(r2, b2);
+          if (exc > chromaWorst) chromaWorst = exc;
+          if (exc > 6) chromaPx++;
+        }
+      }
+      const chromaPct = +(100 * chromaPx / Math.max(1, chromaMaskPx)).toFixed(3);
+
       let missed = 0, skin = 0, gN = 0, deepN = 0, bgPaint = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
@@ -872,7 +929,8 @@ const TEMPLATES = [
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct },
+        qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct,
+          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -887,6 +945,23 @@ const TEMPLATES = [
     if (r.qa.deepShadowPct > 8) {
       console.log(`${r.W}x${r.H} deepShadow=${r.qa.deepShadowPct}% — FAILS QA (hard shadow band), excluded from manifest`);
       continue;
+    }
+    // Chroma in an information-free crease means the modelled violet is not
+    // cancelling — the defect class that shipped green underarms. It is a
+    // build error rather than a bad photograph, so this fails loudly instead
+    // of quietly dropping the template: a source that trips it will trip it
+    // again next build, and silently shipping four templates instead of five
+    // is how the last one went unnoticed.
+    if (r.qa.chromaPct > 0.1) {
+      console.error(`${r.W}x${r.H} chroma=${r.qa.chromaPct}% worst=${r.qa.chromaWorst} — FAILS QA`);
+      console.error('  Information-free garment pixels are rendering chromatic under a white shirt.');
+      console.error('  That is modelled violet failing to cancel, not a property of the photo.');
+      console.error('  Check the own-value blend (weight map B channel) before shipping.');
+      process.exitCode = 1;
+      continue;
+    }
+    if (r.qa.chromaPct > 0.03) {
+      console.log(`  ! chroma=${r.qa.chromaPct}% worst=${r.qa.chromaWorst} — above the warn line, inspect white before shipping`);
     }
 
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-photo.jpg`), Buffer.from(r.photo.split(',')[1], 'base64'));
@@ -903,7 +978,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}%`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}%`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
