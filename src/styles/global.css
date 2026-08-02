@@ -887,6 +887,47 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(0.95);
 }
 
+/* Mockup Style Toggle — flat lay vs. on model */
+.style-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.style-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.style-btn:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.style-btn.active {
+  border-color: var(--primary);
+  color: var(--text-primary);
+  background: linear-gradient(135deg, hsla(197, 95%, 48%, 0.2), hsla(214, 90%, 58%, 0.2));
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.style-icon {
+  font-size: 1.1rem;
+}
+
 /* Garment Selector Card Grid */
 .garment-grid {
   display: grid;
@@ -1711,3 +1752,37 @@ input[type="range"]:focus-visible,
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+
+/* Model picker: the person in the shirt IS the label, so this shows recoloured
+   thumbnails and scrolls vertically rather than listing scene names. */
+.on-model-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-height: 348px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 4px 2px 2px;
+  scrollbar-width: thin;
+}
+.on-model-gallery::-webkit-scrollbar { width: 7px; }
+.on-model-gallery::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, .45);
+  border-radius: 4px;
+}
+.on-model-card {
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+  line-height: 0;
+  background: rgba(148, 163, 184, .12);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color .12s;
+}
+.on-model-card:hover { border-color: rgba(59, 130, 246, .5); }
+.on-model-card[aria-pressed="true"] { border-color: #3b82f6; }
+.on-model-card canvas { width: 100%; height: auto; display: block; }
+.on-model-card:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
