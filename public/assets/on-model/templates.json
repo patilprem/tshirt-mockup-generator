@@ -304,5 +304,56 @@
       "w": 852,
       "h": 968
     }
+  },
+  {
+    "id": "palm-street-f",
+    "label": "Palm Street",
+    "model": "female",
+    "scene": "Palm-lined street, parked cars",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/palm-street-f-photo.jpg",
+    "weight": "/assets/on-model/palm-street-f-weight.png",
+    "shade": "/assets/on-model/palm-street-f-shade.jpg",
+    "thumbPhoto": "/assets/on-model/palm-street-f-thumb-photo.jpg",
+    "thumbWeight": "/assets/on-model/palm-street-f-thumb-weight.png",
+    "thumbShade": "/assets/on-model/palm-street-f-thumb-shade.jpg",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9829,
+      1,
+      0.9771
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      120.1,
+      75.2,
+      157
+    ],
+    "quad": {
+      "tl": [
+        389.5,
+        723
+      ],
+      "tr": [
+        680.5,
+        723
+      ],
+      "br": [
+        690.5,
+        1047
+      ],
+      "bl": [
+        399.5,
+        1047
+      ]
+    },
+    "bbox": {
+      "x": 164,
+      "y": 548,
+      "w": 740,
+      "h": 832
+    }
   }
 ]

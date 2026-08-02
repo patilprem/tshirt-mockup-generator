@@ -58,6 +58,7 @@ const TEMPLATES = [
   { id: 'park-m', file: 'park-m.webp', label: 'Park Path', model: 'male', scene: 'Green park path, open shade' },
   { id: 'home-f', file: 'home-f.webp', label: 'New Scene', model: 'female', scene: 'home indoor' },
   { id: 'bright-airy-f', file: 'bright-airy-f.webp', label: 'Bright Airy', model: 'female', scene: 'Bright airy coffee shop, pale wood' },
+  { id: 'palm-street-f', file: 'palm-street-f.webp', label: 'Palm Street', model: 'female', scene: 'Palm-lined street, parked cars' },
 ];
 
 (async () => {
