@@ -4258,6 +4258,54 @@
     // ----------------------------------------------------
     // 10. Mobile Tab Switching Handler
     // ----------------------------------------------------
+    // ----------------------------------------------------
+    // 12. Sliders: on touch, require a horizontal drag
+    // ----------------------------------------------------
+    // A range input spans the full panel width, so on a phone it sits right
+    // under the thumb during an ordinary scroll — and a range jumps its value
+    // to wherever it was TOUCHED, on touchdown, before any gesture direction
+    // is known. So a scroll that happens to start on a slider sets it to
+    // whatever was under the finger, and so does a stray tap. touch-action:
+    // pan-y (in the stylesheet) gives the scroll back to the page, but cannot
+    // help with the value: the jump has already happened by then.
+    //
+    // So the value is held back until the gesture proves itself horizontal.
+    // Every input event from a touch that has not yet moved sideways is
+    // reverted in the capture phase and stopped before any app handler sees
+    // it — no re-render, no flicker of the mockup. A real drag passes through
+    // from the moment it crosses the threshold. Precise values are still
+    // reachable: each slider has a paired number field.
+    //
+    // Touch only. A mouse keeps click-to-set, where it is precise and nobody
+    // is scrolling with the pointer.
+    {
+      const DRAG_PX = 8;
+      let gesture = null;
+      document.addEventListener('touchstart', e => {
+        const el = e.target.closest && e.target.closest('input[type="range"]');
+        if (!el) { gesture = null; return; }
+        const t = e.touches[0];
+        // Read BEFORE the browser's default action moves the thumb — the
+        // event is dispatched first, the jump happens after.
+        gesture = { el, x: t.clientX, y: t.clientY, value: el.value, horizontal: false };
+      }, true);
+      document.addEventListener('touchmove', e => {
+        if (!gesture || gesture.horizontal) return;
+        const t = e.touches[0];
+        const dx = Math.abs(t.clientX - gesture.x);
+        const dy = Math.abs(t.clientY - gesture.y);
+        if (dx > DRAG_PX && dx > dy) gesture.horizontal = true;
+      }, true);
+      document.addEventListener('input', e => {
+        if (!gesture || e.target !== gesture.el || gesture.horizontal) return;
+        e.target.value = gesture.value;
+        e.stopImmediatePropagation();
+      }, true);
+      const endGesture = () => { gesture = null; };
+      document.addEventListener('touchend', endGesture, true);
+      document.addEventListener('touchcancel', endGesture, true);
+    }
+
     const mobileNavBar = document.getElementById('mobile-nav-bar');
     if (mobileNavBar) {
       const mobileNavButtons = mobileNavBar.querySelectorAll('.mobile-nav-btn');

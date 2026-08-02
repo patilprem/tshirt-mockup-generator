@@ -446,6 +446,13 @@ input[type="range"] {
   background: var(--border-glass);
   border-radius: 3px;
   outline: none;
+  /* A slider spans the full panel width, so on a phone it sits directly under
+     the thumb during an ordinary scroll. By default the element claims that
+     gesture: the page stays put and the value is dragged instead. pan-y hands
+     vertical gestures back to the browser to scroll with, while horizontal
+     ones — the only direction this control actually reads — still reach the
+     slider. */
+  touch-action: pan-y;
 }
 
 input[type="range"]::-webkit-slider-thumb {
