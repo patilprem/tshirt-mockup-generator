@@ -1991,6 +1991,47 @@
       placeDesign();
       lc.globalAlpha = 1;
 
+      // Bend the print along the fold gradients, before the shading passes so
+      // shadow and shine land on it where it actually sits. Driven by the same
+      // Fold Shadows control, so one slider governs how much the fabric asserts
+      // itself over the print.
+      if (useRealisticBlending && shadowDepth > 0) {
+        const { gx, gy, ref } = onModelWarpField(entry);
+        const K = shadowDepth * 9 * (w / 800);
+        const src = lc.getImageData(0, 0, w, h), sd = src.data;
+        const outI = lc.createImageData(w, h), od = outI.data;
+        const pad = Math.ceil(K) + 2;
+        const halfDiag = Math.hypot(dW, dH) / 2 + pad;
+        const x0 = Math.max(0, Math.floor(cx + offX - halfDiag));
+        const x1 = Math.min(w - 1, Math.ceil(cx + offX + halfDiag));
+        const y0 = Math.max(0, Math.floor(cy + offY - halfDiag));
+        const y1 = Math.min(h - 1, Math.ceil(cy + offY + halfDiag));
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const i = y * w + x;
+          // clamp so an unusually steep gradient cannot tear the print apart
+          const ux = gx[i] / ref, uy = gy[i] / ref;
+          const m = Math.hypot(ux, uy), lim = m > 2.5 ? 2.5 / m : 1;
+          const sx = x - ux * lim * K, sy = y - uy * lim * K;
+          const fx = Math.max(0, Math.min(w - 1.001, sx)), fy = Math.max(0, Math.min(h - 1.001, sy));
+          const ix = fx | 0, iy = fy | 0, tx = fx - ix, ty = fy - iy;
+          const o00 = (iy * w + ix) * 4, o10 = o00 + 4, o01 = o00 + w * 4, o11 = o01 + 4;
+          const o = i * 4;
+          for (let c = 0; c < 4; c++) {
+            const a = sd[o00 + c] + (sd[o10 + c] - sd[o00 + c]) * tx;
+            const b2 = sd[o01 + c] + (sd[o11 + c] - sd[o01 + c]) * tx;
+            od[o + c] = a + (b2 - a) * ty;
+          }
+        }
+        lc.putImageData(outI, 0, 0);
+      }
+
+      // The shading passes below re-clip to the print's own alpha. After the
+      // warp that alpha is the BENT print, not the rectangle placeDesign()
+      // would draw, so snapshot it here and clip to that instead.
+      const printAlpha = document.createElement('canvas');
+      printAlpha.width = w; printAlpha.height = h;
+      printAlpha.getContext('2d').drawImage(layer, 0, 0);
+
       // Fold shading over the print — the same two passes flat-lay uses, so a
       // design sits into the fabric the same way in both modes: multiply the
       // creases down, then screen the lit crests back up. Shadows alone leave
@@ -2003,14 +2044,14 @@
         lc.drawImage(onModelShadeCanvas(entry), 0, 0);
         lc.globalAlpha = 1;
         lc.globalCompositeOperation = 'destination-in';
-        placeDesign();
+        lc.drawImage(printAlpha, 0, 0);
 
         lc.globalCompositeOperation = 'screen';
         lc.globalAlpha = highlightShine;
         lc.drawImage(onModelHighlightCanvas(entry), 0, 0);
         lc.globalAlpha = 1;
         lc.globalCompositeOperation = 'destination-in';
-        placeDesign();
+        lc.drawImage(printAlpha, 0, 0);
       }
       lc.globalCompositeOperation = 'destination-in';
       lc.drawImage(onModelClipCanvas(entry), 0, 0);
@@ -2037,6 +2078,63 @@
       entry._shadeCanvas = c;
       return c;
     }
+    // Displacement field, so a print bends over folds instead of lying flat
+    // across them. The shade map is illumination relative to the fabric's
+    // diffuse white point, and on a lit garment illumination tracks surface
+    // orientation — a fold's crest catches light, its valley loses it. So the
+    // gradient of shade points across the fold, and is the closest thing to a
+    // surface normal the template carries.
+    //
+    // Smoothed first: raw shade carries fabric grain and codec noise, and
+    // warping by that shreds the print rather than bending it. Normalised
+    // against the gradient actually present on this garment, because after
+    // smoothing a fold's gradient is on the order of one shade level per pixel
+    // — scaling by a fixed constant moves the print a fraction of a pixel and
+    // does nothing visible.
+    function onModelWarpField(entry) {
+      if (entry._warp) return entry._warp;
+      const { shade, clipArr, w, h } = entry, n = w * h;
+      const blur = (src, R) => {
+        const tmp = new Float32Array(n), dst = new Float32Array(n);
+        for (let y = 0; y < h; y++) {
+          let acc = 0;
+          for (let x = -R; x <= R; x++) acc += src[y * w + Math.min(w - 1, Math.max(0, x))];
+          for (let x = 0; x < w; x++) {
+            tmp[y * w + x] = acc / (R * 2 + 1);
+            acc += src[y * w + Math.min(w - 1, x + R + 1)] - src[y * w + Math.max(0, x - R)];
+          }
+        }
+        for (let x = 0; x < w; x++) {
+          let acc = 0;
+          for (let y = -R; y <= R; y++) acc += tmp[Math.min(h - 1, Math.max(0, y)) * w + x];
+          for (let y = 0; y < h; y++) {
+            dst[y * w + x] = acc / (R * 2 + 1);
+            acc += tmp[Math.min(h - 1, y + R + 1) * w + x] - tmp[Math.max(0, y - R) * w + x];
+          }
+        }
+        return dst;
+      };
+      let hf = new Float32Array(n);
+      for (let i = 0; i < n; i++) hf[i] = shade[i];
+      const R = Math.max(2, Math.round(w / 130));
+      hf = blur(hf, R); hf = blur(hf, R);
+      const gx = new Float32Array(n), gy = new Float32Array(n);
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        gx[i] = (hf[i + 1] - hf[i - 1]) * 0.5;
+        gy[i] = (hf[i + w] - hf[i - w]) * 0.5;
+      }
+      const mags = [];
+      for (let i = 0; i < n; i += 7) {
+        if (clipArr[i] < 128) continue;
+        mags.push(Math.hypot(gx[i], gy[i]));
+      }
+      mags.sort((a, b) => a - b);
+      const ref = mags.length ? Math.max(1e-3, mags[Math.floor(mags.length * 0.9)]) : 1;
+      entry._warp = { gx, gy, ref };
+      return entry._warp;
+    }
+
     // Fabric highlights, for the screen pass over the print. The shade map is
     // illumination relative to the fabric's diffuse white point, so rel > 1 is
     // exactly where the fabric is catching light beyond flat diffuse — the
