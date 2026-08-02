@@ -51,7 +51,6 @@ const META_OUT = path.join(OUT_DIR, 'templates.json');
 const MAX_EDGE = 1600;
 
 const TEMPLATES = [
-  { id: 'plaster-f', file: 'plaster-f.webp', label: 'Plaster Wall', model: 'female', scene: 'Warm plaster wall, daylight' },
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
   { id: 'gallery-f', file: 'gallery-f.webp', label: 'Gallery Interior', model: 'female', scene: 'Minimal off-white interior' },
   { id: 'livingroom-m', file: 'livingroom-m.webp', label: 'Living Room', model: 'male', scene: 'Bright airy living room' },

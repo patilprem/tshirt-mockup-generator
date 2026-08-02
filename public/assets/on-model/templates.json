@@ -1,56 +1,5 @@
 [
   {
-    "id": "plaster-f",
-    "label": "Plaster Wall",
-    "model": "female",
-    "scene": "Warm plaster wall, daylight",
-    "width": 1066,
-    "height": 1600,
-    "photo": "/assets/on-model/plaster-f-photo.jpg",
-    "weight": "/assets/on-model/plaster-f-weight.png",
-    "shade": "/assets/on-model/plaster-f-shade.jpg",
-    "thumbPhoto": "/assets/on-model/plaster-f-thumb-photo.jpg",
-    "thumbWeight": "/assets/on-model/plaster-f-thumb-weight.png",
-    "thumbShade": "/assets/on-model/plaster-f-thumb-shade.jpg",
-    "thumbWidth": 112,
-    "thumbHeight": 168,
-    "ambientTint": [
-      1,
-      0.9797,
-      0.934
-    ],
-    "relMax": 1.45,
-    "violetBase": [
-      111.8,
-      58.5,
-      169
-    ],
-    "quad": {
-      "tl": [
-        403.8,
-        746
-      ],
-      "tr": [
-        682.2,
-        746
-      ],
-      "br": [
-        690.2,
-        1026
-      ],
-      "bl": [
-        411.8,
-        1026
-      ]
-    },
-    "bbox": {
-      "x": 180,
-      "y": 595,
-      "w": 726,
-      "h": 719
-    }
-  },
-  {
     "id": "gallery-f",
     "label": "Gallery Interior",
     "model": "female",
