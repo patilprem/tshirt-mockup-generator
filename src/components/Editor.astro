@@ -1002,6 +1002,37 @@
     }
 
     // Resizes the live canvas element + its CSS box to match the selected aspect.
+    // Letterbox the container to an arbitrary aspect. Split out of
+    // applyCanvasAspect because on-model needs the same calculation from a
+    // different source: the flat-lay artboard is square and the stylesheet's
+    // `aspect-ratio: 1` is written for it, so a 2:3 template left in that box
+    // is stretched to a square and the model comes out squashed.
+    function fitCanvasBox(ratio) {
+      // .canvas-container has explicit width/height (100% on desktop, or
+      // width:100%/max-width:420px/height:auto on mobile), which makes the CSS
+      // `aspect-ratio` property a no-op — it only applies when a dimension is
+      // auto. So size it explicitly here instead. Clear any prior override
+      // first and measure the CSS-driven natural box (this already reflects
+      // the current responsive breakpoint — desktop's 600px cap or mobile's
+      // 420px cap) rather than hardcoding a bound that could overflow a
+      // narrower viewport.
+      container.style.width = '';
+      container.style.height = '';
+      const naturalRect = container.getBoundingClientRect();
+      const boundW = naturalRect.width;
+      const boundH = naturalRect.height;
+      let boxW, boxH;
+      if (ratio >= boundW / boundH) {
+        boxW = boundW;
+        boxH = boundW / ratio;
+      } else {
+        boxH = boundH;
+        boxW = boundH * ratio;
+      }
+      container.style.width = `${boxW}px`;
+      container.style.height = `${boxH}px`;
+    }
+
     function applyCanvasAspect() {
       const { frameW, frameH } = getFrameDims(1);
       canvas.width = frameW;
@@ -1017,21 +1048,7 @@
       // narrower viewport.
       container.style.width = '';
       container.style.height = '';
-      const naturalRect = container.getBoundingClientRect();
-      const boundW = naturalRect.width;
-      const boundH = naturalRect.height;
-
-      const ratio = frameW / frameH;
-      let boxW, boxH;
-      if (ratio >= boundW / boundH) {
-        boxW = boundW;
-        boxH = boundW / ratio;
-      } else {
-        boxH = boundH;
-        boxW = boundH * ratio;
-      }
-      container.style.width = `${boxW}px`;
-      container.style.height = `${boxH}px`;
+      fitCanvasBox(frameW / frameH);
     }
 
     // Interaction Modes
@@ -2301,12 +2318,32 @@
       const garmentSection = document.getElementById('garment-type-section');
       const canvasSizeSection = document.getElementById('canvas-size-section');
       const propsSection = document.getElementById('aesthetic-props-section');
+      const bgSection = document.getElementById('mockup-background-section');
       if (onModelSection) onModelSection.style.display = style === 'onmodel' ? '' : 'none';
       // Garment type, canvas presets and props are flat-lay concepts; an
       // on-model template already fixes the garment, framing and setting.
       if (garmentSection) garmentSection.style.display = style === 'onmodel' ? 'none' : '';
       if (canvasSizeSection) canvasSizeSection.style.display = style === 'onmodel' ? 'none' : '';
       if (propsSection) propsSection.style.display = style === 'onmodel' ? 'none' : '';
+      // The background belongs to the flat lay, where the garment is cut out
+      // and composited onto one. An on-model template is a photograph that
+      // brings its own room with it — there is nothing behind the model to
+      // replace, so solid colour, transparency and the wood panels have no
+      // meaning here and only invite a click that does nothing.
+      if (bgSection) bgSection.style.display = style === 'onmodel' ? 'none' : '';
+      // Batch export is flat-lay only. Its axes are garment type and colour,
+      // and an on-model template fixes the garment — so left enabled here it
+      // runs the flat-lay pipeline and hands back crewnecks and hoodies on a
+      // wood panel, silently, with none of the model the user is looking at.
+      // Disabled rather than hidden: the button vanishing on mode switch
+      // reads as a bug, whereas a disabled control with a reason reads as a
+      // limit. Remove this when the model x colour version exists.
+      const batchBtn = document.getElementById('batch-export-btn');
+      if (batchBtn) {
+        const off = style === 'onmodel';
+        batchBtn.disabled = off;
+        batchBtn.title = off ? 'Batch export is available for flat lay mockups' : '';
+      }
 
       if (style === 'onmodel') {
         if (!activeOnModelId && onModelTemplates.length) activeOnModelId = onModelTemplates[0].id;
@@ -2317,6 +2354,7 @@
             const entry = await loadOnModelTemplate(meta);
             canvas.width = Math.round(entry.w * 0.75);
             canvas.height = Math.round(entry.h * 0.75);
+            fitCanvasBox(entry.w / entry.h);
             onModelComposedKey = '';
           } finally { if (canvasLoading) canvasLoading.style.display = 'none'; }
         }
@@ -2413,6 +2451,7 @@
             const entry = await loadOnModelTemplate(meta);
             canvas.width = Math.round(entry.w * 0.75);
             canvas.height = Math.round(entry.h * 0.75);
+            fitCanvasBox(entry.w / entry.h);
             onModelComposedKey = '';
           } finally { if (canvasLoading) canvasLoading.style.display = 'none'; }
           render();

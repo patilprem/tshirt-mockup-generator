@@ -1760,7 +1760,10 @@ input[type="range"]:focus-visible,
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  max-height: 348px;
+  /* Cards keep the template's own 2:3 framing — cropping them to fit more in
+     hides the scene, which is the thing being chosen. So the list stays tall
+     enough to show two full rows and scrolls for the rest. */
+  max-height: 520px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 2px 4px 2px 2px;
