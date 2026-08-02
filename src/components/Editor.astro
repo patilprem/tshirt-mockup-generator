@@ -2331,6 +2331,19 @@
       // replace, so solid colour, transparency and the wood panels have no
       // meaning here and only invite a click that does nothing.
       if (bgSection) bgSection.style.display = style === 'onmodel' ? 'none' : '';
+      // Batch export is flat-lay only. Its axes are garment type and colour,
+      // and an on-model template fixes the garment — so left enabled here it
+      // runs the flat-lay pipeline and hands back crewnecks and hoodies on a
+      // wood panel, silently, with none of the model the user is looking at.
+      // Disabled rather than hidden: the button vanishing on mode switch
+      // reads as a bug, whereas a disabled control with a reason reads as a
+      // limit. Remove this when the model x colour version exists.
+      const batchBtn = document.getElementById('batch-export-btn');
+      if (batchBtn) {
+        const off = style === 'onmodel';
+        batchBtn.disabled = off;
+        batchBtn.title = off ? 'Batch export is available for flat lay mockups' : '';
+      }
 
       if (style === 'onmodel') {
         if (!activeOnModelId && onModelTemplates.length) activeOnModelId = onModelTemplates[0].id;
