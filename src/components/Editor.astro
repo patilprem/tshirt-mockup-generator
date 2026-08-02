@@ -2199,32 +2199,23 @@
     }
 
 
-    const ON_MODEL_HANDLE = 11;     // CSS pixels on screen, corner circle radius
-    const ON_MODEL_ROT_R = 15;      // CSS pixels, rotate button radius
-    const ON_MODEL_ROT_GAP = 34;    // CSS pixels below the box
-    // Grab tolerance. A mouse pointer is a pixel and can afford a tight
-    // target; a fingertip covers about 44px, so a coarse pointer gets a
-    // radius that adds up to roughly that.
-    const ON_MODEL_HIT = 14;
-    const ON_MODEL_HIT_COARSE = 24;
-
-    // The canvas BITMAP is a fixed size and CSS scales it down to fit — by
-    // 2x on a desktop and 3.4x on a phone. Anything meant to be a constant
-    // size on SCREEN therefore has to be multiplied back up before it is
-    // drawn or hit-tested in canvas pixels. These were plain canvas pixels
-    // before, so a handle specified as 14px rendered at 4.1px on a phone with
-    // a 7px grab radius — a sixth of a fingertip, which is why resizing and
-    // rotating on a model were so hard to land.
-    function onModelCanvasScale() {
-      const shown = canvas.clientWidth;
-      return shown ? canvas.width / shown : 1;
-    }
-    // Never smaller than the handle actually drawn, so a control can always be
-    // grabbed anywhere it is visible, and never smaller than a fingertip needs.
-    function onModelHitTol(drawnRadius) {
-      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-      const base = coarse ? ON_MODEL_HIT_COARSE : ON_MODEL_HIT;
-      return Math.max(base, (drawnRadius || 0) + 6) * onModelCanvasScale();
+    // Sizes come from the shared SEL_* constants so this is literally the same
+    // control as flat lay, not a copy that drifts. Canvas pixels per CSS pixel
+    // here — the on-model chrome is drawn after the template transform is
+    // restored, so there is no zoom to divide out.
+    //
+    // The grab radius is capped against the box: on a small print four corner
+    // catchments would otherwise meet in the middle and the design could no
+    // longer be dragged at all, the tolerance having eaten the one gesture it
+    // is not for.
+    function onModelHitTol(drawnRadius, box) {
+      const want = Math.max(selGrabCss() * selCanvasScale(),
+                            (drawnRadius * selCanvasScale()) + 4);
+      const room = box ? Math.min(box.w, box.h) * onModelView.k * 0.35 : Infinity;
+      // Floor of the handle plus 6 CSS px, so the cap can tighten the grab
+      // toward the artwork but never below something a finger can land on.
+      const floor = (drawnRadius + 6) * selCanvasScale();
+      return Math.max(floor, Math.min(want, room));
     }
 
     function onModelToCanvas(p) {
@@ -2242,10 +2233,8 @@
     }
     function onModelRotHandle(b) {
       const co = Math.cos(designRotation), si = Math.sin(designRotation);
-      // Below the box, not above it: on a chest print the top edge sits near
-      // the collar, where a handle above it lands on the model's face and is
-      // awkward to reach with a thumb.
-      const gap = ON_MODEL_ROT_GAP * onModelCanvasScale() / onModelView.k;
+      // Below the box, as in flat lay.
+      const gap = SEL_ROT_GAP * selCanvasScale() / onModelView.k;
       const y = b.h / 2 + gap;
       return { x: b.cx - y * si, y: b.cy + y * co };
     }
@@ -2255,40 +2244,9 @@
       const b = onModelDesignBox(entry);
       const pts = onModelBoxCorners(b).map(onModelToCanvas);
       const rot = onModelToCanvas(onModelRotHandle(b));
-      // Everything here is screen furniture, so it is scaled to stay the same
-      // size however far CSS shrinks the canvas — otherwise the outline and
-      // handles thin out to nothing on a phone.
-      const s = onModelCanvasScale();
-      const hs = ON_MODEL_HANDLE * s;
-      targetCtx.save();
-      targetCtx.strokeStyle = '#3b82f6';
-      targetCtx.lineWidth = 2 * s;
-      targetCtx.beginPath();
-      targetCtx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < 4; i++) targetCtx.lineTo(pts[i].x, pts[i].y);
-      targetCtx.closePath();
-      targetCtx.stroke();
-      // Round corner handles and a free-standing rotate button below the box,
-      // after Canva's mobile controls. Circles read as grabbable at a size
-      // where a square starts to look like a bug, and putting rotate on its
-      // own below the selection means it is never crowded by the corners —
-      // on a small print the old knob-on-a-stalk sat almost on top of them.
-      targetCtx.fillStyle = '#ffffff';
-      for (const p of pts) {
-        targetCtx.beginPath();
-        targetCtx.arc(p.x, p.y, hs, 0, Math.PI * 2);
-        targetCtx.fill(); targetCtx.stroke();
-      }
-      targetCtx.beginPath();
-      targetCtx.arc(rot.x, rot.y, ON_MODEL_ROT_R * s, 0, Math.PI * 2);
-      targetCtx.fill(); targetCtx.stroke();
-      // Rotation glyph: an open circular arrow, so the button says what it is.
-      targetCtx.beginPath();
-      targetCtx.lineWidth = 2 * s;
-      const gr = ON_MODEL_ROT_R * s * 0.45;
-      targetCtx.arc(rot.x, rot.y, gr, Math.PI * 0.35, Math.PI * 1.85);
-      targetCtx.stroke();
-      targetCtx.restore();
+      // The same drawSelectionChrome flat lay uses. Canvas pixels per CSS
+      // pixel, since this runs after the template transform is restored.
+      drawSelectionChrome(targetCtx, pts, rot, selCanvasScale());
     }
 
     function onModelHitTest(pt, entry) {
@@ -2296,9 +2254,9 @@
       const b = onModelDesignBox(entry);
       const near = (a, c, r) => Math.hypot(a.x - c.x, a.y - c.y) <= r;
       if (onModelSelected) {
-        const rotTol = onModelHitTol(ON_MODEL_ROT_R) / onModelView.k;
+        const rotTol = onModelHitTol(SEL_ROT_R, b) / onModelView.k;
         if (near(pt, onModelRotHandle(b), rotTol)) return { mode: 'rotate' };
-        const cornTol = onModelHitTol(ON_MODEL_HANDLE) / onModelView.k;
+        const cornTol = onModelHitTol(SEL_HANDLE_R, b) / onModelView.k;
         const pts = onModelBoxCorners(b);
         for (let i = 0; i < 4; i++) if (near(pt, pts[i], cornTol)) return { mode: 'scale', corner: i };
       }
@@ -2379,8 +2337,12 @@
         if (deg > 180) deg -= 360;
         if (deg < -180) deg += 360;
         designRotation = snapAngleDeg(deg) * (Math.PI / 180);
-        if (typeof rotationSlider !== 'undefined' && rotationSlider) rotationSlider.value = Math.round(designRotation * 180 / Math.PI);
-        if (typeof rotationManual !== 'undefined' && rotationManual) rotationManual.value = Math.round(designRotation * 180 / Math.PI);
+        // rotateSlider/rotateManual — these read rotationSlider/rotationManual,
+        // which do not exist, and the typeof guard swallowed it silently, so
+        // rotating on a model turned the print but never moved the sidebar.
+        const rdeg = Math.round(designRotation * 180 / Math.PI);
+        if (rotateSlider) rotateSlider.value = rdeg;
+        if (rotateManual) rotateManual.value = rdeg;
       }
       render();
     }
@@ -2638,59 +2600,112 @@
       ctx.restore();
     }
 
+    // ----------------------------------------------------
+    // Selection chrome — one definition, both modes
+    // ----------------------------------------------------
+    // Canva-style: round white handles at the corners and a rotate button
+    // standing off below the box. Sizes are CSS PIXELS ON SCREEN, converted at
+    // draw time, because the two modes draw into different spaces — flat lay
+    // inside a shirtZoom transform on a 1000px artboard, on-model in raw
+    // canvas pixels on an 800x1200 one — and a constant in either space comes
+    // out a different physical size in the other. Passing the conversion in is
+    // what makes the control genuinely identical rather than merely similar.
+    const SEL_HANDLE_R = 8;    // corner circle radius
+    const SEL_ROT_R = 11;      // rotate button radius
+    const SEL_ROT_GAP = 30;    // gap between box and rotate button
+    const SEL_LINE = 1.5;      // outline width
+    const SEL_COLOUR = '#3b82f6';
+
+    function selCanvasScale() {
+      const shown = canvas.clientWidth;
+      return shown ? canvas.width / shown : 1;
+    }
+    // Artboard units per CSS pixel in flat lay: the chrome is drawn inside the
+    // shirtZoom transform, so that zoom has to be divided back out.
+    function selUnitsFlat() {
+      return selCanvasScale() / getShirtZoom();
+    }
+    // Grab radius in CSS pixels: a fingertip needs far more than the handle
+    // shows, and that slack is invisible so it costs the artwork nothing.
+    function selGrabCss() {
+      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      return coarse ? 24 : 16;
+    }
+
+    // A circular arrow, so the control says what it does rather than being a
+    // plain dot the user has to discover.
+    function drawRotateIcon(c, cx, cy, r, u) {
+      c.save();
+      c.strokeStyle = SEL_COLOUR;
+      c.fillStyle = SEL_COLOUR;
+      c.lineWidth = Math.max(1.4 * u, r * 0.26);
+      c.lineCap = 'round';
+      const a0 = Math.PI * 0.72, a1 = Math.PI * 2.05;
+      c.beginPath();
+      c.arc(cx, cy, r, a0, a1);
+      c.stroke();
+      // Arrowhead on the open end, pointing along the tangent there.
+      const hx = cx + r * Math.cos(a1), hy = cy + r * Math.sin(a1);
+      const t = a1 + Math.PI / 2;
+      const s = r * 0.9;
+      c.beginPath();
+      c.moveTo(hx + s * Math.cos(t), hy + s * Math.sin(t));
+      c.lineTo(hx + s * 0.7 * Math.cos(t + 2.3), hy + s * 0.7 * Math.sin(t + 2.3));
+      c.lineTo(hx + s * 0.7 * Math.cos(t - 2.3), hy + s * 0.7 * Math.sin(t - 2.3));
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+
+    // corners: four points in the CURRENT drawing space, clockwise from
+    // top-left. rot: the rotate button's centre in the same space.
+    // u: how many units of that space make one CSS pixel on screen.
+    function drawSelectionChrome(c, corners, rot, u) {
+      c.save();
+      c.strokeStyle = SEL_COLOUR;
+      c.lineWidth = SEL_LINE * u;
+      c.beginPath();
+      c.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < 4; i++) c.lineTo(corners[i].x, corners[i].y);
+      c.closePath();
+      c.stroke();
+
+      const bottom = { x: (corners[2].x + corners[3].x) / 2, y: (corners[2].y + corners[3].y) / 2 };
+      c.beginPath();
+      c.moveTo(bottom.x, bottom.y);
+      c.lineTo(rot.x, rot.y);
+      c.stroke();
+
+      c.fillStyle = '#ffffff';
+      for (const p of corners) {
+        c.beginPath();
+        c.arc(p.x, p.y, SEL_HANDLE_R * u, 0, Math.PI * 2);
+        c.fill(); c.stroke();
+      }
+      c.beginPath();
+      c.arc(rot.x, rot.y, SEL_ROT_R * u, 0, Math.PI * 2);
+      c.fill(); c.stroke();
+      drawRotateIcon(c, rot.x, rot.y, SEL_ROT_R * u * 0.52, u);
+      c.restore();
+    }
+
     // Draws bounding box outline, scale corners, and rotation handle
     function drawEditorHandles() {
       const { w: dW, h: dH } = getDesignBoxSize(designScale);
-
+      // The chrome is drawn in the rotated local frame so the box follows the
+      // design, but sized through selUnitsFlat() so it comes out the same
+      // physical size as the on-model one despite the shirtZoom transform.
+      const u = selUnitsFlat();
+      const rotY = dH / 2 + SEL_ROT_GAP * u;
       ctx.save();
       ctx.translate(designPos.x, designPos.y);
       ctx.rotate(designRotation);
-
-      // Draw Dashed Bounding Box Outline
-      ctx.strokeStyle = '#00b4e6';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(-dW / 2, -dH / 2, dW, dH);
-
-      // Draw Center Position dot
-      ctx.fillStyle = '#00b4e6';
-      ctx.beginPath();
-      ctx.arc(0, 0, 4, 0, Math.PI*2);
-      ctx.fill();
-
-      // Draw Corner Handles (Scale)
-      ctx.setLineDash([]); // solid lines
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#00b4e6';
-      ctx.lineWidth = 2;
-      const hSize = 14; // handle size
-
-      const corners = [
-        { x: -dW / 2, y: -dH / 2 }, // Top Left
-        { x: dW / 2, y: -dH / 2 },  // Top Right
-        { x: dW / 2, y: dH / 2 },   // Bottom Right
-        { x: -dW / 2, y: dH / 2 }   // Bottom Left
-      ];
-
-      corners.forEach(c => {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, hSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      });
-
-      // Draw Rotation Handle (Line upwards + Circle handle)
-      const rotY = -dH / 2 - 35;
-      ctx.beginPath();
-      ctx.moveTo(0, -dH / 2);
-      ctx.lineTo(0, rotY);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(0, rotY, hSize/1.5, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-
+      drawSelectionChrome(ctx, [
+        { x: -dW / 2, y: -dH / 2 },
+        { x: dW / 2, y: -dH / 2 },
+        { x: dW / 2, y: dH / 2 },
+        { x: -dW / 2, y: dH / 2 },
+      ], { x: 0, y: rotY }, u);
       ctx.restore();
     }
 
@@ -2949,7 +2964,8 @@
           br: localToGlobal(dW / 2, dH / 2),
           bl: localToGlobal(-dW / 2, dH / 2)
         },
-        rot: localToGlobal(0, -dH / 2 - 35)
+        // Below the box, matching the on-model control and the Canva pattern.
+        rot: localToGlobal(0, dH / 2 + SEL_ROT_GAP * selUnitsFlat())
       };
     }
 
