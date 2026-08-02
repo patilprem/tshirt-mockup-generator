@@ -1250,6 +1250,7 @@ input[type="range"]:focus-visible,
   .app-container:not([data-mockup-style="onmodel"]) #on-model-section {
     display: none !important;
   }
+
 }
 
 /* Header and small screen refinements */
@@ -1821,3 +1822,19 @@ input[type="range"]:focus-visible,
 .on-model-card[aria-pressed="true"] { border-color: #3b82f6; }
 .on-model-card canvas { width: 100%; height: auto; display: block; }
 .on-model-card:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+
+/* On a phone the page already scrolls vertically, so a vertical scroller
+   inside it fights the gesture that contains it: a swipe over the gallery
+   scrolls the gallery or the page depending on where it started and whether
+   the gallery had already hit its end. Two vertical scrollers stacked in one
+   column is the mess. The desktop sidebar has a fixed height and genuinely
+   needs its own scroller; on mobile the column is free to grow, so the
+   gallery gives its up and the page does the scrolling.
+   Declared after the base rule above, not in the earlier mobile block — a
+   media query adds no specificity, so the later declaration is what decides. */
+@media (max-width: 1024px) {
+  .on-model-gallery {
+    max-height: none;
+    overflow-y: visible;
+  }
+}

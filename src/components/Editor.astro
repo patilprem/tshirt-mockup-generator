@@ -1180,12 +1180,34 @@
     // Re-fit the canvas box on viewport changes (orientation flip, browser
     // resize crossing the mobile/desktop breakpoint, etc.) since its size is
     // computed in JS rather than pure responsive CSS.
+    // Resize has to respect the mode. applyCanvasAspect sizes the canvas to
+    // the flat-lay artboard, so calling it unconditionally reset an on-model
+    // canvas to a square — and then drawOnModelScene letterboxed the portrait
+    // photo inside it and filled the margin with the flat-lay backdrop, so
+    // wood panels appeared down both sides of the model. Only on screen: the
+    // export sizes its own canvas to the template, fits exactly and has no
+    // margin, which is why the download looked right when the canvas did not.
+    // A phone fires resize whenever the URL bar hides, so this happened
+    // constantly there and barely at all on a desktop.
+    function applyCanvasSizing() {
+      if (mockupStyle === 'onmodel') {
+        const entry = onModelCache.get(activeOnModelId);
+        if (entry) {
+          canvas.width = Math.round(entry.w * 0.75);
+          canvas.height = Math.round(entry.h * 0.75);
+          fitCanvasBox(entry.w / entry.h);
+          return;
+        }
+      }
+      applyCanvasAspect();
+    }
+
     let resizeRaf = null;
     window.addEventListener('resize', () => {
       if (resizeRaf) return;
       resizeRaf = requestAnimationFrame(() => {
         resizeRaf = null;
-        applyCanvasAspect();
+        applyCanvasSizing();
         render();
       });
     });
@@ -2151,15 +2173,19 @@
         onModelComposedKey = key;
       }
 
-      // Fit the portrait template inside the frame, centred, with the normal
-      // backdrop filling any letterbox margin.
+      // Fit the portrait template inside the frame, centred. The frame is
+      // sized to the template everywhere it matters, so there is normally no
+      // margin at all; any that does appear — mid-resize, say — is cleared
+      // rather than filled with the flat-lay backdrop. That backdrop is a
+      // flat-lay concept the user cannot even reach in this mode, so painting
+      // it here put wood panels beside the model that no control could remove.
       const k = Math.min(frameW / entry.w, frameH / entry.h);
       const dw = entry.w * k, dh = entry.h * k;
       const ox = (frameW - dw) / 2, oy = (frameH - dh) / 2;
 
       onModelView = { k, ox, oy };
 
-      drawBackground(targetCtx, frameW, frameH, false);
+      targetCtx.clearRect(0, 0, frameW, frameH);
       targetCtx.save();
       targetCtx.translate(ox, oy);
       targetCtx.scale(k, k);
