@@ -956,10 +956,15 @@
     // (exportShort = pixels on the shorter frame side) — that resolution is
     // fixed by the platform, so it overrides the quality picker at export time.
     const CANVAS_ASPECTS = {
+      // oneX: no 2x option. Etsy already exports at 2700x2025, so doubling it
+      // reaches 22 megapixels for a listing image, and a Story is displayed at
+      // a fixed 1080x1920 where the extra pixels are thrown away. Both would
+      // only inflate the file. Everything that offers a quality choice reads
+      // this flag, so a preset is opted out in one place.
       '1:1': { w: 1, h: 1, exportShort: 1080 }, // also Instagram Post
-      '4:3': { w: 4, h: 3, exportShort: 2025, shirtZoom: 1.12 }, // also Etsy Listing (2700x2025)
+      '4:3': { w: 4, h: 3, exportShort: 2025, shirtZoom: 1.12, oneX: true }, // also Etsy Listing (2700x2025)
       '4:5': { w: 4, h: 5 },
-      '9:16': { w: 9, h: 16, exportShort: 1080, shirtZoom: 1.12 } // also Instagram Story (1080x1920)
+      '9:16': { w: 9, h: 16, exportShort: 1080, shirtZoom: 1.12, oneX: true } // also Instagram Story (1080x1920)
     };
     let canvasAspect = '1:1';
 
@@ -984,7 +989,10 @@
     function getExportScaleFactor(qualityScaleFactor) {
       const preset = CANVAS_ASPECTS[canvasAspect];
       const presetScale = preset.exportShort ? preset.exportShort / 1000 : 1;
-      return presetScale * qualityScaleFactor;
+      // Clamped here as well as hidden in the UI, so a control left on 2x
+      // from a previous preset cannot export at 2x after switching to one
+      // that does not offer it.
+      return presetScale * (preset.oneX ? 1 : qualityScaleFactor);
     }
 
     // Returns the full render frame size for a given export scale (1 = on-screen
@@ -3648,6 +3656,18 @@
         const extraSub = optionExtraHighCard.querySelector('.option-sub');
         if (highSub) highSub.textContent = `lower file size - ${Math.round(highDims.frameW)}x${Math.round(highDims.frameH)}px`;
         if (extraSub) extraSub.textContent = `higher file size - ${Math.round(extraDims.frameW)}x${Math.round(extraDims.frameH)}px`;
+        // Same opt-out as the batch modal. Hiding the card leaves High Quality
+        // as the only one, so it is also re-selected — otherwise a user who
+        // picked Extra High under a different preset would come back to a
+        // modal with nothing visibly chosen.
+        const oneX = !!CANVAS_ASPECTS[canvasAspect].oneX;
+        optionExtraHighCard.style.display = oneX ? 'none' : '';
+        if (oneX) {
+          const highRadio = optionHighCard.querySelector('input[name="download-quality"]');
+          if (highRadio) highRadio.checked = true;
+          optionHighCard.classList.add('active');
+          optionExtraHighCard.classList.remove('active');
+        }
         downloadModal.style.display = 'flex';
       }
     });
@@ -3976,7 +3996,17 @@
 
       // Quality is a multiplier on whatever the canvas preset already decides,
       // so the labels are the fixed "1x" and "2x" in the markup — no pixel
-      // dimensions to keep in sync, and nothing to recompute here.
+      // dimensions to keep in sync, and nothing to recompute here. Presets
+      // marked oneX drop the second option and the row with it: a lone radio
+      // that cannot be unpicked is a worse way of saying "no choice here"
+      // than saying nothing.
+      const oneX = !!CANVAS_ASPECTS[canvasAspect].oneX;
+      const quality2x = batchModal.querySelector('input[name="batch-quality"][value="2000"]');
+      const quality1x = batchModal.querySelector('input[name="batch-quality"][value="1000"]');
+      const qualityRow = batchModal.querySelector('.batch-quality-row');
+      if (oneX && quality1x) quality1x.checked = true;
+      if (qualityRow) qualityRow.style.display = oneX ? 'none' : '';
+      if (quality2x) quality2x.disabled = oneX;
 
       updateBatchEstimate();
       batchModal.style.display = 'flex';
