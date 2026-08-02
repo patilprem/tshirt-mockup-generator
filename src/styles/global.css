@@ -1797,7 +1797,10 @@ input[type="range"]:focus-visible,
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(2, auto);
-  grid-auto-columns: calc((100% - 8px) / 2);
+  /* 2.5 cards across: two whole ones plus a visible sliver, so the strip
+     reads as scrollable without needing a scrollbar to say so.
+     2.5*card + 2*gap = 100%. */
+  grid-auto-columns: calc((100% - 16px) / 2.5);
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
