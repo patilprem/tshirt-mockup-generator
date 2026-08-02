@@ -2347,6 +2347,26 @@
       // replace, so solid colour, transparency and the wood panels have no
       // meaning here and only invite a click that does nothing.
       if (bgSection) bgSection.style.display = style === 'onmodel' ? 'none' : '';
+      // Mobile hides every panel-section and re-shows them per tab with
+      // !important, which beats the inline display above — so the mode has to
+      // be expressed as state the stylesheet can see, not just inline styles.
+      const appEl = document.querySelector('.app-container');
+      if (appEl) appEl.dataset.mockupStyle = style;
+      // Background and Props are flat-lay-only, so on-model leaves their tabs
+      // with nothing in them. Hide the tabs rather than let someone land on a
+      // blank panel, and move off one if that is where they already are.
+      const navBar = document.getElementById('mobile-nav-bar');
+      if (navBar && appEl) {
+        const emptyOnModel = ['background', 'props'];
+        emptyOnModel.forEach(t => {
+          const nb = navBar.querySelector(`[data-target="${t}"]`);
+          if (nb) nb.style.display = style === 'onmodel' ? 'none' : '';
+        });
+        if (style === 'onmodel' && emptyOnModel.includes(appEl.dataset.mobileTab)) {
+          const fallback = navBar.querySelector('[data-target="garment"]');
+          if (fallback) fallback.click();
+        }
+      }
       // Batch export is flat-lay only. Its axes are garment type and colour,
       // and an on-model template fixes the garment — so left enabled here it
       // runs the flat-lay pipeline and hands back crewnecks and hoodies on a
@@ -3649,6 +3669,17 @@
     // dimensions rather than reading "1x / 2x" — it names one file the user is
     // about to save, where the exact size is the useful fact.
     downloadBtn.addEventListener('click', () => {
+      // On-model has no quality decision to make. The canvas-aspect presets
+      // are a flat-lay concept, and the export is bounded by the template
+      // photo's own pixels — upscaling past them would only soften the print.
+      // So there is exactly one sensible size, the template's native
+      // resolution, and a modal asking which of one option to use is a click
+      // in the way of the download. 'extra-high' is the branch below that
+      // takes those native pixels without the 2048 cap.
+      if (mockupStyle === 'onmodel') {
+        runDownload('extra-high');
+        return;
+      }
       if (downloadModal) {
         const highDims = getFrameDims(getExportScaleFactor(1));
         const extraDims = getFrameDims(getExportScaleFactor(2));
@@ -3709,16 +3740,10 @@
       });
     }
 
-    // Perform download based on selected quality option
-    if (modalDownloadBtn) {
-      modalDownloadBtn.addEventListener('click', () => {
-        // Close modal first
-        closeDownloadModal();
-
-        // Check selected quality
-        const selectedRadio = downloadModal ? downloadModal.querySelector('input[name="download-quality"]:checked') : null;
-        const quality = selectedRadio ? selectedRadio.value : 'high';
-
+    // Perform download at a given quality. Split out of the modal button so
+    // on-model can skip the modal entirely and download straight away.
+    function runDownload(quality) {
+      {
         // 1. Determine canvas settings based on selection (platform presets
         // export at their fixed resolution regardless of the quality choice)
         const isExtraHigh = (quality === 'extra-high');
@@ -3771,6 +3796,14 @@
           // Hide loading spinner
           if (canvasLoading) canvasLoading.style.display = 'none';
         }, 50);
+      }
+    }
+
+    if (modalDownloadBtn) {
+      modalDownloadBtn.addEventListener('click', () => {
+        closeDownloadModal();
+        const selectedRadio = downloadModal ? downloadModal.querySelector('input[name="download-quality"]:checked') : null;
+        runDownload(selectedRadio ? selectedRadio.value : 'high');
       });
     }
 
