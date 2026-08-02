@@ -1074,7 +1074,17 @@ function analyze(img) {
     // foliage, none of which are violet fabric. Only a dark pixel that is
     // also chromatically neutral tells us nothing at all.
     const o2 = i * 4;
-    const chroma = Math.max(src[o2] - src[o2 + 2], src[o2 + 1] - Math.max(src[o2], src[o2 + 2]));
+    // Three directions, one per thing that is not the garment: warm (skin,
+    // hair, wood), green-dominant (foliage), and RED LOWEST — the blue-cyan
+    // family, which is black denim and dark waistbands. Without that third
+    // term a near-black pair of jeans under the hem read as information-free,
+    // the harmonic completion averaged the shirt's weight down into it and
+    // the waistband recoloured with the shirt. Violet can never satisfy it:
+    // violet's lowest channel is green.
+    const chroma = Math.max(
+      src[o2] - src[o2 + 2],
+      src[o2 + 1] - Math.max(src[o2], src[o2 + 2]),
+      Math.min(src[o2 + 1], src[o2 + 2]) - src[o2]);
     const u = (1 - smooth(vA[i], 0.12, 0.36)) * (1 - smooth(chroma, 4, 14));
     unrel[i] = u;
     if (u > 0.5 && !core[i]) crevice[i] = 1;
@@ -1270,6 +1280,16 @@ function analyze(img) {
   }
   let keyMiss = 0;
   for (let i = 0; i < N; i++) if (orderEv[i] > 0.5 && wMap[i] < 0.5) keyMiss++;
+  // The mirror: something that is not the garment carrying garment weight.
+  // `skin` asks this of warm objects only, so dark denim under the hem went
+  // unmeasured. Red lowest by a clear margin is the blue-cyan family and
+  // never violet. Dark only — that is where weight arrives by diffusion.
+  let coolPaint = 0;
+  for (let i = 0; i < N; i++) {
+    if (wMap[i] <= 0.5 || vA[i] >= 0.30) continue;
+    const o = i * 4;
+    if (Math.min(src[o + 1], src[o + 2]) - src[o] > 6) coolPaint++;
+  }
 
   const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
   const ownArr = new Uint8ClampedArray(N);
@@ -1320,7 +1340,7 @@ function analyze(img) {
     missed, skin,
     deepShadowPct: 100 * deepN / Math.max(1, gN),
     blownPct: 100 * blownN / Math.max(1, coreN),
-    bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss,
+    bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss, coolPaint,
     modelFit: fitSum / Math.max(1, fitCnt),
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
@@ -1414,6 +1434,10 @@ function runValidation(img, url) {
       // over the shoulder against a bright background, which is where the
       // recolour has to yield to the matte. The prompt advice targets that.
       F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', 'Keep hair entirely behind both shoulders so none of it falls across the shirt, and keep the light on the shoulders soft enough that no dark band forms where hair meets fabric.');
+      // The mirror of the check above. Lines sit above a noise floor, not at
+      // zero: near-black pixels carry a few levels of chroma noise, so a clean
+      // template still scores in the low hundreds.
+      F(a.coolPaint > 600, a.coolPaint > 250, 'Nothing below the hem recoloured (jeans, waistband)', a.coolPaint + ' px', 'The shirt hem must sit clear of the trousers with a visible, sharply focused gap of separation — no near-black waistband pressed directly against the hem, and no fabric of the bottoms in deep shadow immediately below it.');
     }
     document.getElementById('checks').innerHTML = checks.join('');
     lastVerdict = { fails, warns, rows: rowSummary };
@@ -1606,6 +1630,7 @@ document.getElementById('mBuild').addEventListener('click', async () => {
     `edge ${a.edgeDark != null ? a.edgeDark + '/' + a.edgeBright : '?'}`,
     `wedge ${a.wedgePx != null ? a.wedgePx : '?'}px`,
     `keyMiss ${a.keyMiss != null ? a.keyMiss : '?'}px`,
+    `coolPaint ${a.coolPaint != null ? a.coolPaint : '?'}px`,
   ].join(', ');
   const verdictLine = !lastVerdict ? 'not validated'
     : lastVerdict.fails ? `FAIL (${lastVerdict.fails})`

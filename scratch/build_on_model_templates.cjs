@@ -598,7 +598,21 @@ const TEMPLATES = [
         // foliage, none of which are violet fabric. Only a dark pixel that is
         // also chromatically neutral tells us nothing at all.
         const o2 = i * 4;
-        const chroma = Math.max(src[o2] - src[o2 + 2], src[o2 + 1] - Math.max(src[o2], src[o2 + 2]));
+        // Three directions, one per thing that is not the garment. Warm
+        // (red over blue) is skin, hair and wood; green over both is foliage;
+        // and RED LOWEST is the blue-cyan family — black denim, a dark
+        // waistband, deep sky. That third term was missing, so a near-black
+        // pair of jeans directly under the hem scored as information-free,
+        // the harmonic completion below averaged the shirt's weight straight
+        // down into it, and the waistband recoloured with the shirt. It is
+        // written as an ordering rather than a hue window for the same reason
+        // orderEv is: red-lowest is a fact about dark denim that survives
+        // however dark it gets, and violet can never satisfy it, because
+        // violet's minimum channel is green.
+        const chroma = Math.max(
+          src[o2] - src[o2 + 2],
+          src[o2 + 1] - Math.max(src[o2], src[o2 + 2]),
+          Math.min(src[o2 + 1], src[o2 + 2]) - src[o2]);
         const u = (1 - smooth(vA[i], 0.12, 0.36)) * (1 - smooth(chroma, 4, 14));
         unrel[i] = u;
         if (u > 0.5 && !core[i]) crevice[i] = 1;
@@ -993,6 +1007,20 @@ const TEMPLATES = [
       let keyMiss = 0;
       for (let i = 0; i < N; i++) if (orderEv[i] > 0.5 && wMap[i] < 0.5) keyMiss++;
 
+      // The same question about the OTHER kind of mistake: something that is
+      // not the garment carrying garment weight. `skin` asks it of warm
+      // objects only, so black denim under the hem went unmeasured — the
+      // waistband recoloured with the shirt and nothing said so. Red lowest
+      // by a clear margin is the blue-cyan family and never violet, whose
+      // lowest channel is green. Restricted to dark pixels because that is
+      // where the weight arrives by diffusion rather than by the key.
+      let coolPaint = 0;
+      for (let i = 0; i < N; i++) {
+        if (wMap[i] <= 0.5 || vA[i] >= 0.30) continue;
+        const o = i * 4;
+        if (Math.min(src[o + 1], src[o + 2]) - src[o] > 6) coolPaint++;
+      }
+
       let missed = 0, skin = 0, gN = 0, deepN = 0, bgPaint = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
@@ -1014,14 +1042,14 @@ const TEMPLATES = [
         return { x, y, rgb: [src[o], src[o+1], src[o+2]], h: +hA[i].toFixed(1), s: +sA[i].toFixed(3), v: +vA[i].toFixed(3),
           wRaw: +wRaw[i].toFixed(3), core: core[i], outside: outside[i], gate: gate[i],
           clip: +clip[i].toFixed(3), hueClose: +hueClose.toFixed(3),
-          ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue };
+          ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue, orderEv: +orderEv[i].toFixed(3), unrel: +unrel[i].toFixed(3), clip: +clip[i].toFixed(3), conf: +confA[i].toFixed(3) };
       });
       return {
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
         qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct,
-          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss },
+          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -1100,6 +1128,25 @@ const TEMPLATES = [
       console.log(`  ! keyMiss=${r.qa.keyMiss} — above the warn line, inspect pink at the collar and underarm`);
     }
 
+    // The mirror of keyMiss: something that is not the garment being painted
+    // with it. Dark denim under the hem is the case that motivated it — the
+    // waistband came out white on a white shirt. The lines sit above a noise
+    // floor rather than at zero: near-black pixels carry a few levels of
+    // chroma noise, so a clean template still scores in the low hundreds
+    // (bright-airy-f 222, whose two hem pixels are correct on inspection),
+    // while miami-f scored 3174 with a genuinely painted waistband.
+    if (r.qa.coolPaint > 600) {
+      console.error(`${r.W}x${r.H} coolPaint=${r.qa.coolPaint} — FAILS QA`);
+      console.error('  Dark blue or black pixels below the garment are being recoloured.');
+      console.error('  Usually jeans or a waistband taking weight the shirt diffused into them.');
+      console.error('  Check the unrel chroma directions and the harmonic completion.');
+      process.exitCode = 1;
+      continue;
+    }
+    if (r.qa.coolPaint > 250) {
+      console.log(`  ! coolPaint=${r.qa.coolPaint} — above the warn line, inspect the hem and waistband on white`);
+    }
+
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-photo.jpg`), Buffer.from(r.photo.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-weight.png`), Buffer.from(r.weight.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-shade.jpg`), Buffer.from(r.shade.split(',')[1], 'base64'));
@@ -1121,7 +1168,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
