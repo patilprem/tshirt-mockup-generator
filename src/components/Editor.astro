@@ -1992,12 +1992,14 @@
       lc.globalAlpha = 1;
 
       // Bend the print along the fold gradients, before the shading passes so
-      // shadow and shine land on it where it actually sits. Driven by the same
-      // Fold Shadows control, so one slider governs how much the fabric asserts
-      // itself over the print.
-      if (useRealisticBlending && shadowDepth > 0) {
+      // shadow and shine land on it where it actually sits. Fixed rather than
+      // exposed as a control: how far a print rides over a crease is a property
+      // of the garment, not a preference, and one more slider is one more thing
+      // for a user to get wrong.
+      const FOLD_DEPTH = 0.40;
+      if (useRealisticBlending) {
         const { gx, gy, ref } = onModelWarpField(entry);
-        const K = shadowDepth * 9 * (w / 800);
+        const K = FOLD_DEPTH * 9 * (w / 800);
         const src = lc.getImageData(0, 0, w, h), sd = src.data;
         const outI = lc.createImageData(w, h), od = outI.data;
         const pad = Math.ceil(K) + 2;
