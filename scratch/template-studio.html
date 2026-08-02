@@ -337,9 +337,10 @@
     <section class="step hidden" id="pushStep">
       <div class="step-head"><span class="step-num">STEP 4</span><h2>Ship it</h2></div>
       <p class="sub">
-        The id, label and scene note are worked out from the image and your Step 1
-        choices — nothing to fill in. Press the button, paste into the Claude session,
-        and attach the final image (upscaled, watermark-free).
+        Everything is filled in already — the entry, the numbers this validator
+        measured, and the prompt the image came from. Press the button, paste into the
+        Claude session, attach the final image (upscaled, watermark-free). Nothing else
+        should be needed.
       </p>
       <div class="meta-preview" id="mPreview"></div>
       <div class="row">
@@ -1311,6 +1312,7 @@ window.addEventListener('paste', e => {
 });
 
 let analysis = null;
+let lastVerdict = null;
 function loadFile(f) {
   const url = URL.createObjectURL(f);
   const img = new Image();
@@ -1331,11 +1333,12 @@ function runValidation(img, url) {
     document.getElementById('valPreview').src = url;
     const checks = [];
     let fails = 0, warns = 0;
-    const broke = [];
+    const broke = [], rowSummary = [];
     const F = (cond, warnCond, label, num, fix) => {
       const st = cond ? 'fail' : (warnCond ? 'warn' : 'ok');
       if (st === 'fail') fails++; if (st === 'warn') warns++;
       if (st !== 'ok' && fix) broke.push(fix);
+      rowSummary.push({ st, label, num });
       checks.push(checkRow(st, label, num));
     };
 
@@ -1366,6 +1369,7 @@ function runValidation(img, url) {
       F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm, and hair stays behind the shoulders so it casts no dark shadow onto the shirt.');
     }
     document.getElementById('checks').innerHTML = checks.join('');
+    lastVerdict = { fails, warns, rows: rowSummary };
     const v = document.getElementById('verdict');
     if (fails) {
       v.className = 'verdict fail';
@@ -1536,15 +1540,42 @@ document.getElementById('mBuild').addEventListener('click', async () => {
   const m = renderMeta();
   const out = document.getElementById('mOut');
   out.classList.remove('hidden');
+  // Everything needed to act on this without a follow-up question: the entry,
+  // the numbers the Studio measured (so the build's own QA can be compared
+  // against them), and the prompt the image came from.
+  const a = analysis || {};
+  const warnRows = (lastVerdict && lastVerdict.rows || []).filter(r => r.st !== 'ok');
+  const qa = [
+    `resolution ${a.srcW || '?'}x${a.srcH || '?'}`,
+    `shirt hue ${a.shirtHue != null ? a.shirtHue + '\u00B0' : '?'}`,
+    `coverage ${a.coverage != null ? a.coverage.toFixed(1) + '%' : '?'}`,
+    `deep shadow ${a.deepShadowPct != null ? a.deepShadowPct.toFixed(2) + '%' : '?'}`,
+    `fragments ${a.fragments != null ? a.fragments : '?'}`,
+    `stray violet ${a.strayVioletPct != null ? a.strayVioletPct.toFixed(2) + '%' : '?'}`,
+    `skin ${a.skin != null ? a.skin : '?'}px`,
+    `blown ${a.blownPct != null ? a.blownPct.toFixed(2) + '%' : '?'}`,
+    `model fit ${a.modelFit != null ? a.modelFit.toFixed(1) : '?'}`,
+    `bg paint ${a.bgPaint != null ? a.bgPaint : '?'}`,
+    `edge ${a.edgeDark != null ? a.edgeDark + '/' + a.edgeBright : '?'}`,
+    `wedge ${a.wedgePx != null ? a.wedgePx : '?'}px`,
+  ].join(', ');
+  const verdictLine = !lastVerdict ? 'not validated'
+    : lastVerdict.fails ? `FAIL (${lastVerdict.fails})`
+    : lastVerdict.warns ? `PASS WITH ${lastVerdict.warns} WARNING${lastVerdict.warns > 1 ? 'S' : ''}`
+    : 'PASS, no warnings';
+  const warnLine = warnRows.length
+    ? '\nNot clean: ' + warnRows.map(r => `${r.label} (${r.num})`).join('; ')
+    : '';
   const text =
 `Add this on-model template:
-{ id: '${m.id}', file: '${m.id}.webp', label: '${m.label}', model: '${m.model}', scene: '${m.scene}' }`;
-  out.textContent = text + `
+{ id: '${m.id}', file: '${m.id}.webp', label: '${m.label}', model: '${m.model}', scene: '${m.scene}' }
 
-Paste that into the Claude session and attach the final image (upscaled,
-watermark removed). Claude saves it to scratch/on-model-src/, runs the builder
-— the same QA gates re-run, so it only ships if it still passes — then rebuilds
-the preview and pushes.`;
+Studio validation: ${verdictLine}
+${qa}${warnLine}
+
+Prompt used:
+${document.getElementById('pOut').value || '(not built in this session)'}`;
+  out.textContent = text;
   const ta = document.createElement('textarea');
   ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
   document.body.appendChild(ta);
