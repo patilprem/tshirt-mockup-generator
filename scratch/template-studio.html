@@ -794,6 +794,28 @@ function analyze(img) {
     gate.set(gm);
   }
 
+  // Channel ordering, as a backstop for what the hue angle loses. Violet
+  // fabric keeps GREEN as its smallest channel under any illuminant, because
+  // dimming scales all three channels together — the ordering survives shadow
+  // that the angle does not. The angle swings toward whatever light reaches
+  // the pixel, in a direction set by the pose: a sky-lit fold reads bluer,
+  // fabric shadowed by hair or an arm loses the blue skylight and reads up to
+  // +60deg warmer, past where the window has collapsed. Skin, hair and wood
+  // put BLUE lowest, foliage puts green highest, neutrals have no strict
+  // minimum. Saturation keeps it off edge mixes, which the background dilutes.
+  // Kept in step with build_on_model_templates.cjs — the studio has to fail
+  // what the builder fails or it waves through images the builder rejects.
+  const orderEv = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    if (!gate[i]) continue;
+    const o = i * 4;
+    const vMax = Math.max(src[o], src[o + 1], src[o + 2]) || 1;
+    const gMin = Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) / vMax;
+    orderEv[i] = smooth(gMin, 0.06, 0.14)
+      * smooth(sA[i], 0.20, 0.32)
+      * (1 - smooth(vA[i], 0.55, 0.72));
+  }
+
   const outside = new Uint8Array(N);
   {
     let fh2 = 0, ft2 = 0;
@@ -870,9 +892,9 @@ function analyze(img) {
     // the crevice recolours to a dark tone of the target instead of
     // staying black under a white shirt.
     const fabricEv = hueClose * smooth(sA[i], 0.18, 0.32);
-    wMap[i] *= Math.max(tap, fabricEv);
+    wMap[i] *= Math.max(tap, fabricEv, orderEv[i]);
     neut[i] = Math.max(evChroma, evMix);
-    evAny[i] = Math.max(tap, fabricEv, evChroma, evMix);
+    evAny[i] = Math.max(tap, fabricEv, orderEv[i], evChroma, evMix);
   }
 
   const cV = [], cR = [], cG = [], cB = [];
@@ -1230,6 +1252,25 @@ function analyze(img) {
     fitCnt++;
   }
 
+  // The ordering evidence again, as a FLOOR, applied after every stage that
+  // can lower a weight — the min filter, the matte, the closing, the harmonic
+  // completion all disbelieve a hair-shadowed band and drag it back to zero.
+  // A floor is monotone, so it undoes none of their work. It yields to a
+  // confident matte, except where the background behind the pixel is dark:
+  // shading takes fabric toward black, so only a near-black background can
+  // imitate it, and there the matte cannot tell fabric-in-shadow from
+  // fabric-mixed-with-hair while the ordering can. Against a bright
+  // background the two are not confusable and overriding lights a rim.
+  for (let i = 0; i < N; i++) {
+    const cf = Math.max(0, Math.min(1, confA[i]));
+    const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+    const ambig = 1 - smooth(bgL, 60, 110);
+    const fl = orderEv[i] * (1 - cf * (1 - orderEv[i] * ambig));
+    if (fl > wMap[i]) wMap[i] = fl;
+  }
+  let keyMiss = 0;
+  for (let i = 0; i < N; i++) if (orderEv[i] > 0.5 && wMap[i] < 0.5) keyMiss++;
+
   const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
   const ownArr = new Uint8ClampedArray(N);
   // clipArr is design coverage and nothing else. ownArr is the separate
@@ -1279,7 +1320,7 @@ function analyze(img) {
     missed, skin,
     deepShadowPct: 100 * deepN / Math.max(1, gN),
     blownPct: 100 * blownN / Math.max(1, coreN),
-    bgPaint, haloDelta, edgeDark, edgeBright, wedgePx,
+    bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss,
     modelFit: fitSum / Math.max(1, fitCnt),
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
@@ -1367,6 +1408,12 @@ function runValidation(img, url) {
       F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
       F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
       F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm, and hair stays behind the shoulders so it casts no dark shadow onto the shirt.');
+      // Same thresholds as the builder's gate. This one is about the pipeline
+      // rather than the photo, so it is worth flagging even though the fix is
+      // usually code — but the photo can cause it too, by laying dark hair
+      // over the shoulder against a bright background, which is where the
+      // recolour has to yield to the matte. The prompt advice targets that.
+      F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', 'Keep hair entirely behind both shoulders so none of it falls across the shirt, and keep the light on the shoulders soft enough that no dark band forms where hair meets fabric.');
     }
     document.getElementById('checks').innerHTML = checks.join('');
     lastVerdict = { fails, warns, rows: rowSummary };
@@ -1558,6 +1605,7 @@ document.getElementById('mBuild').addEventListener('click', async () => {
     `bg paint ${a.bgPaint != null ? a.bgPaint : '?'}`,
     `edge ${a.edgeDark != null ? a.edgeDark + '/' + a.edgeBright : '?'}`,
     `wedge ${a.wedgePx != null ? a.wedgePx : '?'}px`,
+    `keyMiss ${a.keyMiss != null ? a.keyMiss : '?'}px`,
   ].join(', ');
   const verdictLine = !lastVerdict ? 'not validated'
     : lastVerdict.fails ? `FAIL (${lastVerdict.fails})`

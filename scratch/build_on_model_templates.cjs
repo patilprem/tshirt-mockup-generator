@@ -217,6 +217,30 @@ const TEMPLATES = [
       // then dilates a little. Fixed dilation alone can't reach the middle of a
       // wide deep-shadow fold at the hem, and anything the gate misses keeps
       // its original violet under every recolour.
+      // CHANNEL ORDERING, as a backstop for everything the hue angle loses.
+      // Violet fabric keeps GREEN as its smallest channel under any
+      // illuminant: dimming scales all three channels together, so the
+      // ordering survives shadow that the angle does not. And the angle
+      // really does not — it swings toward whatever light reaches the pixel,
+      // in a direction set by the pose. A sky-lit fold reads BLUER (the
+      // widened negative limit below is exactly that case); fabric shadowed
+      // by hair or an arm loses the blue skylight and reads WARMER, up to
+      // +60deg magenta-ward, where the cosine window has already collapsed
+      // to near zero. Those pixels keep their original violet while the
+      // fabric around them recolours — a navy stripe along a hair-shadowed
+      // collar on a pink shirt. Widening the positive limit instead would
+      // trade one pose for another, which is how this kept failing; the
+      // ordering is pose-independent.
+      //
+      // Skin, hair and wood put BLUE lowest, foliage puts green highest and
+      // neutrals have no strict minimum, so none are reachable. Saturation
+      // carries the same argument fabricEv makes below — a fabric/background
+      // mixture is diluted by the background, so high saturation inside the
+      // key means fabric, not an edge mix — which keeps this off any violet
+      // bounce on a nearby wall, where raising weight would paint a glowing
+      // rim. Held away from full brightness, where the strict key wins on
+      // its own, and contained by the gate.
+      const orderEv = new Float32Array(N);
       const gate = new Uint8Array(N);
       {
         const DMX = Math.max(30, Math.round(W / 8));
@@ -240,6 +264,17 @@ const TEMPLATES = [
         const GR = Math.max(3, Math.round(W / 150));
         for (let i = 0; i < GR; i++) gm = dil(gm);
         gate.set(gm);
+      }
+      for (let i = 0; i < N; i++) {
+        if (!gate[i]) continue;
+        const o = i * 4;
+        const vMax = Math.max(src[o], src[o + 1], src[o + 2]) || 1;
+        // > 0 only where green is the strict minimum, scaled by the pixel's
+        // own value so the test means the same thing at any brightness
+        const gMin = Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) / vMax;
+        orderEv[i] = smooth(gMin, 0.06, 0.14)
+          * smooth(sA[i], 0.20, 0.32)
+          * (1 - smooth(vA[i], 0.55, 0.72));
       }
 
       // In-gate recolour weight, the union of four signals:
@@ -346,9 +381,9 @@ const TEMPLATES = [
         // the crevice recolours to a dark tone of the target instead of
         // staying black under a white shirt.
         const fabricEv = hueClose * smooth(sA[i], 0.18, 0.32);
-        wMap[i] *= Math.max(tap, fabricEv);
+        wMap[i] *= Math.max(tap, fabricEv, orderEv[i]);
         neut[i] = Math.max(evChroma, evMix);
-        evAny[i] = Math.max(tap, fabricEv, evChroma, evMix);
+        evAny[i] = Math.max(tap, fabricEv, orderEv[i], evChroma, evMix);
       }
 
       // illumination reference over confident fabric
@@ -671,6 +706,44 @@ const TEMPLATES = [
         }
       }
 
+      // The ordering evidence again, now as a FLOOR — applied last, after
+      // every stage that can lower a weight. The min filter, the matte, the
+      // closing and the harmonic completion each disbelieve this band for
+      // the same reason the hue window did: it lies against a dark occluder
+      // with no clean background reachable behind it, so each one drags it
+      // back toward zero and the multiply above alone recovers only a few
+      // levels. A floor is monotone — it can lower nothing and so undoes
+      // none of their work — it only refuses to let them zero a pixel that
+      // carries the key's own signature.
+      //
+      // Yielded to the matte, but only as far as the matte can actually see.
+      // A small matting residual normally means the pixel really is a
+      // fabric/background mixture and its alpha is the correct weight —
+      // overriding those lights the silhouette with a bright rim
+      // (edgeBright 0 -> 75 on home-f), so confidence is respected by
+      // default. It is not respected where the key signature is strong,
+      // because there the matte is answering a question it cannot tell
+      // apart: fabric DARKENED BY SHADOW and fabric MIXED WITH DARK HAIR lie
+      // on the same line from near-black to lit fabric, so a small residual
+      // does not distinguish them. The ordering does. Under the collar the
+      // matte reports 28% fabric, which would put green at 41; the pixel
+      // reads 36 — more violet than its own mixture explains, so the
+      // darkening is shading and the fabric is fully there.
+      //
+      // And only where the background behind the pixel is DARK, which is the
+      // whole of that ambiguity: shading takes fabric toward black, so only a
+      // near-black background can imitate it. Against a bright background the
+      // two are not confusable — mixing brightens, shading darkens — the
+      // matte is answering a question it can see, and discounting it there is
+      // what lit the rim.
+      for (let i = 0; i < N; i++) {
+        const cf = Math.max(0, Math.min(1, confA[i]));
+        const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+        const ambig = 1 - smooth(bgL, 60, 110);
+        const fl = orderEv[i] * (1 - cf * (1 - orderEv[i] * ambig));
+        if (fl > wMap[i]) wMap[i] = fl;
+      }
+
       // The own-value blend, computed once and shared by the weight map's B
       // channel and the chroma QA gate below. One array rather than the same
       // expression written twice: the gate exists to catch this value going
@@ -903,6 +976,22 @@ const TEMPLATES = [
       }
       const chromaPct = +(100 * chromaPx / Math.max(1, chromaMaskPx)).toFixed(3);
 
+      // Chroma key left behind. `missed` above asks the hue question and so
+      // shares the exact blind spot it would need to see: fabric shadowed by
+      // a warm occluder rotates out of the +-30deg window and goes uncounted.
+      // This asks the ordering question instead, and asks it of the same
+      // orderEv the recolour uses — so it states an invariant rather than a
+      // second opinion: wherever the key's signature is unambiguous, the
+      // pixel must have been recoloured. It can still fail, and the way it
+      // fails is the one case the floor yields on: a confident matte against
+      // a bright background. Counting raw green-lowest pixels instead was
+      // useless as a gate — it scored 738 on gallery-f, which renders
+      // correctly, because dark hair lying over the shirt picks up enough
+      // violet bleed to satisfy the ordering and SHOULD stay unrecoloured.
+      // Saturation is what separates the two, and orderEv already applies it.
+      let keyMiss = 0;
+      for (let i = 0; i < N; i++) if (orderEv[i] > 0.5 && wMap[i] < 0.5) keyMiss++;
+
       let missed = 0, skin = 0, gN = 0, deepN = 0, bgPaint = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
@@ -931,7 +1020,7 @@ const TEMPLATES = [
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
         qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct,
-          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx },
+          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -986,6 +1075,30 @@ const TEMPLATES = [
       console.log(`  ! chroma=${r.qa.chromaPct}% worst=${r.qa.chromaWorst} — above the warn line, inspect white before shipping`);
     }
 
+    // Chroma key left unrecoloured. Unlike the deep-shadow gate this is not a
+    // property of the photo to be reshot — it is the pipeline failing to key
+    // fabric it had the evidence to key, and it shows as a coloured stripe of
+    // the ORIGINAL violet wherever the garment is shadowed by something dark:
+    // the collar under hair, the inside of an elbow. It is invisible on a
+    // violet or navy target and obvious on pink or white, so a build cannot
+    // be trusted without it. Measured against the same evidence the recolour
+    // uses, so it fails only where the floor deliberately yields — a
+    // confident matte against a bright background — which is the case worth
+    // being told about. Every shipping template scores <= 42 with the
+    // ordering backstop in place; with it removed bright-airy-f scores 848
+    // and livingroom-m 144. The lines sit between those.
+    if (r.qa.keyMiss > 120) {
+      console.error(`${r.W}x${r.H} keyMiss=${r.qa.keyMiss} — FAILS QA`);
+      console.error('  Saturated violet fabric next to the garment is staying unrecoloured.');
+      console.error('  It will read as a coloured stripe on pink and white targets.');
+      console.error('  Check the ordering floor and the matte confidence before shipping.');
+      process.exitCode = 1;
+      continue;
+    }
+    if (r.qa.keyMiss > 60) {
+      console.log(`  ! keyMiss=${r.qa.keyMiss} — above the warn line, inspect pink at the collar and underarm`);
+    }
+
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-photo.jpg`), Buffer.from(r.photo.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-weight.png`), Buffer.from(r.weight.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-shade.jpg`), Buffer.from(r.shade.split(',')[1], 'base64'));
@@ -1007,7 +1120,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}%`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
