@@ -423,7 +423,11 @@ function runInspiration(img, url) {
   const d = x.getImageData(0, 0, W, H).data;
 
   // background sample: outer ring (left/right 18%, top 15%)
-  const cats = { foliage: 0, sky: 0, warmWall: 0, wood: 0, white: 0, coolGrey: 0, darkBg: 0 };
+  // blossom is its own category. Bougainvillea, blossom and flowering climbers
+  // sit around 300-360 degrees, which fell through every branch below and went
+  // uncounted — so a wall covered in pink flowers was read as a bare white
+  // interior on the strength of whatever plaster showed between them.
+  const cats = { foliage: 0, blossom: 0, sky: 0, warmWall: 0, wood: 0, white: 0, coolGrey: 0, darkBg: 0 };
   let bgN = 0, bgV = 0;
   const lum = new Float32Array(N);
   for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
@@ -434,6 +438,7 @@ function runInspiration(img, url) {
     const [h, s2, v] = hsv(d[o], d[o + 1], d[o + 2]);
     bgN++; bgV += v;
     if (h > 65 && h < 165 && s2 > 0.15) cats.foliage++;
+    else if ((h > 295 || h < 12) && s2 > 0.20 && v > 0.30) cats.blossom++;
     else if (h > 185 && h < 235 && s2 > 0.15 && v > 0.5 && yy < H * 0.4) cats.sky++;
     else if (s2 < 0.12 && v > 0.72) cats.white++;
     else if (h > 15 && h < 50 && s2 >= 0.25 && s2 < 0.65 && v > 0.22 && v < 0.7) cats.wood++;
@@ -458,16 +463,29 @@ function runInspiration(img, url) {
   }
   const ratio = (lv / Math.max(1, ln)) / Math.max(0.001, rv / Math.max(1, rn));
   const directional = ratio > 1.30 || ratio < 0.77;
-  // bottoms colour: lower centre band
-  let br = 0, bg2 = 0, bb2 = 0, bn = 0;
-  for (let yy = Math.round(H * 0.80); yy < H * 0.95; yy++)
-    for (let xx = Math.round(W * 0.34); xx < W * 0.66; xx++) {
-      const o = (yy * W + xx) * 4; br += d[o]; bg2 += d[o + 1]; bb2 += d[o + 2]; bn++;
+  // Bottoms colour, from the MEDIAN of the lower centre band rather than its
+  // mean. The band also catches hands, the shirt hem and slivers of
+  // background, and averaging blue denim against warm skin lands on a beige
+  // that is in the image nowhere. Skin-like pixels are dropped outright.
+  const bR = [], bG = [], bB = [];
+  for (let yy = Math.round(H * 0.78); yy < H * 0.97; yy++)
+    for (let xx = Math.round(W * 0.30); xx < W * 0.70; xx++) {
+      const o = (yy * W + xx) * 4;
+      const [hh, ss, vv] = hsv(d[o], d[o + 1], d[o + 2]);
+      if (hh > 8 && hh < 42 && ss > 0.18 && ss < 0.62 && vv > 0.35) continue;   // skin
+      bR.push(d[o]); bG.push(d[o + 1]); bB.push(d[o + 2]);
     }
-  const [bh, bs, bvv] = hsv(br / bn, bg2 / bn, bb2 / bn);
+  const med = a => { if (!a.length) return 0; const q = a.slice().sort((x, y) => x - y); return q[q.length >> 1]; };
+  const mR = med(bR), mG = med(bG), mB = med(bB);
+  const [bh, bs, bvv] = hsv(mR, mG, mB);
+  // Denim is identified by blue DOMINANCE, not by a hue window with a
+  // saturation floor: light-wash denim often sits under 0.12 saturation, where
+  // hue is unreliable, but its blue channel still leads red by a clear margin.
+  const blueLead = mB - mR;
   let bottoms = 'beige chino trousers';
-  if (bh > 190 && bh < 250 && bs > 0.12) bottoms = bvv > 0.45 ? 'light-wash denim jeans' : 'dark denim jeans';
+  if (blueLead > 10) bottoms = bvv > 0.45 ? 'light-wash denim jeans' : 'dark denim jeans';
   else if (bvv < 0.22) bottoms = 'black trousers';
+  else if (bvv > 0.80 && bs < 0.10) bottoms = 'white jeans';
   else if (bvv > 0.55 && bs < 0.35 && bh > 15 && bh < 60) bottoms = 'cream trousers';
 
   // scene sentence from the top background category
@@ -476,6 +494,7 @@ function runInspiration(img, url) {
   const blurTail = blurred ? ', background softly out of focus with shallow depth of field' : '';
   const SCENES = {
     foliage: 'a leafy outdoor path with soft green foliage far behind' + blurTail,
+    blossom: 'a sunlit wall with pink blossom spilling across it' + blurTail,
     sky: 'a sunlit street with buildings and open sky far behind' + blurTail,
     white: 'a bright minimal interior with white walls and soft daylight' + blurTail,
     warmWall: 'a warm cream plaster wall in soft natural daylight',
@@ -509,10 +528,10 @@ function runInspiration(img, url) {
   applyInspLock();
 
   // chips
-  const outdoor = top === 'foliage' || top === 'sky';
+  const outdoor = top === 'foliage' || top === 'sky' || top === 'blossom';
   const chips = [
     outdoor ? 'outdoor' : 'indoor',
-    'backdrop: ' + { foliage: 'greenery', sky: 'street & sky', white: 'white interior', warmWall: 'warm wall', wood: 'wood interior', coolGrey: 'neutral grey', darkBg: 'dark backdrop' }[top] + ' (' + Math.round(topShare * 100) + '%)',
+    'backdrop: ' + { foliage: 'greenery', blossom: 'flowers & wall', sky: 'street & sky', white: 'white interior', warmWall: 'warm wall', wood: 'wood interior', coolGrey: 'neutral grey', darkBg: 'dark backdrop' }[top] + ' (' + Math.round(topShare * 100) + '%)',
     bgBright > 0.62 ? 'bright' : bgBright > 0.4 ? 'mid light' : 'moody',
     blurred ? 'bg out of focus' : 'bg in focus',
     'bottoms: ' + bottoms,
@@ -520,6 +539,14 @@ function runInspiration(img, url) {
   ];
   const chipHost = document.getElementById('inspChips');
   chipHost.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+  // A 25% winner is a guess, not a reading. Say so, and release the lock so the
+  // scene text gets edited instead of shipped as drafted.
+  const weak = topShare < 0.35;
+  if (weak) {
+    chipHost.innerHTML += `<span class="chip warn">scene unclear (${Math.round(topShare * 100)}% winner) — edit the scene text</span>`;
+    const lk = document.getElementById('inspLock');
+    if (lk) { lk.checked = false; }
+  }
   if (directional) chipHost.innerHTML += `<span class="chip warn">directional light — the prompt forces soft light instead</span>`;
   if (bgBright < 0.4) chipHost.innerHTML += `<span class="chip warn">dark scene — risky for the shadow QA gate</span>`;
   document.getElementById('inspPreview').src = url;
