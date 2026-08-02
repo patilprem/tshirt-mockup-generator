@@ -482,9 +482,8 @@
 
       <div class="batch-section batch-quality-row">
         <span class="batch-section-label">Quality</span>
-        <label class="batch-radio"><input type="radio" name="batch-quality" value="1000" checked /> <span id="batch-quality-label-1000">1000&times;1000</span></label>
-        <label class="batch-radio"><input type="radio" name="batch-quality" value="2000" /> <span id="batch-quality-label-2000">2000&times;2000</span></label>
-        <span class="batch-hint" id="batch-quality-fixed" style="display: none;"></span>
+        <label class="batch-radio"><input type="radio" name="batch-quality" value="1000" checked /> 1&times;</label>
+        <label class="batch-radio"><input type="radio" name="batch-quality" value="2000" /> 2&times; <span class="batch-hint">(larger files)</span></label>
       </div>
 
       <p class="batch-estimate" id="batch-estimate" aria-live="polite"></p>
@@ -975,9 +974,17 @@
     // Resolves the actual export scale for the current canvasAspect: platform
     // presets always export at their exact fixed resolution; plain ratios use
     // whatever scale the quality picker (1x / 2x) chose.
+    // The preset decides the 1x size; quality multiplies it. Previously a
+    // preset with exportShort REPLACED the quality factor rather than scaling
+    // it, so on those presets — three of the four, including the 1:1 default —
+    // 1x and 2x produced byte-identical files, and every control offering the
+    // pair was lying. Multiplying makes 2x mean 2x everywhere: 1x still gives
+    // the platform's exact spec (Instagram Post 1080x1080), 2x gives double
+    // it for print or retina.
     function getExportScaleFactor(qualityScaleFactor) {
       const preset = CANVAS_ASPECTS[canvasAspect];
-      return preset.exportShort ? preset.exportShort / 1000 : qualityScaleFactor;
+      const presetScale = preset.exportShort ? preset.exportShort / 1000 : 1;
+      return presetScale * qualityScaleFactor;
     }
 
     // Returns the full render frame size for a given export scale (1 = on-screen
@@ -3626,10 +3633,13 @@
     const optionHighCard = document.getElementById('option-high-card');
     const optionExtraHighCard = document.getElementById('option-extra-high-card');
 
-    // Show modal on download button click — sub-labels reflect the real
-    // output size for the current canvas aspect/platform preset (platform
-    // presets export at a fixed size regardless of which option is picked,
-    // so both will show the same dimensions).
+    // Show modal on download button click — sub-labels reflect the real output
+    // size for the current canvas preset. These two used to print the same
+    // dimensions as each other on every platform preset, because quality did
+    // not scale a pinned export; now that it multiplies, the pair genuinely
+    // differs and the numbers here mean something again. This modal keeps the
+    // dimensions rather than reading "1x / 2x" — it names one file the user is
+    // about to save, where the exact size is the useful fact.
     downloadBtn.addEventListener('click', () => {
       if (downloadModal) {
         const highDims = getFrameDims(getExportScaleFactor(1));
@@ -3964,43 +3974,9 @@
       batchProgress.style.display = 'none';
       batchStartBtn.style.display = '';
 
-      // Quality labels reflect the real output size for the current canvas
-      // preset. Most presets pin the export size (exportShort), which makes
-      // the scale factor a no-op — both radios then render the SAME numbers
-      // and produce byte-identical files. That is true of 1:1, the default,
-      // so the control read "1080×1080 or 1080×1080" out of the box. A choice
-      // that isn't one shouldn't be drawn as a pair of radio buttons, so when
-      // the size is pinned they are replaced by a plain readout saying what
-      // the export will be and which preset decided it. 4:5 is currently the
-      // only preset where the choice is real; the branch is on exportShort
-      // rather than on a list of preset names so it stays correct if that
-      // changes.
-      const dims1000 = getFrameDims(getExportScaleFactor(1));
-      const dims2000 = getFrameDims(getExportScaleFactor(2));
-      const label1000 = document.getElementById('batch-quality-label-1000');
-      const label2000 = document.getElementById('batch-quality-label-2000');
-      if (label1000) label1000.textContent = `${Math.round(dims1000.frameW)}×${Math.round(dims1000.frameH)}`;
-      if (label2000) label2000.textContent = `${Math.round(dims2000.frameW)}×${Math.round(dims2000.frameH)}`;
-
-      const qualityPinned = !!CANVAS_ASPECTS[canvasAspect].exportShort;
-      const fixedNote = document.getElementById('batch-quality-fixed');
-      [label1000, label2000].forEach(el => {
-        const row = el && el.closest('.batch-radio');
-        if (row) row.style.display = qualityPinned ? 'none' : '';
-      });
-      if (fixedNote) {
-        fixedNote.style.display = qualityPinned ? '' : 'none';
-        if (qualityPinned) {
-          // The preset's own sub-label ("Instagram Post"), not its title —
-          // the title reads "Also Instagram Post (1080×1080)", which would
-          // put the word "Also" mid-sentence and repeat the dimensions.
-          const btn = canvasSizeSelector && canvasSizeSelector.querySelector(`[data-aspect="${canvasAspect}"]`);
-          const sub = btn && btn.querySelector('.aspect-sub');
-          const presetName = (sub && sub.textContent.trim()) || canvasAspect;
-          fixedNote.textContent =
-            `${Math.round(dims1000.frameW)}×${Math.round(dims1000.frameH)} — set by the ${presetName} canvas size`;
-        }
-      }
+      // Quality is a multiplier on whatever the canvas preset already decides,
+      // so the labels are the fixed "1x" and "2x" in the markup — no pixel
+      // dimensions to keep in sync, and nothing to recompute here.
 
       updateBatchEstimate();
       batchModal.style.display = 'flex';
