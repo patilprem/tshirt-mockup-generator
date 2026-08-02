@@ -1180,12 +1180,34 @@
     // Re-fit the canvas box on viewport changes (orientation flip, browser
     // resize crossing the mobile/desktop breakpoint, etc.) since its size is
     // computed in JS rather than pure responsive CSS.
+    // Resize has to respect the mode. applyCanvasAspect sizes the canvas to
+    // the flat-lay artboard, so calling it unconditionally reset an on-model
+    // canvas to a square — and then drawOnModelScene letterboxed the portrait
+    // photo inside it and filled the margin with the flat-lay backdrop, so
+    // wood panels appeared down both sides of the model. Only on screen: the
+    // export sizes its own canvas to the template, fits exactly and has no
+    // margin, which is why the download looked right when the canvas did not.
+    // A phone fires resize whenever the URL bar hides, so this happened
+    // constantly there and barely at all on a desktop.
+    function applyCanvasSizing() {
+      if (mockupStyle === 'onmodel') {
+        const entry = onModelCache.get(activeOnModelId);
+        if (entry) {
+          canvas.width = Math.round(entry.w * 0.75);
+          canvas.height = Math.round(entry.h * 0.75);
+          fitCanvasBox(entry.w / entry.h);
+          return;
+        }
+      }
+      applyCanvasAspect();
+    }
+
     let resizeRaf = null;
     window.addEventListener('resize', () => {
       if (resizeRaf) return;
       resizeRaf = requestAnimationFrame(() => {
         resizeRaf = null;
-        applyCanvasAspect();
+        applyCanvasSizing();
         render();
       });
     });
@@ -2151,15 +2173,19 @@
         onModelComposedKey = key;
       }
 
-      // Fit the portrait template inside the frame, centred, with the normal
-      // backdrop filling any letterbox margin.
+      // Fit the portrait template inside the frame, centred. The frame is
+      // sized to the template everywhere it matters, so there is normally no
+      // margin at all; any that does appear — mid-resize, say — is cleared
+      // rather than filled with the flat-lay backdrop. That backdrop is a
+      // flat-lay concept the user cannot even reach in this mode, so painting
+      // it here put wood panels beside the model that no control could remove.
       const k = Math.min(frameW / entry.w, frameH / entry.h);
       const dw = entry.w * k, dh = entry.h * k;
       const ox = (frameW - dw) / 2, oy = (frameH - dh) / 2;
 
       onModelView = { k, ox, oy };
 
-      drawBackground(targetCtx, frameW, frameH, false);
+      targetCtx.clearRect(0, 0, frameW, frameH);
       targetCtx.save();
       targetCtx.translate(ox, oy);
       targetCtx.scale(k, k);
@@ -2173,8 +2199,33 @@
     }
 
 
-    const ON_MODEL_HANDLE = 7;      // canvas pixels, half-size
-    const ON_MODEL_ROT_GAP = 30;
+    const ON_MODEL_HANDLE = 11;     // CSS pixels on screen, corner circle radius
+    const ON_MODEL_ROT_R = 15;      // CSS pixels, rotate button radius
+    const ON_MODEL_ROT_GAP = 34;    // CSS pixels below the box
+    // Grab tolerance. A mouse pointer is a pixel and can afford a tight
+    // target; a fingertip covers about 44px, so a coarse pointer gets a
+    // radius that adds up to roughly that.
+    const ON_MODEL_HIT = 14;
+    const ON_MODEL_HIT_COARSE = 24;
+
+    // The canvas BITMAP is a fixed size and CSS scales it down to fit — by
+    // 2x on a desktop and 3.4x on a phone. Anything meant to be a constant
+    // size on SCREEN therefore has to be multiplied back up before it is
+    // drawn or hit-tested in canvas pixels. These were plain canvas pixels
+    // before, so a handle specified as 14px rendered at 4.1px on a phone with
+    // a 7px grab radius — a sixth of a fingertip, which is why resizing and
+    // rotating on a model were so hard to land.
+    function onModelCanvasScale() {
+      const shown = canvas.clientWidth;
+      return shown ? canvas.width / shown : 1;
+    }
+    // Never smaller than the handle actually drawn, so a control can always be
+    // grabbed anywhere it is visible, and never smaller than a fingertip needs.
+    function onModelHitTol(drawnRadius) {
+      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      const base = coarse ? ON_MODEL_HIT_COARSE : ON_MODEL_HIT;
+      return Math.max(base, (drawnRadius || 0) + 6) * onModelCanvasScale();
+    }
 
     function onModelToCanvas(p) {
       return { x: onModelView.ox + p.x * onModelView.k, y: onModelView.oy + p.y * onModelView.k };
@@ -2191,8 +2242,11 @@
     }
     function onModelRotHandle(b) {
       const co = Math.cos(designRotation), si = Math.sin(designRotation);
-      const gap = ON_MODEL_ROT_GAP / onModelView.k;
-      const y = -b.h / 2 - gap;
+      // Below the box, not above it: on a chest print the top edge sits near
+      // the collar, where a handle above it lands on the model's face and is
+      // awkward to reach with a thumb.
+      const gap = ON_MODEL_ROT_GAP * onModelCanvasScale() / onModelView.k;
+      const y = b.h / 2 + gap;
       return { x: b.cx - y * si, y: b.cy + y * co };
     }
 
@@ -2201,40 +2255,52 @@
       const b = onModelDesignBox(entry);
       const pts = onModelBoxCorners(b).map(onModelToCanvas);
       const rot = onModelToCanvas(onModelRotHandle(b));
+      // Everything here is screen furniture, so it is scaled to stay the same
+      // size however far CSS shrinks the canvas — otherwise the outline and
+      // handles thin out to nothing on a phone.
+      const s = onModelCanvasScale();
+      const hs = ON_MODEL_HANDLE * s;
       targetCtx.save();
       targetCtx.strokeStyle = '#3b82f6';
-      targetCtx.lineWidth = 2;
+      targetCtx.lineWidth = 2 * s;
       targetCtx.beginPath();
       targetCtx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < 4; i++) targetCtx.lineTo(pts[i].x, pts[i].y);
       targetCtx.closePath();
       targetCtx.stroke();
-      const top = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-      targetCtx.beginPath();
-      targetCtx.moveTo(top.x, top.y);
-      targetCtx.lineTo(rot.x, rot.y);
-      targetCtx.stroke();
+      // Round corner handles and a free-standing rotate button below the box,
+      // after Canva's mobile controls. Circles read as grabbable at a size
+      // where a square starts to look like a bug, and putting rotate on its
+      // own below the selection means it is never crowded by the corners —
+      // on a small print the old knob-on-a-stalk sat almost on top of them.
       targetCtx.fillStyle = '#ffffff';
       for (const p of pts) {
         targetCtx.beginPath();
-        targetCtx.rect(p.x - ON_MODEL_HANDLE, p.y - ON_MODEL_HANDLE, ON_MODEL_HANDLE * 2, ON_MODEL_HANDLE * 2);
+        targetCtx.arc(p.x, p.y, hs, 0, Math.PI * 2);
         targetCtx.fill(); targetCtx.stroke();
       }
       targetCtx.beginPath();
-      targetCtx.arc(rot.x, rot.y, ON_MODEL_HANDLE + 1, 0, Math.PI * 2);
+      targetCtx.arc(rot.x, rot.y, ON_MODEL_ROT_R * s, 0, Math.PI * 2);
       targetCtx.fill(); targetCtx.stroke();
+      // Rotation glyph: an open circular arrow, so the button says what it is.
+      targetCtx.beginPath();
+      targetCtx.lineWidth = 2 * s;
+      const gr = ON_MODEL_ROT_R * s * 0.45;
+      targetCtx.arc(rot.x, rot.y, gr, Math.PI * 0.35, Math.PI * 1.85);
+      targetCtx.stroke();
       targetCtx.restore();
     }
 
     function onModelHitTest(pt, entry) {
       if (!designImage) return null;
       const b = onModelDesignBox(entry);
-      const tol = (ON_MODEL_HANDLE + 5) / onModelView.k;
       const near = (a, c, r) => Math.hypot(a.x - c.x, a.y - c.y) <= r;
       if (onModelSelected) {
-        if (near(pt, onModelRotHandle(b), tol + 2 / onModelView.k)) return { mode: 'rotate' };
+        const rotTol = onModelHitTol(ON_MODEL_ROT_R) / onModelView.k;
+        if (near(pt, onModelRotHandle(b), rotTol)) return { mode: 'rotate' };
+        const cornTol = onModelHitTol(ON_MODEL_HANDLE) / onModelView.k;
         const pts = onModelBoxCorners(b);
-        for (let i = 0; i < 4; i++) if (near(pt, pts[i], tol)) return { mode: 'scale', corner: i };
+        for (let i = 0; i < 4; i++) if (near(pt, pts[i], cornTol)) return { mode: 'scale', corner: i };
       }
       const co = Math.cos(designRotation), si = Math.sin(designRotation);
       const dx = pt.x - b.cx, dy = pt.y - b.cy;
@@ -2368,17 +2434,19 @@
         }
       }
       // Batch export is flat-lay only. Its axes are garment type and colour,
-      // and an on-model template fixes the garment — so left enabled here it
+      // and an on-model template fixes the garment — so left live here it
       // runs the flat-lay pipeline and hands back crewnecks and hoodies on a
       // wood panel, silently, with none of the model the user is looking at.
-      // Disabled rather than hidden: the button vanishing on mode switch
-      // reads as a bug, whereas a disabled control with a reason reads as a
-      // limit. Remove this when the model x colour version exists.
+      // Hidden when the model x colour version doesn't exist yet; remove this
+      // block when it does. Still disabled as well as hidden, because a
+      // display rule elsewhere can outrank an inline one — that is exactly
+      // how the flat-lay panels came back on mobile — and a button that is
+      // merely invisible is still clickable.
       const batchBtn = document.getElementById('batch-export-btn');
       if (batchBtn) {
         const off = style === 'onmodel';
+        batchBtn.style.display = off ? 'none' : '';
         batchBtn.disabled = off;
-        batchBtn.title = off ? 'Batch export is available for flat lay mockups' : '';
       }
 
       if (style === 'onmodel') {
@@ -4256,6 +4324,54 @@
     // ----------------------------------------------------
     // 10. Mobile Tab Switching Handler
     // ----------------------------------------------------
+    // ----------------------------------------------------
+    // 12. Sliders: on touch, require a horizontal drag
+    // ----------------------------------------------------
+    // A range input spans the full panel width, so on a phone it sits right
+    // under the thumb during an ordinary scroll — and a range jumps its value
+    // to wherever it was TOUCHED, on touchdown, before any gesture direction
+    // is known. So a scroll that happens to start on a slider sets it to
+    // whatever was under the finger, and so does a stray tap. touch-action:
+    // pan-y (in the stylesheet) gives the scroll back to the page, but cannot
+    // help with the value: the jump has already happened by then.
+    //
+    // So the value is held back until the gesture proves itself horizontal.
+    // Every input event from a touch that has not yet moved sideways is
+    // reverted in the capture phase and stopped before any app handler sees
+    // it — no re-render, no flicker of the mockup. A real drag passes through
+    // from the moment it crosses the threshold. Precise values are still
+    // reachable: each slider has a paired number field.
+    //
+    // Touch only. A mouse keeps click-to-set, where it is precise and nobody
+    // is scrolling with the pointer.
+    {
+      const DRAG_PX = 8;
+      let gesture = null;
+      document.addEventListener('touchstart', e => {
+        const el = e.target.closest && e.target.closest('input[type="range"]');
+        if (!el) { gesture = null; return; }
+        const t = e.touches[0];
+        // Read BEFORE the browser's default action moves the thumb — the
+        // event is dispatched first, the jump happens after.
+        gesture = { el, x: t.clientX, y: t.clientY, value: el.value, horizontal: false };
+      }, true);
+      document.addEventListener('touchmove', e => {
+        if (!gesture || gesture.horizontal) return;
+        const t = e.touches[0];
+        const dx = Math.abs(t.clientX - gesture.x);
+        const dy = Math.abs(t.clientY - gesture.y);
+        if (dx > DRAG_PX && dx > dy) gesture.horizontal = true;
+      }, true);
+      document.addEventListener('input', e => {
+        if (!gesture || e.target !== gesture.el || gesture.horizontal) return;
+        e.target.value = gesture.value;
+        e.stopImmediatePropagation();
+      }, true);
+      const endGesture = () => { gesture = null; };
+      document.addEventListener('touchend', endGesture, true);
+      document.addEventListener('touchcancel', endGesture, true);
+    }
+
     const mobileNavBar = document.getElementById('mobile-nav-bar');
     if (mobileNavBar) {
       const mobileNavButtons = mobileNavBar.querySelectorAll('.mobile-nav-btn');
