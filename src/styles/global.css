@@ -1789,20 +1789,25 @@ input[type="range"]:focus-visible,
 
 /* Model picker: the person in the shirt IS the label, so this shows recoloured
    thumbnails and scrolls vertically rather than listing scene names. */
+/* Two rows, scrolling sideways. Cards keep the template's own 2:3 framing —
+   cropping them to fit more in hides the scene, which is the thing being
+   chosen — and scrolling on the other axis to the page means the gallery and
+   the page are never competing for the same gesture. */
 .on-model-gallery {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-columns: calc((100% - 8px) / 2);
   gap: 8px;
-  /* Cards keep the template's own 2:3 framing — cropping them to fit more in
-     hides the scene, which is the thing being chosen. So the list stays tall
-     enough to show two full rows and scrolls for the rest. */
-  max-height: 520px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 2px 4px 2px 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  padding: 2px 2px 6px 2px;
   scrollbar-width: thin;
+  scroll-snap-type: x proximity;
 }
-.on-model-gallery::-webkit-scrollbar { width: 7px; }
+.on-model-gallery > * { scroll-snap-align: start; }
+.on-model-gallery::-webkit-scrollbar { height: 7px; }
 .on-model-gallery::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, .45);
   border-radius: 4px;
@@ -1823,18 +1828,24 @@ input[type="range"]:focus-visible,
 .on-model-card canvas { width: 100%; height: auto; display: block; }
 .on-model-card:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
 
-/* On a phone the page already scrolls vertically, so a vertical scroller
-   inside it fights the gesture that contains it: a swipe over the gallery
-   scrolls the gallery or the page depending on where it started and whether
-   the gallery had already hit its end. Two vertical scrollers stacked in one
-   column is the mess. The desktop sidebar has a fixed height and genuinely
-   needs its own scroller; on mobile the column is free to grow, so the
-   gallery gives its up and the page does the scrolling.
-   Declared after the base rule above, not in the earlier mobile block — a
-   media query adds no specificity, so the later declaration is what decides. */
-@media (max-width: 1024px) {
-  .on-model-gallery {
-    max-height: none;
-    overflow-y: visible;
-  }
+
+/* Lucide icons, inlined rather than pulled from a CDN — the strict build has
+   no runtime fetches and an icon should not cost a network round trip. They
+   inherit colour from the button, so hover and active states need no extra
+   rules; only the box size varies by context. */
+.lc {
+  width: 1em;
+  height: 1em;
+  display: block;
+  flex: none;
+}
+.nav-icon .lc { width: 22px; height: 22px; }
+.style-icon .lc,
+.garment-icon .lc { width: 20px; height: 20px; }
+.upload-icon .lc { width: 26px; height: 26px; }
+.prop-icon .lc { width: 20px; height: 20px; }
+.nav-icon, .style-icon, .garment-icon, .upload-icon, .prop-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
