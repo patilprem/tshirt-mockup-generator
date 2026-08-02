@@ -1991,13 +1991,23 @@
       placeDesign();
       lc.globalAlpha = 1;
 
-      // Fold shading over the print. 'multiply' also paints where the layer is
-      // still transparent, so the shade map is clipped straight back to the
-      // design's own alpha, then the whole layer to the garment silhouette.
+      // Fold shading over the print — the same two passes flat-lay uses, so a
+      // design sits into the fabric the same way in both modes: multiply the
+      // creases down, then screen the lit crests back up. Shadows alone leave
+      // the print looking laid on top of the shirt rather than printed into it.
+      // Both passes also paint where the layer is still transparent, so each is
+      // clipped straight back to the design's own alpha.
       if (useRealisticBlending) {
         lc.globalCompositeOperation = 'multiply';
         lc.globalAlpha = Math.min(1, shadowDepth + 0.25);
         lc.drawImage(onModelShadeCanvas(entry), 0, 0);
+        lc.globalAlpha = 1;
+        lc.globalCompositeOperation = 'destination-in';
+        placeDesign();
+
+        lc.globalCompositeOperation = 'screen';
+        lc.globalAlpha = highlightShine;
+        lc.drawImage(onModelHighlightCanvas(entry), 0, 0);
         lc.globalAlpha = 1;
         lc.globalCompositeOperation = 'destination-in';
         placeDesign();
@@ -2025,6 +2035,29 @@
       }
       cx.putImageData(img, 0, 0);
       entry._shadeCanvas = c;
+      return c;
+    }
+    // Fabric highlights, for the screen pass over the print. The shade map is
+    // illumination relative to the fabric's diffuse white point, so rel > 1 is
+    // exactly where the fabric is catching light beyond flat diffuse — the
+    // crests of folds. Everything at or below the white point contributes
+    // nothing, which is what screening against black gives.
+    function onModelHighlightCanvas(entry) {
+      if (entry._hiCanvas) return entry._hiCanvas;
+      const { shade, w, h, meta } = entry;
+      const relMax = meta.relMax || 1.45;
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cx = c.getContext('2d');
+      const img = cx.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) {
+        const rel = (shade[i] / 255) * relMax;
+        const t = Math.max(0, Math.min(1, (rel - 1) / Math.max(1e-6, relMax - 1)));
+        const v = Math.round(t * 255);
+        img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+      }
+      cx.putImageData(img, 0, 0);
+      entry._hiCanvas = c;
       return c;
     }
     function onModelClipCanvas(entry) {
