@@ -215,6 +215,19 @@
             <option value="tight">Tight — hips up, design focus</option>
           </select>
         </label>
+        <label class="f">Hair
+          <select id="pHair"></select>
+        </label>
+        <label class="f">Eyewear
+          <select id="pEyewear">
+            <option value="">None</option>
+            <option value="sunglasses">Sunglasses</option>
+            <option value="clear">Clear-framed glasses</option>
+          </select>
+        </label>
+        <label class="f">Expression
+          <select id="pLook"></select>
+        </label>
       </div>
       <div class="insp" id="inspZone" style="margin-top:12px">
         <div class="insp-drop" id="inspDrop">
@@ -323,23 +336,55 @@
 <script>
 'use strict';
 /* ============ STEP 1 — PROMPT BUILDER ============ */
+// Pose entries carry the BODY rules only — arms against the torso, hands clear
+// of the chest. Those are the pipeline-safety clauses and are not optional.
+// Where the model looks and what their face is doing is separate and free, so
+// it lives in LOOKS and can be chosen without touching the safety text.
 const POSES = {
   woman: [
-    ['Thumbs in pockets', 'standing relaxed with her weight on one hip, both arms down with her thumbs hooked loosely into the pockets of her BOTTOMS_SHORT and both upper arms resting against her torso, looking away past the camera with a warm natural half-smile'],
-    ['Hands clasped low', 'standing relaxed with her weight on one hip, hands loosely clasped in front of her waist with both upper arms resting against her torso and no gap between her arms and her sides, looking slightly away from the camera with a gentle natural smile'],
-    ['Mid-laugh, one hand in pocket', 'caught mid-laugh looking away from the camera, one hand resting loosely in the pocket of her BOTTOMS_SHORT and the other relaxed at her side, both hands kept away from her chest and both upper arms resting against her torso'],
+    ['Thumbs in pockets', 'standing relaxed with her weight on one hip, both arms down with her thumbs hooked loosely into the pockets of her BOTTOMS_SHORT and both upper arms resting against her torso'],
+    ['Hands clasped low', 'standing relaxed with her weight on one hip, hands loosely clasped in front of her waist with both upper arms resting against her torso and no gap between her arms and her sides'],
+    ['One hand in pocket', 'standing with one hand resting loosely in the pocket of her BOTTOMS_SHORT and the other relaxed at her side, both hands kept away from her chest and both upper arms resting against her torso'],
   ],
   man: [
-    ['Both hands in pockets', 'standing at ease with both hands resting in the pockets of his BOTTOMS_SHORT, both upper arms resting against his torso with no gap between his arms and his sides, looking toward the camera with a relaxed easy expression'],
-    ['One hand in pocket, looking aside', 'with one hand in the pocket of his BOTTOMS_SHORT and his other arm relaxed at his side, both upper arms resting against his torso, looking off to the side as if watching something, caught mid-moment like a candid photo'],
-    ['Walking slowly', 'walking slowly with an easy natural stride, one hand in the pocket of his BOTTOMS_SHORT and his other arm swinging naturally close to his side, both upper arms staying close to his torso, looking ahead with a slight easy smile'],
+    ['Both hands in pockets', 'standing at ease with both hands resting in the pockets of his BOTTOMS_SHORT, both upper arms resting against his torso with no gap between his arms and his sides'],
+    ['One hand in pocket', 'standing with one hand in the pocket of his BOTTOMS_SHORT and his other arm relaxed at his side, both upper arms resting against his torso'],
+    ['Walking slowly', 'walking slowly with an easy natural stride, one hand in the pocket of his BOTTOMS_SHORT and his other arm swinging naturally close to his side, both upper arms staying close to his torso'],
   ],
 };
+const LOOKS = [
+  ['Warm half-smile, looking away', 'looking away past the camera with a warm natural half-smile'],
+  ['Gentle smile, slightly away', 'looking slightly away from the camera with a gentle natural smile'],
+  ['Mid-laugh', 'caught mid-laugh, looking away from the camera'],
+  ['Relaxed, to camera', 'looking toward the camera with a relaxed, easy expression'],
+  ['Calm, neutral', 'looking off to the side with a calm, neutral expression'],
+];
+// Hair is a pipeline concern as well as a look: anything crossing the front of
+// the collar sits on the garment and gets keyed as shirt. Every option below
+// keeps it clear of the collar; only the style differs.
+const HAIR = {
+  woman: [
+    ['Loose, swept back', ', her hair loose and swept back over her shoulders, falling down her back with none of it crossing the front of her collar'],
+    ['Tied back', ', her hair tied back away from her face and kept clear of her shoulders and collar'],
+    ['High ponytail', ', her hair in a high ponytail that stays behind her shoulders and well clear of her collar'],
+    ['Short bob', ', her hair in a short bob that sits above the shoulders and clear of her collar'],
+  ],
+  man: [
+    ['Short', ''],
+    ['Short, textured', ', his hair short and lightly textured, well clear of his collar'],
+    ['Curly, cropped', ', his hair short and curly, sitting clear of his collar'],
+  ],
+};
+
 const pModel = document.getElementById('pModel');
 const pPose = document.getElementById('pPose');
+const pHair = document.getElementById('pHair');
+const pLook = document.getElementById('pLook');
 function fillPoses() {
   pPose.innerHTML = POSES[pModel.value].map((p, i) => `<option value="${i}">${p[0]}</option>`).join('');
+  pHair.innerHTML = HAIR[pModel.value].map((h, i) => `<option value="${i}">${h[0]}</option>`).join('');
 }
+pLook.innerHTML = LOOKS.map((l, i) => `<option value="${i}">${l[0]}</option>`).join('');
 pModel.addEventListener('change', fillPoses);
 fillPoses();
 
@@ -351,14 +396,16 @@ document.getElementById('pBuild').addEventListener('click', () => {
   const bShort = bottoms.split(' ').slice(-1)[0];
   const scene = document.getElementById('pScene').value.trim();
   const pose = POSES[g][+pPose.value][1].replace(/BOTTOMS_SHORT/g, bShort);
+  const look = LOOKS[+pLook.value][1];
+  const eyewear = document.getElementById('pEyewear').value;
+  const eyewearClause = eyewear === 'sunglasses' ? ' and dark sunglasses'
+    : eyewear === 'clear' ? ' and clear-framed glasses' : '';
   const framing = document.getElementById('pFraming').value === 'wide'
     ? 'Framed from mid-thigh up with clear margin around the figure on all sides.'
     : 'Tightly framed from the hips up so the torso and the chest of the t-shirt fill most of the frame, head still fully in frame, with a small even margin at the left and right edges.';
-  const hair = g === 'woman'
-    ? `, ${pro[1]} hair loose and swept back over ${pro[1]} shoulders, falling down ${pro[1]} back with none of it crossing the front of ${pro[1]} collar`
-    : '';
+  const hair = HAIR[g][+pHair.value][1];
   const prompt =
-`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}${hair}. ${pro[0]} wears a violet crew-neck t-shirt with ${bottoms}. The t-shirt is a completely plain blank vivid violet cotton tee — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in a matte cotton jersey knit with no sheen, gloss or silky shine, a classic regular fit with a plain crew neckline, standard set-in short sleeves and a straight body, not oversized or boxy, with natural soft fabric folds. The chest of the shirt stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the shirt. Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve. Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the shirt — every part of the shirt stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — collar, sleeve hems and body hem — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
+`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet crew-neck t-shirt with ${bottoms}${eyewearClause}. The t-shirt is a completely plain blank vivid violet cotton tee — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in a matte cotton jersey knit with no sheen, gloss or silky shine, a classic regular fit with a plain crew neckline, standard set-in short sleeves and a straight body, not oversized or boxy, with natural soft fabric folds. The chest of the shirt stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the shirt. Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve. Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the shirt — every part of the shirt stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — collar, sleeve hems and body hem — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
   const out = document.getElementById('pOut');
   out.value = prompt;
   document.getElementById('pCopy').disabled = false;
@@ -546,6 +593,10 @@ function runInspiration(img, url) {
     chipHost.innerHTML += `<span class="chip warn">scene unclear (${Math.round(topShare * 100)}% winner) — edit the scene text</span>`;
     const lk = document.getElementById('inspLock');
     if (lk) { lk.checked = false; }
+    // and actually apply it — unticking the box in code does not fire its
+    // change handler, so without this the fields stay greyed and unusable
+    // while the checkbox says they are free.
+    applyInspLock();
   }
   if (directional) chipHost.innerHTML += `<span class="chip warn">directional light — the prompt forces soft light instead</span>`;
   if (bgBright < 0.4) chipHost.innerHTML += `<span class="chip warn">dark scene — risky for the shadow QA gate</span>`;
