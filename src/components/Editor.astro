@@ -2368,17 +2368,19 @@
         }
       }
       // Batch export is flat-lay only. Its axes are garment type and colour,
-      // and an on-model template fixes the garment — so left enabled here it
+      // and an on-model template fixes the garment — so left live here it
       // runs the flat-lay pipeline and hands back crewnecks and hoodies on a
       // wood panel, silently, with none of the model the user is looking at.
-      // Disabled rather than hidden: the button vanishing on mode switch
-      // reads as a bug, whereas a disabled control with a reason reads as a
-      // limit. Remove this when the model x colour version exists.
+      // Hidden when the model x colour version doesn't exist yet; remove this
+      // block when it does. Still disabled as well as hidden, because a
+      // display rule elsewhere can outrank an inline one — that is exactly
+      // how the flat-lay panels came back on mobile — and a button that is
+      // merely invisible is still clickable.
       const batchBtn = document.getElementById('batch-export-btn');
       if (batchBtn) {
         const off = style === 'onmodel';
+        batchBtn.style.display = off ? 'none' : '';
         batchBtn.disabled = off;
-        batchBtn.title = off ? 'Batch export is available for flat lay mockups' : '';
       }
 
       if (style === 'onmodel') {
