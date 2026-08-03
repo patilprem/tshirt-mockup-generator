@@ -1236,12 +1236,16 @@ input[type="range"]:focus-visible,
 
   /* The tab rules above are !important, which outranks the inline
      display:none that setMockupStyle uses to hide flat-lay-only panels — so
-     without these the garment type, canvas size, background and props panels
-     would all come back on mobile in on-model mode, and the model picker
-     would show in flat-lay mode. Same specificity as the tab rules and
-     declared after them, so these win. */
+     without these the garment type, background and props panels would all
+     come back on mobile in on-model mode, and the model picker would show in
+     flat-lay mode. Same specificity as the tab rules and declared after them,
+     so these win.
+
+     Canvas size is deliberately absent from this list: on-model it crops the
+     template photo rather than letterboxing an artboard, so the presets apply
+     in both modes and the panel stays reachable under the Background tab —
+     which is why that tab is not hidden on-model either. */
   .app-container[data-mockup-style="onmodel"] #garment-type-section,
-  .app-container[data-mockup-style="onmodel"] #canvas-size-section,
   .app-container[data-mockup-style="onmodel"] #mockup-background-section,
   .app-container[data-mockup-style="onmodel"] #aesthetic-props-section {
     display: none !important;
