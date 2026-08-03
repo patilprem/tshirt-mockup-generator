@@ -3845,24 +3845,30 @@
     const optionHighCard = document.getElementById('option-high-card');
     const optionExtraHighCard = document.getElementById('option-extra-high-card');
 
-    // Show modal on download button click — sub-labels reflect the real output
-    // size for the current canvas preset. These two used to print the same
-    // dimensions as each other on every platform preset, because quality did
-    // not scale a pinned export; now that it multiplies, the pair genuinely
-    // differs and the numbers here mean something again. This modal keeps the
-    // dimensions rather than reading "1x / 2x" — it names one file the user is
-    // about to save, where the exact size is the useful fact.
+    // The modal exists to ask one question: 1x or 2x. Plenty of presets have
+    // no second answer to offer — a platform preset that opts out of 2x, or an
+    // on-model preset with no platform size to scale — and a modal asking
+    // which of one option to take is a click in the way of the download. Those
+    // save the file directly.
+    //
+    // When it does open, the sub-labels name the real output size for the
+    // current preset rather than reading "1x / 2x": it describes one file the
+    // user is about to save, and the exact size is the useful fact about it.
+    // On-model measures its own, being a crop of a photo held to the preset's
+    // platform size rather than a letterboxed artboard.
     downloadBtn.addEventListener('click', () => {
+      const onModelEntry = mockupStyle === 'onmodel' ? onModelCache.get(activeOnModelId) : null;
+      // Whether 2x is on offer at all. Where it is not, both export paths
+      // already ignore the quality argument, so 'high' IS the single size —
+      // this cannot silently downgrade a preset to a smaller file.
+      const singleSize = onModelEntry
+        ? !onModelHasQualityChoice()
+        : !!CANVAS_ASPECTS[canvasAspect].oneX;
+      if (singleSize) {
+        runDownload('high');
+        return;
+      }
       if (downloadModal) {
-        // On-model measures its own output: it is a crop of a photo held to
-        // the preset's platform size, not a letterboxed artboard, so the
-        // flat-lay numbers describe a different file. This used to skip the
-        // modal entirely and take the largest thing it could render, on the
-        // grounds that on-model had no quality decision to make — true while
-        // the export was pinned to the template's native pixels, and false now
-        // that a preset names a resolution. Skipping it meant Instagram Post
-        // quietly saved 2160x2160 from a button that says 1080x1080.
-        const onModelEntry = mockupStyle === 'onmodel' ? onModelCache.get(activeOnModelId) : null;
         const dimsFor = q => {
           if (onModelEntry) {
             const d = onModelExportDims(onModelEntry, q === 2);
@@ -3876,22 +3882,8 @@
         const extraSub = optionExtraHighCard.querySelector('.option-sub');
         if (highSub) highSub.textContent = `lower file size - ${Math.round(highDims.frameW)}x${Math.round(highDims.frameH)}px`;
         if (extraSub) extraSub.textContent = `higher file size - ${Math.round(extraDims.frameW)}x${Math.round(extraDims.frameH)}px`;
-        // Same opt-out as the batch modal. Hiding the card leaves High Quality
-        // as the only one, so it is also re-selected — otherwise a user who
-        // picked Extra High under a different preset would come back to a
-        // modal with nothing visibly chosen.
-        // On-model, a preset with no platform size to scale has one sensible
-        // output and drops the pair for the same reason a oneX preset does.
-        const oneX = onModelEntry
-          ? !onModelHasQualityChoice()
-          : !!CANVAS_ASPECTS[canvasAspect].oneX;
-        optionExtraHighCard.style.display = oneX ? 'none' : '';
-        if (oneX) {
-          const highRadio = optionHighCard.querySelector('input[name="download-quality"]');
-          if (highRadio) highRadio.checked = true;
-          optionHighCard.classList.add('active');
-          optionExtraHighCard.classList.remove('active');
-        }
+        // No card to hide any more: the one-option case never reaches here, so
+        // both are always real choices by the time the modal is on screen.
         downloadModal.style.display = 'flex';
       }
     });

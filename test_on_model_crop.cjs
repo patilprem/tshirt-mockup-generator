@@ -23,11 +23,16 @@ const BASE = process.env.BASE_URL || 'http://localhost:4321';
 // `exact` is the resolution the preset's own button promises: a platform size
 // is a contract with the seller's storefront, so it has to come out the same
 // on-model as it does flat lay. 4:5 promises nothing and keeps native pixels.
+//
+// `modal` is whether the quality modal should open at all. It asks 1x or 2x,
+// so it earns its click only where those are different files. On-model that is
+// 1:1 alone: 4:3 and 9:16 opt out of 2x, and 4:5 has no platform size to
+// scale, so doubling it would be upscale for its own sake.
 const PRESETS = [
-  { aspect: '1:1', exact: [1080, 1080] },
-  { aspect: '4:3', exact: [2700, 2025] },
-  { aspect: '4:5', exact: null },
-  { aspect: '9:16', exact: [1080, 1920] },
+  { aspect: '1:1', exact: [1080, 1080], modal: true },
+  { aspect: '4:3', exact: [2700, 2025], modal: false },
+  { aspect: '4:5', exact: null, modal: false },
+  { aspect: '9:16', exact: [1080, 1920], modal: false },
 ];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -68,7 +73,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   let failures = 0;
   const fail = msg => { failures++; console.log(`  FAIL ${msg}`); };
 
-  for (const { aspect: preset, exact } of PRESETS) {
+  for (const { aspect: preset, exact, modal } of PRESETS) {
     console.log(`\n${preset}`);
     await page.click(`#canvas-size-selector [data-aspect="${preset}"]`);
     await sleep(600);
@@ -77,8 +82,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // Straight to the default-quality download, skipping the modal's radios.
     await page.click('#download-btn');
     await sleep(400);
-    const modalBtn = await page.$('#modal-download-btn');
-    if (modalBtn && await modalBtn.isVisible()) await modalBtn.click();
+    const modalOpen = await page.evaluate(() =>
+      document.getElementById('download-modal').style.display === 'flex');
+    if (modalOpen !== modal) {
+      fail(`${preset}: modal ${modalOpen ? 'opened' : 'was skipped'} — expected the opposite`);
+    }
+    if (modalOpen) await page.click('#modal-download-btn');
     await page.waitForFunction(() => window.__lastExport, null, { timeout: 15000 });
 
     const r = await page.evaluate(async ([w, h]) => {
