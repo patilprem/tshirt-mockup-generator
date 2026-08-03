@@ -9,55 +9,44 @@ Let the canvas-size presets apply in on-model mode by CROPPING the template
 photo. Not zooming — the templates are already capped at 1600px, so scaling
 past the source pixels would only soften the print.
 
+ONE mechanism. Every preset crops. No padding, no special case.
+
 ## Presets
 
 Templates are 1066x1600 (2:3). Each preset is a crop of that:
 
-| preset | crop        | keeps            |
-|--------|-------------|------------------|
-| 4:5    | 1066x1332   | 83% of height    |
-| 9:16   | 900x1600    | 84% of width     |
-| 1:1    | 1066x1066   | 67% of height    |
-| 4:3    | see below   | PAD, do not crop |
+| preset      | crop from 1066x1600 | keeps           |
+|-------------|---------------------|-----------------|
+| 4:5         | 1066x1332           | 83% of height   |
+| 9:16        | 900x1600            | 84% of width    |
+| 1:1         | 1066x1066           | 67% of height   |
+| 4:3 (Etsy)  | 1066x800            | 50% of height   |
 
-**4:3 must not be cropped.** Turning a portrait photo landscape throws away
-half the frame; on a hips-up shot that leaves chest-to-waist with no head.
-
-It also must not simply be dropped, which is what was first agreed and then
-reversed: **4:3 IS the Etsy Listing preset** (`exportShort: 2025`, exports
-2700x2025). Losing it means a t-shirt mockup tool with no Etsy size on-model,
-which is probably the last size to give up.
-
-So 4:3 is the one preset that PADS instead of cropping: fit the whole 2:3
-portrait into the 4:3 frame and fill the sides. No crop, no lost head, a true
-2700x2025 file. Fill from the photo itself — the builder already computes
-`ambientTint` per template, or blur-extend the scene — so it needs no control
-and cannot clash with the background panel, which is hidden in this mode.
-
-Yes, that means two mechanisms: crop for 1:1 / 4:5 / 9:16, pad for 4:3. Less
-tidy, but it is the difference between having an Etsy size and not.
+All four ship, including 4:3 — it is the Etsy Listing preset
+(`exportShort: 2025`, exports 2700x2025), the last size to give up on a
+t-shirt mockup tool.
 
 ## Where to centre — decided
 
-Centre the crop on the print horizontally, and **clamp vertically so the head
-stays in frame**. The print then sits slightly below centre rather than dead
-centre.
+Centre the crop on the print, clamped only so the rect stays inside the
+image. Nothing else.
 
-The alternative — print dead centre — was rejected: the print sits low on the
-chest, so a 1066-tall window centred on a print at y~900 spans y 367..1433 and
-cuts the face off. The model is half the value of an on-model mockup.
+**The head being cropped is expected, not a defect.** Two earlier positions
+were both wrong and are recorded so they are not re-argued:
 
-So: clamp the crop rect inside the image, and bias the top edge up far enough
-to keep the head. Simplest rule that holds for any template is to clamp the
-crop's top to 0 whenever centring on the print would push it below 0 — for a
-1:1 crop that alone keeps the head, since the head is at the top of frame.
+1. "Drop 4:3, it produces a torso" — a torso is what an Etsy listing image
+   usually is.
+2. "Clamp vertically to keep the head in frame, the model is half the value"
+   — reference listings supplied by the owner are tight torso crops, one with
+   no face at all. On a listing the design is the product. Centre on the
+   print and let the frame fall where it falls.
 
 ## Touch points
 
-1. `setMockupStyle` — stop hiding `#canvas-size-section` on-model, and hide
-   only the 4:3 button there.
+1. `setMockupStyle` — stop hiding `#canvas-size-section` on-model. All four
+   presets stay visible; nothing to special-case.
 2. Crop rect helper: from the active template's `quad` centre and the target
-   aspect, clamped to the image.
+   aspect, clamped to the image bounds.
 3. Fold the crop offset into `onModelView.ox/oy`. That already carries a
    translation, so handles, hit-testing and the pointer transform come along
    for free — do NOT add a second offset anywhere.
@@ -71,5 +60,8 @@ crop's top to 0 whenever centring on the print would push it below 0 — for a
 - `drawOnModelScene` clears any letterbox margin rather than painting it.
   With a crop there should be no margin at all; if one appears the crop rect
   is wrong.
+- 4:3 keeps only half the height, so the crop rect will often clamp against
+  the top or bottom of the image. Clamping must move the rect, not shrink it,
+  or the output aspect will be wrong.
 - The QA gates and the builder are untouched by this — it is a render-time
   crop, not a template change. No rebuild needed.
