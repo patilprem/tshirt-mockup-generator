@@ -20,7 +20,15 @@ const { chromium } = require('playwright');
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 // The templates are 1066x1600, so every preset is width-limited except 9:16.
-const PRESETS = ['1:1', '4:3', '4:5', '9:16'];
+// `exact` is the resolution the preset's own button promises: a platform size
+// is a contract with the seller's storefront, so it has to come out the same
+// on-model as it does flat lay. 4:5 promises nothing and keeps native pixels.
+const PRESETS = [
+  { aspect: '1:1', exact: [1080, 1080] },
+  { aspect: '4:3', exact: [2700, 2025] },
+  { aspect: '4:5', exact: null },
+  { aspect: '9:16', exact: [1080, 1920] },
+];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -60,7 +68,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   let failures = 0;
   const fail = msg => { failures++; console.log(`  FAIL ${msg}`); };
 
-  for (const preset of PRESETS) {
+  for (const { aspect: preset, exact } of PRESETS) {
     console.log(`\n${preset}`);
     await page.click(`#canvas-size-selector [data-aspect="${preset}"]`);
     await sleep(600);
@@ -125,6 +133,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // 1% covers the integer rounding of a crop rect and a 0.75-scaled canvas.
     if (Math.abs(liveA - want) / want > 0.01) fail(`${preset}: live canvas aspect ${liveA.toFixed(4)} is not ${want.toFixed(4)}`);
     if (Math.abs(expA - liveA) / liveA > 0.01) fail(`${preset}: export aspect ${expA.toFixed(4)} does not match the screen's ${liveA.toFixed(4)}`);
+    // Not "close to": the button names a resolution, so it is that or it is wrong.
+    if (exact && (r.exp.w !== exact[0] || r.exp.h !== exact[1])) {
+      fail(`${preset}: export is ${r.exp.w}x${r.exp.h}, but the preset promises ${exact[0]}x${exact[1]}`);
+    }
     if (r.liveMargin) fail(`${preset}: live canvas has a transparent letterbox margin — crop rect is wrong`);
     if (r.expMargin) fail(`${preset}: export has a transparent letterbox margin — crop rect is wrong`);
     // Resampling two different rasters of the same scene never lands on zero;

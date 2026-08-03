@@ -15,7 +15,7 @@
     </button>
     <button class="mobile-nav-btn" data-target="background" role="tab" aria-selected="false" aria-controls="mockup-background-section canvas-size-section">
       <span class="nav-icon"><svg class="lc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>
-      <span class="nav-text">Background</span>
+      <span class="nav-text">Canvas</span>
     </button>
     <button class="mobile-nav-btn" data-target="props" role="tab" aria-selected="false" aria-controls="aesthetic-props-section">
       <span class="nav-icon"><svg class="lc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span>
@@ -1198,9 +1198,10 @@
         const entry = onModelCache.get(activeOnModelId);
         if (entry) {
           const crop = onModelCropRect(entry);
-          canvas.width = Math.round(crop.w * 0.75);
-          canvas.height = Math.round(crop.h * 0.75);
-          fitCanvasBox(crop.w / crop.h);
+          const dims = onModelFrameDims(crop, Math.min(crop.w, crop.h) * 0.75);
+          canvas.width = dims.w;
+          canvas.height = dims.h;
+          fitCanvasBox(dims.w / dims.h);
           return;
         }
       }
@@ -2054,13 +2055,18 @@
     // Centring on the print is the point rather than a compromise: on a listing
     // the design is the product, so 4:3 keeping only half the height and taking
     // the model's head with it is the intended framing, not a defect.
+    // Deliberately unrounded. The rect carries the preset's ratio EXACTLY —
+    // 4:3 off a 1066-wide photo is 1066x799.5, not 1066x800 — because the
+    // frames it gets drawn into are exact too (800x600 on screen, 2700x2025
+    // exported). Round it here and the rect no longer matches the frame, and
+    // drawOnModelScene's fit leaves a hairline of cleared pixels down one edge.
+    // Fractional source coordinates cost nothing: the rect is applied as a
+    // translate, not as an integer pixel copy.
     function onModelCropRect(entry) {
       const ratio = CANVAS_ASPECTS[canvasAspect] || { w: 1, h: 1 };
       const fit = Math.min(entry.w / ratio.w, entry.h / ratio.h);
-      // Capped at the source as well as rounded: a rect a pixel wider than the
-      // photo has nowhere legal to sit.
-      const cw = Math.min(entry.w, Math.round(ratio.w * fit));
-      const ch = Math.min(entry.h, Math.round(ratio.h * fit));
+      const cw = ratio.w * fit;
+      const ch = ratio.h * fit;
       const q = entry.meta && entry.meta.quad;
       const qcx = q ? (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4 : entry.w / 2;
       const qcy = q ? (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4 : entry.h / 2;
@@ -2070,11 +2076,44 @@
       // than the preset the user picked.
       const clamp = (v, hi) => Math.max(0, Math.min(v, hi));
       return {
-        x: Math.round(clamp(qcx - cw / 2, entry.w - cw)),
-        y: Math.round(clamp(qcy - ch / 2, entry.h - ch)),
+        x: clamp(qcx - cw / 2, entry.w - cw),
+        y: clamp(qcy - ch / 2, entry.h - ch),
         w: cw,
         h: ch,
       };
+    }
+
+    // Integer frame of `shortSide` pixels on the rect's shorter axis, carrying
+    // the preset's exact ratio. Both the live canvas and the export size
+    // themselves this way, so neither can end up a rounded pixel off the crop.
+    function onModelFrameDims(crop, shortSide) {
+      const ratio = CANVAS_ASPECTS[canvasAspect] || { w: 1, h: 1 };
+      const portrait = ratio.h > ratio.w;
+      const short = Math.max(1, Math.round(shortSide));
+      const long = Math.round(short * Math.max(ratio.w, ratio.h) / Math.min(ratio.w, ratio.h));
+      return portrait ? { w: short, h: long } : { w: long, h: short };
+    }
+
+    // What an on-model download will actually be. The download modal prints
+    // these numbers and runDownload renders at them, from one function, so the
+    // size offered and the size saved cannot drift.
+    //
+    // A platform preset is held to the size on its button; quality multiplies
+    // it exactly as it does in flat lay. A preset with no platform size has
+    // nothing to hit, so it stays at the template's own pixels — and since
+    // doubling those would be pure upscale with nothing asking for it, that is
+    // one size rather than a choice. onModelHasQualityChoice says which.
+    function onModelExportDims(entry, isExtraHigh) {
+      const crop = onModelCropRect(entry);
+      const preset = CANVAS_ASPECTS[canvasAspect];
+      const shortSide = preset.exportShort
+        ? preset.exportShort * (preset.oneX ? 1 : (isExtraHigh ? 2 : 1))
+        : Math.min(crop.w, crop.h);
+      return onModelFrameDims(crop, shortSide);
+    }
+    function onModelHasQualityChoice() {
+      const preset = CANVAS_ASPECTS[canvasAspect];
+      return !!preset.exportShort && !preset.oneX;
     }
 
     // Corners of the placed print, rotation applied: [TL, TR, BR, BL].
@@ -2431,10 +2470,11 @@
       // Hide the tab rather than let someone land on a blank panel, and move
       // off it if that is where they already are.
       //
-      // The Background tab is not empty on-model: canvas size lives there too,
-      // and hiding the tab would make the presets unreachable on a phone — the
-      // panel would be shown and have no route to it. It keeps its place and is
-      // relabelled, since on-model it holds the frame and no backdrop.
+      // The Canvas tab is not empty on-model: canvas size lives there too, and
+      // hiding it would make the presets unreachable on a phone — the panel
+      // would be shown with no route to it. It keeps its place in both modes,
+      // which is why it is named for the canvas rather than the backdrop: the
+      // backdrop is only half its contents and only in flat lay.
       const navBar = document.getElementById('mobile-nav-bar');
       if (navBar && appEl) {
         const emptyOnModel = ['props'];
@@ -2442,8 +2482,6 @@
           const nb = navBar.querySelector(`[data-target="${t}"]`);
           if (nb) nb.style.display = style === 'onmodel' ? 'none' : '';
         });
-        const bgTabText = navBar.querySelector('[data-target="background"] .nav-text');
-        if (bgTabText) bgTabText.textContent = style === 'onmodel' ? 'Canvas' : 'Background';
         if (style === 'onmodel' && emptyOnModel.includes(appEl.dataset.mobileTab)) {
           const fallback = navBar.querySelector('[data-target="garment"]');
           if (fallback) fallback.click();
@@ -3815,20 +3853,25 @@
     // dimensions rather than reading "1x / 2x" — it names one file the user is
     // about to save, where the exact size is the useful fact.
     downloadBtn.addEventListener('click', () => {
-      // On-model has no quality decision to make. The canvas-aspect presets
-      // are a flat-lay concept, and the export is bounded by the template
-      // photo's own pixels — upscaling past them would only soften the print.
-      // So there is exactly one sensible size, the template's native
-      // resolution, and a modal asking which of one option to use is a click
-      // in the way of the download. 'extra-high' is the branch below that
-      // takes those native pixels without the 2048 cap.
-      if (mockupStyle === 'onmodel') {
-        runDownload('extra-high');
-        return;
-      }
       if (downloadModal) {
-        const highDims = getFrameDims(getExportScaleFactor(1));
-        const extraDims = getFrameDims(getExportScaleFactor(2));
+        // On-model measures its own output: it is a crop of a photo held to
+        // the preset's platform size, not a letterboxed artboard, so the
+        // flat-lay numbers describe a different file. This used to skip the
+        // modal entirely and take the largest thing it could render, on the
+        // grounds that on-model had no quality decision to make — true while
+        // the export was pinned to the template's native pixels, and false now
+        // that a preset names a resolution. Skipping it meant Instagram Post
+        // quietly saved 2160x2160 from a button that says 1080x1080.
+        const onModelEntry = mockupStyle === 'onmodel' ? onModelCache.get(activeOnModelId) : null;
+        const dimsFor = q => {
+          if (onModelEntry) {
+            const d = onModelExportDims(onModelEntry, q === 2);
+            return { frameW: d.w, frameH: d.h };
+          }
+          return getFrameDims(getExportScaleFactor(q));
+        };
+        const highDims = dimsFor(1);
+        const extraDims = dimsFor(2);
         const highSub = optionHighCard.querySelector('.option-sub');
         const extraSub = optionExtraHighCard.querySelector('.option-sub');
         if (highSub) highSub.textContent = `lower file size - ${Math.round(highDims.frameW)}x${Math.round(highDims.frameH)}px`;
@@ -3837,7 +3880,11 @@
         // as the only one, so it is also re-selected — otherwise a user who
         // picked Extra High under a different preset would come back to a
         // modal with nothing visibly chosen.
-        const oneX = !!CANVAS_ASPECTS[canvasAspect].oneX;
+        // On-model, a preset with no platform size to scale has one sensible
+        // output and drops the pair for the same reason a oneX preset does.
+        const oneX = onModelEntry
+          ? !onModelHasQualityChoice()
+          : !!CANVAS_ASPECTS[canvasAspect].oneX;
         optionExtraHighCard.style.display = oneX ? 'none' : '';
         if (oneX) {
           const highRadio = optionHighCard.querySelector('input[name="download-quality"]');
@@ -3896,19 +3943,25 @@
         const scaleFactor = getExportScaleFactor(isExtraHigh ? 2 : 1);
         let { frameW: exportWidth, frameH: exportHeight } = getFrameDims(scaleFactor);
 
-        // On-model exports are sized from the SAME crop rect the screen canvas
+        // On-model exports are framed by the SAME crop rect the screen canvas
         // uses, so the download is the frame the user was looking at. Sizing
         // the export from anything else is exactly the class of bug that put
         // wood panels beside the model in a download that looked fine on
-        // screen. Native crop pixels, never upscaled: the preset's platform
-        // resolution (Etsy's 2700x2025) would mean scaling a 1600px source up,
-        // which softens the print rather than adding anything to it.
+        // screen.
+        //
+        // Resolution follows the preset, not the source. A platform preset
+        // promises an exact size on its button — Etsy Listing 2700x2025 — and
+        // that promise has to hold in both modes or the label is a lie in one
+        // of them. Reaching it means resampling a crop of a 1600px photo up,
+        // which is a real cost in sharpness and is accepted: a listing image
+        // below Etsy's zoom threshold is worse than a slightly soft one.
+        // Presets without a platform size have nothing to hit, so they stay at
+        // native crop pixels rather than invent a resample.
         const onModelEntry = mockupStyle === 'onmodel' ? onModelCache.get(activeOnModelId) : null;
         if (onModelEntry) {
-          const crop = onModelCropRect(onModelEntry);
-          const k = isExtraHigh ? 1 : Math.min(1, 2048 / Math.max(crop.w, crop.h));
-          exportWidth = Math.round(crop.w * k);
-          exportHeight = Math.round(crop.h * k);
+          const dims = onModelExportDims(onModelEntry, isExtraHigh);
+          exportWidth = dims.w;
+          exportHeight = dims.h;
         }
 
         // 2. Create offscreen canvas for quality export
