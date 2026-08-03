@@ -18,12 +18,24 @@ Templates are 1066x1600 (2:3). Each preset is a crop of that:
 | 4:5    | 1066x1332   | 83% of height    |
 | 9:16   | 900x1600    | 84% of width     |
 | 1:1    | 1066x1066   | 67% of height    |
-| 4:3    | —           | DROPPED on-model |
+| 4:3    | see below   | PAD, do not crop |
 
-**4:3 is dropped for on-model.** Turning a portrait photo landscape throws
-away half the frame; on a hips-up shot that leaves chest-to-waist with no
-head. Hide it in on-model the way the whole section is hidden today, rather
-than shipping a preset that produces a torso.
+**4:3 must not be cropped.** Turning a portrait photo landscape throws away
+half the frame; on a hips-up shot that leaves chest-to-waist with no head.
+
+It also must not simply be dropped, which is what was first agreed and then
+reversed: **4:3 IS the Etsy Listing preset** (`exportShort: 2025`, exports
+2700x2025). Losing it means a t-shirt mockup tool with no Etsy size on-model,
+which is probably the last size to give up.
+
+So 4:3 is the one preset that PADS instead of cropping: fit the whole 2:3
+portrait into the 4:3 frame and fill the sides. No crop, no lost head, a true
+2700x2025 file. Fill from the photo itself — the builder already computes
+`ambientTint` per template, or blur-extend the scene — so it needs no control
+and cannot clash with the background panel, which is hidden in this mode.
+
+Yes, that means two mechanisms: crop for 1:1 / 4:5 / 9:16, pad for 4:3. Less
+tidy, but it is the difference between having an Etsy size and not.
 
 ## Where to centre — decided
 
