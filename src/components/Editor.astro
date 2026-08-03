@@ -1400,7 +1400,10 @@
 
     // Initialize grids
     buildSwatchGrid(swatchGrid, (color, hex) => {
-      shirtColor = color;
+      // Normalised hex, not the raw swatch value — see the note on the other
+      // two call sites: the colour rows are hsl(...) strings and the recolour
+      // parses shirtColor positionally.
+      shirtColor = hex;
       colorHexLabel.innerText = hex;
       customColorPreview.style.backgroundColor = hex;
       presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
@@ -1409,7 +1412,7 @@
     }, shirtColor);
 
     buildSwatchGrid(bgSwatchGrid, (color, hex) => {
-      customBgColor = color;
+      customBgColor = hex;
       bgColorHexLabel.innerText = hex;
       bgCustomColorPreview.style.backgroundColor = hex;
       bgColorPicker.setColor(hex, false);
@@ -3382,7 +3385,11 @@
       fabricColorPicker.setColor(shirtColor, false);
 
       buildSwatchGrid(swatchGrid, (color, hex) => {
-        shirtColor = color;
+        // The normalised hex, NOT the raw swatch value: the colour rows are
+        // generated as hsl(...) strings, and the recolour parses shirtColor
+        // with slice(1,3) — "sl" from "hsl(" gives NaN, so every colour
+        // except the greyscale row rendered the shirt black.
+        shirtColor = hex;
         colorHexLabel.innerText = hex;
         customColorPreview.style.backgroundColor = hex;
         presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
@@ -3680,7 +3687,11 @@
 
       // Rebuild swatch grids to move checkmarks back to defaults
       buildSwatchGrid(swatchGrid, (color, hex) => {
-        shirtColor = color;
+        // The normalised hex, NOT the raw swatch value: the colour rows are
+        // generated as hsl(...) strings, and the recolour parses shirtColor
+        // with slice(1,3) — "sl" from "hsl(" gives NaN, so every colour
+        // except the greyscale row rendered the shirt black.
+        shirtColor = hex;
         colorHexLabel.innerText = hex;
         customColorPreview.style.backgroundColor = hex;
         presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
@@ -3689,7 +3700,7 @@
       }, shirtColor);
 
       buildSwatchGrid(bgSwatchGrid, (color, hex) => {
-        customBgColor = color;
+        customBgColor = hex;
         bgColorHexLabel.innerText = hex;
         bgCustomColorPreview.style.backgroundColor = hex;
         bgColorPicker.setColor(hex, false);
