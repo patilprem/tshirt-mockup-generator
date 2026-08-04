@@ -854,8 +854,9 @@
     } catch (e) { /* private mode without storage: default to tracking on */ }
 
     // Export tracking — GA4 plus a first-party beacon to /api/track (counted
-    // even when ad-blockers stop GA). Only ever sends metadata (garment type,
-    // counts, quality), never design content. Must never break the editor.
+    // even when ad-blockers stop GA). Only ever sends metadata (garment or
+    // model template, counts, quality), never design content. Must never break
+    // the editor.
     function trackEvent(name, params) {
       if (statsOptedOut) return;
       params = params || {};
@@ -867,7 +868,9 @@
       try {
         const beacon = JSON.stringify({
           event: name,
+          style: params.style || '',
           garment: params.garment || '',
+          template: params.template || '',
           mode: params.mode || '',
           quality: params.quality || '',
           images: params.images || 0,
@@ -3987,8 +3990,15 @@
           downloadLink.click();
           document.body.removeChild(downloadLink);
 
+          // An on-model export has no garment to report: the template fixes
+          // it, and activeGarmentType is only whatever flat lay was left on,
+          // so sending it would file every model download under a garment
+          // nobody chose. The two are reported as what they are — a garment
+          // or a model — and never both.
           trackEvent('mockup_download', {
-            garment: activeGarmentType,
+            style: onModelEntry ? 'onmodel' : 'flatlay',
+            garment: onModelEntry ? '' : activeGarmentType,
+            template: onModelEntry ? activeOnModelId : '',
             quality: `${exportWidth}x${exportHeight}`,
           });
 
@@ -4381,7 +4391,11 @@
           document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(url), 10000);
 
+          // Batch export is flat-lay only — its axes are garment and colour,
+          // and an on-model template fixes the garment — so the style is not a
+          // question here, it is a constant worth recording as one.
           trackEvent('batch_export', {
+            style: 'flatlay',
             mode: batchMode,
             images: done,
             planned: total,

@@ -20,6 +20,21 @@ const GARMENT_LABELS = {
   tanktop: 'Tank Top',
 };
 
+// Mirrors public/assets/on-model/templates.json. Only for display: the
+// breakdown below is built from whatever template ids the data actually
+// contains, so a model added to the editor and missing here still shows up —
+// under its raw id rather than vanishing from the chart.
+const TEMPLATE_LABELS = {
+  'gallery-f': 'Gallery Interior',
+  'livingroom-m': 'Living Room',
+  'street-m': 'Urban Street',
+  'park-m': 'Park Path',
+  'home-f': 'Cozy Home',
+  'bright-airy-f': 'Bright Airy',
+  'miami-f': 'Miami Street',
+  'bright-minimal-m': 'Bright Minimal',
+};
+
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -59,7 +74,9 @@ export async function onRequestGet(context) {
 
   let rows;
   try {
-    rows = (await db.prepare('SELECT day, event, garment, mode, quality, count, images FROM export_stats ORDER BY day').all()).results || [];
+    rows = (await db
+      .prepare('SELECT day, event, style, garment, template, mode, quality, count, images FROM export_stats_v2 ORDER BY day')
+      .all()).results || [];
   } catch {
     rows = []; // table not created yet — no exports tracked so far
   }
@@ -97,12 +114,43 @@ export async function onRequestGet(context) {
   }
   const maxDaily = Math.max(1, ...series.map((s) => s.downloads + s.batches));
 
-  // Garment breakdown (single downloads, all time)
+  // Garment breakdown (single downloads, all time). Flat lay only: an
+  // on-model export reports no garment, because the template fixes it.
   const byGarment = Object.keys(GARMENT_LABELS)
     .map((g) => ({ g, n: sum((r) => r.event === 'mockup_download' && r.garment === g, 'count') }))
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n);
   const maxGarment = Math.max(1, ...byGarment.map((x) => x.n));
+
+  // Flat lay vs on model, single downloads. Rows carrying neither predate the
+  // split and are counted as "not recorded" rather than folded into flat lay,
+  // which would overstate it for as long as that history is in the table.
+  const styleTotals = {
+    flatlay: {
+      today: sum((r) => r.event === 'mockup_download' && r.style === 'flatlay' && r.day === today, 'count'),
+      week: sum((r) => r.event === 'mockup_download' && r.style === 'flatlay' && r.day >= d7, 'count'),
+      month: sum((r) => r.event === 'mockup_download' && r.style === 'flatlay' && r.day >= d30, 'count'),
+      all: sum((r) => r.event === 'mockup_download' && r.style === 'flatlay', 'count'),
+    },
+    onmodel: {
+      today: sum((r) => r.event === 'mockup_download' && r.style === 'onmodel' && r.day === today, 'count'),
+      week: sum((r) => r.event === 'mockup_download' && r.style === 'onmodel' && r.day >= d7, 'count'),
+      month: sum((r) => r.event === 'mockup_download' && r.style === 'onmodel' && r.day >= d30, 'count'),
+      all: sum((r) => r.event === 'mockup_download' && r.style === 'onmodel', 'count'),
+    },
+  };
+  const unattributed = sum((r) => r.event === 'mockup_download' && r.style === '', 'count');
+  const attributed = styleTotals.flatlay.all + styleTotals.onmodel.all;
+  const onModelShare = attributed ? Math.round((styleTotals.onmodel.all / attributed) * 100) : 0;
+
+  // Model breakdown, built from the ids present in the data rather than from
+  // the label map, so a template added to the editor still appears here.
+  const templateIds = [...new Set(rows.filter((r) => r.template).map((r) => r.template))];
+  const byTemplate = templateIds
+    .map((t) => ({ t, n: sum((r) => r.event === 'mockup_download' && r.template === t, 'count') }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n);
+  const maxTemplate = Math.max(1, ...byTemplate.map((x) => x.n));
 
   // Batch mode split (all time)
   const modeSplit = ['variants', 'designs'].map((m) => ({
@@ -141,10 +189,28 @@ export async function onRequestGet(context) {
         .join('')
     : '<p class="empty">No downloads tracked yet.</p>';
 
+  const templateRows = byTemplate.length
+    ? byTemplate
+        .map(
+          (x) => `<div class="hrow"><span class="hlabel">${esc(TEMPLATE_LABELS[x.t] || x.t)}</span>
+            <span class="htrack"><span class="hfill m" style="width:${Math.round((x.n / maxTemplate) * 100)}%"></span></span>
+            <b>${x.n.toLocaleString()}</b></div>`
+        )
+        .join('')
+    : '<p class="empty">No on-model downloads tracked yet.</p>';
+
   const body = `
     <header><h1>TeeMockup — Export Stats</h1><p>First-party counts (ad-blocker-proof), rolled up per UTC day. Updated live.</p></header>
     <div class="cards">
       ${statCard('Single Downloads', totals.mockup_download)}
+      ${statCard('On-Model Downloads', styleTotals.onmodel)}
+      <div class="card">
+        <h2>Flat Lay vs On Model</h2>
+        <div class="big">${onModelShare}%<span class="unit"> on model</span></div>
+        <div class="row"><span>Flat lay</span><b>${styleTotals.flatlay.all.toLocaleString()}</b></div>
+        <div class="row"><span>On model</span><b>${styleTotals.onmodel.all.toLocaleString()}</b></div>
+        ${unattributed ? `<div class="row"><span>Before this was recorded</span><b>${unattributed.toLocaleString()}</b></div>` : ''}
+      </div>
       ${statCard('Batch Exports', totals.batch_export)}
       <div class="card">
         <h2>Batch Images Delivered</h2>
@@ -159,8 +225,12 @@ export async function onRequestGet(context) {
       <div class="chart">${bars}</div>
     </section>
     <section class="card wide">
-      <h2>Downloads by garment (all time)</h2>
+      <h2>Downloads by garment (all time) <span class="legend note">flat lay only — an on-model export has no garment</span></h2>
       ${garmentRows}
+    </section>
+    <section class="card wide">
+      <h2>Downloads by model (all time)</h2>
+      ${templateRows}
     </section>`;
 
   return new Response(page(body), { headers });
@@ -200,6 +270,9 @@ function page(body) {
   .hlabel { width: 120px; color: #aab0c0; flex-shrink: 0; }
   .htrack { flex: 1; background: rgba(255,255,255,0.05); border-radius: 99px; height: 10px; overflow: hidden; }
   .hfill { display: block; height: 100%; background: #1aa7ec; border-radius: 99px; }
+  .hfill.m { background: #22c55e; }
+  .unit { font-size: 0.9rem; font-weight: 500; color: #8a90a0; }
+  .legend.note { color: #8a90a0; font-weight: 400; }
   .hrow b { width: 60px; text-align: right; }
   .empty { color: #8a90a0; font-size: 0.9rem; }
   code { background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 6px; }
