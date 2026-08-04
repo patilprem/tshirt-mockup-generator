@@ -23,3 +23,7 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 .wrangler/
+
+# on-model source renders for the gallery crops — 11.5 MB of inputs whose
+# only output is public/assets/gallery/onmodel_*.jpg, kept out of the repo
+scratch/onmodel-in/
