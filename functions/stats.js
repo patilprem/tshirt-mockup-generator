@@ -6,6 +6,7 @@
 // returns 401 with no hints. The page is noindexed and disallowed in robots.txt.
 //
 // Data comes from the D1 binding `DB`, written by /api/track.
+import { ensureExportStats } from './_export-stats.js';
 
 const COOKIE = 'teemockup_stats';
 
@@ -70,6 +71,18 @@ export async function onRequestGet(context) {
   const db = env.DB;
   if (!db) {
     return new Response(page('<p class="empty">Database binding <code>DB</code> is not configured yet.</p>'), { headers });
+  }
+
+  // Bring the table into existence and pull the original's rows across before
+  // reading. The dashboard cannot rely on the beacon having done this: it is
+  // perfectly normal to open /stats before the next export happens, and when
+  // that was the only place it ran, the page queried a table that did not
+  // exist yet and rendered every number as zero — a site with history looked
+  // exactly like a site with none. Idempotent, so doing it on a read is safe.
+  try {
+    await ensureExportStats(db);
+  } catch {
+    /* read-only or unavailable DB — fall through and show what can be read */
   }
 
   let rows;
