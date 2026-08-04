@@ -7,6 +7,11 @@
 //
 // Requires a D1 binding named `DB` on the Pages project. Until that binding
 // exists this endpoint silently no-ops, so it can ship ahead of the database.
+//
+// The table's shape lives in _export-stats.js because the dashboard needs it
+// too — it has to be able to create the table and pull the old one's rows
+// across without waiting for someone to export something first.
+import { ensureExportStats } from '../_export-stats.js';
 
 const ALLOWED_EVENTS = new Set(['mockup_download', 'batch_export']);
 // Which side of the editor the export came from. Blank is history: rows
@@ -31,34 +36,6 @@ const QUALITY_RE = /^(\d{2,5}x\d{2,5})?$/;
 // charset and length are tight, which is what bounds how many distinct rows a
 // client can create.
 const TEMPLATE_RE = /^[a-z0-9-]{0,24}$/;
-
-// style and template are part of the KEY, not just columns: a flat-lay and an
-// on-model export that agree on day/event/quality are different facts and must
-// not collapse into one row. SQLite cannot widen a primary key in place, hence
-// a new table rather than ALTER TABLE on the original.
-const SCHEMA = `CREATE TABLE IF NOT EXISTS export_stats_v2 (
-  day TEXT NOT NULL,
-  event TEXT NOT NULL,
-  style TEXT NOT NULL DEFAULT '',
-  garment TEXT NOT NULL DEFAULT '',
-  template TEXT NOT NULL DEFAULT '',
-  mode TEXT NOT NULL DEFAULT '',
-  quality TEXT NOT NULL DEFAULT '',
-  count INTEGER NOT NULL DEFAULT 0,
-  images INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (day, event, style, garment, template, mode, quality)
-)`;
-
-// Carries the original table's rows across so the dashboard keeps its history.
-// They predate the style/template split, so both are left blank and read as
-// "not recorded" rather than being guessed at.
-const COPY_FORWARD = `INSERT OR IGNORE INTO export_stats_v2
-  (day, event, style, garment, template, mode, quality, count, images)
-  SELECT day, event, '', garment, '', mode, quality, count, images FROM export_stats`;
-
-// Once per isolate. The copy is idempotent, so the worst case of a fresh
-// isolate repeating it is one wasted scan of a small table.
-let historyCopied = false;
 
 export async function onRequestPost(context) {
   const db = context.env.DB;
@@ -96,17 +73,10 @@ export async function onRequestPost(context) {
   const day = new Date().toISOString().slice(0, 10);
 
   try {
-    // Self-bootstrapping schema: no manual migration step to run.
-    await db.prepare(SCHEMA).run();
-
-    if (!historyCopied) {
-      // Set before the attempt, so a permanently absent v1 table costs one try
-      // per isolate rather than one per request.
-      historyCopied = true;
-      // Ahead of this request's own upsert: INSERT OR IGNORE yields to a row
-      // that is already there, so copying after writing could drop history.
-      try { await db.prepare(COPY_FORWARD).run(); } catch { /* no v1 table */ }
-    }
+    // Self-bootstrapping schema: no manual migration step to run. Ahead of
+    // this request's own upsert, so the history copy inside it cannot be
+    // blocked by a row this request just wrote.
+    await ensureExportStats(db);
 
     await db
       .prepare(
