@@ -250,7 +250,10 @@
         <div class="loading-text">Processing Garment Folds…</div>
       </div>
     </div>
-    <div class="canvas-hint" id="canvas-hint">Drag logo to place | Corner handles to scale | Top handle to rotate</div>
+    <!-- "Bottom handle": the rotate button sits below the box on every control
+         here - design, prop and on-model alike. It read "Top" from when props
+         were the odd one out. -->
+    <div class="canvas-hint" id="canvas-hint">Drag logo to place | Corner handles to scale | Bottom handle to rotate</div>
     
     <!-- Central Export Actions Panel -->
     <div class="viewport-export-panel" style="width: 100%; max-width: 600px; margin-top: 8px;">
@@ -974,6 +977,23 @@
     // on-screen handles always line up with what's actually drawn.
     function getShirtZoom() {
       return CANVAS_ASPECTS[canvasAspect].shirtZoom || 1;
+    }
+
+    // The visible canvas expressed in artboard units. These are the same thing
+    // ONLY at 1:1 with no zoom. Every other preset letterboxes the 1000x1000
+    // artboard inside a taller or wider frame, so there is canvas the artboard
+    // does not cover: on a 9:16 story that is the top and bottom ~290 units,
+    // which is precisely the band the preset exists to give you. Anything
+    // clamped to the artboard cannot be moved into it.
+    //
+    // A zooming preset cuts the other way — 4:3 and 9:16 magnify by 1.12, so
+    // some artboard columns fall outside the frame — and the same bounds stop
+    // something being parked where it will not be rendered.
+    function artboardViewBounds() {
+      const zoom = getShirtZoom();
+      const halfW = canvas.width / zoom / 2;
+      const halfH = canvas.height / zoom / 2;
+      return { minX: 500 - halfW, maxX: 500 + halfW, minY: 500 - halfH, maxY: 500 + halfH };
     }
 
     // Resolves the actual export scale for the current canvasAspect: platform
@@ -2869,7 +2889,11 @@
           br: localToGlobal(w / 2, h / 2),
           bl: localToGlobal(-w / 2, h / 2)
         },
-        rot: localToGlobal(0, -h / 2 - 35)
+        // Below the box, through the same constant the design uses, so the two
+        // controls put the rotate button in the same place relative to what is
+        // being rotated. Hit-testing reads this too, so the grab follows the
+        // drawing by construction.
+        rot: localToGlobal(0, h / 2 + SEL_ROT_GAP * selUnitsFlat())
       };
     }
 
@@ -2940,52 +2964,23 @@
         if (config.loaded && config.img) {
           const metrics = getPropTransformMetrics(selectedElement);
           if (metrics) {
+            // The same drawSelectionChrome the design uses, through the same
+            // units, rather than a second control that merely resembles it.
+            // A prop used to be a dashed box with square corners, a centre dot
+            // and the rotate button above, while the print in the middle of the
+            // same canvas had a solid box, round corners and rotate below — two
+            // gestures to learn for one canvas, and the handles drawn at a fixed
+            // pixel size so they grew and shrank with the preset.
+            const u = selUnitsFlat();
             ctx.save();
             ctx.translate(metrics.center.x, metrics.center.y);
             ctx.rotate(config.rotation || 0);
-
-            // Dashed Bounding Box Outline
-            ctx.strokeStyle = '#00b4e6';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([6, 4]);
-            ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
-
-            // Draw Center Position dot
-            ctx.fillStyle = '#00b4e6';
-            ctx.beginPath();
-            ctx.arc(0, 0, 4, 0, Math.PI*2);
-            ctx.fill();
-
-            // Draw Corner Handles (Scale)
-            ctx.setLineDash([]); // solid lines
-            ctx.fillStyle = '#ffffff';
-            ctx.strokeStyle = '#00b4e6';
-            const hSize = 12; // handle size
-
-            const corners = [
+            drawSelectionChrome(ctx, [
               { x: -metrics.width / 2, y: -metrics.height / 2 },
               { x: metrics.width / 2, y: -metrics.height / 2 },
               { x: metrics.width / 2, y: metrics.height / 2 },
-              { x: -metrics.width / 2, y: metrics.height / 2 }
-            ];
-
-            corners.forEach(c => {
-              ctx.fillRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
-              ctx.strokeRect(c.x - hSize/2, c.y - hSize/2, hSize, hSize);
-            });
-
-            // Draw Rotation Handle (Line upwards + Circle handle)
-            const rotY = -metrics.height / 2 - 35;
-            ctx.beginPath();
-            ctx.moveTo(0, -metrics.height / 2);
-            ctx.lineTo(0, rotY);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(0, rotY, hSize/1.5, 0, Math.PI*2);
-            ctx.fill();
-            ctx.stroke();
-
+              { x: -metrics.width / 2, y: metrics.height / 2 },
+            ], { x: 0, y: metrics.height / 2 + SEL_ROT_GAP * u }, u);
             ctx.restore();
           }
         }
@@ -3000,8 +2995,12 @@
             ctx.save();
             ctx.translate(metrics.center.x, metrics.center.y);
             ctx.rotate(config.rotation || 0);
-            ctx.strokeStyle = 'rgba(0, 180, 230, 0.5)';
-            ctx.lineWidth = 1.5;
+            // Hover stays a faint dashed outline — it is a hint, not a control,
+            // and must not read as a selection. Same hue as the chrome it
+            // precedes, so the two belong to one palette.
+            ctx.strokeStyle = SEL_COLOUR;
+            ctx.globalAlpha = 0.5;
+            ctx.lineWidth = SEL_LINE * selUnitsFlat();
             ctx.setLineDash([4, 3]);
             ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
             ctx.restore();
@@ -3276,8 +3275,12 @@
       // 2. If dragging a prop — snaps to the canvas center like Canva's alignment guides
       if (draggedPropType) {
         const config = propConfigs[draggedPropType];
-        let newX = Math.max(-config.w / 2, Math.min(1000 - config.w / 2, coords.x - dragStartOffset.x));
-        let newY = Math.max(-config.h / 2, Math.min(1000 - config.h / 2, coords.y - dragStartOffset.y));
+        // Keep the prop's CENTRE inside the visible frame — the same rule as
+        // before, but measured against the canvas instead of the artboard, so
+        // a preset that adds canvas also adds somewhere to drag to.
+        const view = artboardViewBounds();
+        let newX = Math.max(view.minX - config.w / 2, Math.min(view.maxX - config.w / 2, coords.x - dragStartOffset.x));
+        let newY = Math.max(view.minY - config.h / 2, Math.min(view.maxY - config.h / 2, coords.y - dragStartOffset.y));
 
         activeSnapGuide.x = Math.abs(newX + config.w / 2 - 500) < CENTER_SNAP_THRESHOLD;
         if (activeSnapGuide.x) newX = 500 - config.w / 2;
@@ -3845,24 +3848,30 @@
     const optionHighCard = document.getElementById('option-high-card');
     const optionExtraHighCard = document.getElementById('option-extra-high-card');
 
-    // Show modal on download button click — sub-labels reflect the real output
-    // size for the current canvas preset. These two used to print the same
-    // dimensions as each other on every platform preset, because quality did
-    // not scale a pinned export; now that it multiplies, the pair genuinely
-    // differs and the numbers here mean something again. This modal keeps the
-    // dimensions rather than reading "1x / 2x" — it names one file the user is
-    // about to save, where the exact size is the useful fact.
+    // The modal exists to ask one question: 1x or 2x. Plenty of presets have
+    // no second answer to offer — a platform preset that opts out of 2x, or an
+    // on-model preset with no platform size to scale — and a modal asking
+    // which of one option to take is a click in the way of the download. Those
+    // save the file directly.
+    //
+    // When it does open, the sub-labels name the real output size for the
+    // current preset rather than reading "1x / 2x": it describes one file the
+    // user is about to save, and the exact size is the useful fact about it.
+    // On-model measures its own, being a crop of a photo held to the preset's
+    // platform size rather than a letterboxed artboard.
     downloadBtn.addEventListener('click', () => {
+      const onModelEntry = mockupStyle === 'onmodel' ? onModelCache.get(activeOnModelId) : null;
+      // Whether 2x is on offer at all. Where it is not, both export paths
+      // already ignore the quality argument, so 'high' IS the single size —
+      // this cannot silently downgrade a preset to a smaller file.
+      const singleSize = onModelEntry
+        ? !onModelHasQualityChoice()
+        : !!CANVAS_ASPECTS[canvasAspect].oneX;
+      if (singleSize) {
+        runDownload('high');
+        return;
+      }
       if (downloadModal) {
-        // On-model measures its own output: it is a crop of a photo held to
-        // the preset's platform size, not a letterboxed artboard, so the
-        // flat-lay numbers describe a different file. This used to skip the
-        // modal entirely and take the largest thing it could render, on the
-        // grounds that on-model had no quality decision to make — true while
-        // the export was pinned to the template's native pixels, and false now
-        // that a preset names a resolution. Skipping it meant Instagram Post
-        // quietly saved 2160x2160 from a button that says 1080x1080.
-        const onModelEntry = mockupStyle === 'onmodel' ? onModelCache.get(activeOnModelId) : null;
         const dimsFor = q => {
           if (onModelEntry) {
             const d = onModelExportDims(onModelEntry, q === 2);
@@ -3876,22 +3885,8 @@
         const extraSub = optionExtraHighCard.querySelector('.option-sub');
         if (highSub) highSub.textContent = `lower file size - ${Math.round(highDims.frameW)}x${Math.round(highDims.frameH)}px`;
         if (extraSub) extraSub.textContent = `higher file size - ${Math.round(extraDims.frameW)}x${Math.round(extraDims.frameH)}px`;
-        // Same opt-out as the batch modal. Hiding the card leaves High Quality
-        // as the only one, so it is also re-selected — otherwise a user who
-        // picked Extra High under a different preset would come back to a
-        // modal with nothing visibly chosen.
-        // On-model, a preset with no platform size to scale has one sensible
-        // output and drops the pair for the same reason a oneX preset does.
-        const oneX = onModelEntry
-          ? !onModelHasQualityChoice()
-          : !!CANVAS_ASPECTS[canvasAspect].oneX;
-        optionExtraHighCard.style.display = oneX ? 'none' : '';
-        if (oneX) {
-          const highRadio = optionHighCard.querySelector('input[name="download-quality"]');
-          if (highRadio) highRadio.checked = true;
-          optionHighCard.classList.add('active');
-          optionExtraHighCard.classList.remove('active');
-        }
+        // No card to hide any more: the one-option case never reaches here, so
+        // both are always real choices by the time the modal is on screen.
         downloadModal.style.display = 'flex';
       }
     });
