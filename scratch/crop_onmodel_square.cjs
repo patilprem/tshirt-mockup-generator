@@ -11,17 +11,23 @@
 // Rendering goes through headless Chromium's canvas: same drawImage the editor
 // uses, and no image library to add to the project for a one-off asset step.
 //
-//   node scratch/crop_onmodel_square.cjs <in-dir> <out-dir>
+//   node scratch/crop_onmodel_square.cjs <in-dir> [out-dir] [size]
 //
-// Writes <out-dir>/<template-id>-<n>.jpg, square, at the source's own pixels.
+// Writes <out-dir>/onmodel_<template-id>.jpg, square, at SIZE px a side.
+//
+// 1024 to match the gallery marquee's existing row, whose assets are all
+// 1024x1024 at 110-245 KB. The tile is a 320px square with object-fit: cover
+// (250px on mobile), so a square source fills it with nothing cropped away and
+// the two rows sit at the same weight and the same sharpness.
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 
 const inDir = process.argv[2];
 const outDir = process.argv[3] || 'public/assets/gallery';
+const OUT_SIZE = Number(process.argv[4]) || 1024;
 if (!inDir) {
-  console.error('usage: node scratch/crop_onmodel_square.cjs <in-dir> [out-dir]');
+  console.error('usage: node scratch/crop_onmodel_square.cjs <in-dir> [out-dir] [size]');
   process.exit(1);
 }
 
@@ -120,15 +126,18 @@ const dataUri = (p) => {
     // template's: the preset's promise is a 1:1 file.
     const side = Math.min(rect.w, rect.h);
 
-    const out = await page.evaluate(async ([uri, rect, side]) => {
+    const out = await page.evaluate(async ([uri, rect, side, outSize]) => {
       const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = uri; });
       const c = document.createElement('canvas');
-      c.width = side; c.height = side;
+      // Never upscale: a render smaller than the target keeps its own pixels
+      // rather than being stretched to hit a round number.
+      const n = Math.min(outSize, side);
+      c.width = n; c.height = n;
       const cx = c.getContext('2d');
       cx.imageSmoothingQuality = 'high';
-      cx.drawImage(img, rect.x, rect.y, side, side, 0, 0, side, side);
+      cx.drawImage(img, rect.x, rect.y, side, side, 0, 0, n, n);
       return c.toDataURL('image/jpeg', 0.9);
-    }, [dataUri(src), rect, side]);
+    }, [dataUri(src), rect, side, OUT_SIZE]);
 
     seen[t.id] = (seen[t.id] || 0) + 1;
     const name = seen[t.id] > 1 ? `onmodel_${t.id}_${seen[t.id]}.jpg` : `onmodel_${t.id}.jpg`;
@@ -136,7 +145,8 @@ const dataUri = (p) => {
     const flag = result.best.score > 40 ? '  <-- WEAK MATCH, check this one' : '';
     console.log(
       `${file}  ${result.w}x${result.h}  ->  ${t.id} (diff ${result.best.score.toFixed(1)})` +
-      `  crop y=${rect.y} ${side}x${side}  ->  ${name}${flag}`
+      `  crop y=${rect.y} ${side}x${side}  ->  ${name} @ ${Math.min(OUT_SIZE, side)}px` +
+      `  ${(Buffer.from(out.split(',')[1], 'base64').length / 1024).toFixed(0)}KB${flag}`
     );
   }
 
