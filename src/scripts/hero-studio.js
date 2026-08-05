@@ -728,9 +728,14 @@ async function boot(el) {
         ><path d="${g.path}"/></svg></button>`).join('');
     } else {
       tilesEl.setAttribute('aria-label', 'Choose a scene');
+      // 144px tiles rather than the gallery's own 1024px files: these are drawn
+      // at 46 CSS px, where the full-size photograph is ~8x oversized. onerror
+      // reverts to the gallery original, so a missing variant still shows a
+      // picker rather than four broken images.
       tilesEl.innerHTML = metas
-        .map((m) => `<img src="/assets/gallery/onmodel_${m.id}.jpg" alt="${m.label}" role="option"
-          aria-selected="${m.id === state.id}" data-id="${m.id}" loading="lazy" width="46" height="46" />`)
+        .map((m) => `<img src="${HERO}tiles/${m.id}.webp" alt="${m.label}" role="option"
+          aria-selected="${m.id === state.id}" data-id="${m.id}" loading="lazy" width="46" height="46"
+          onerror="this.onerror=null;this.src='/assets/gallery/onmodel_${m.id}.jpg'" />`)
         .join('');
     }
   }
