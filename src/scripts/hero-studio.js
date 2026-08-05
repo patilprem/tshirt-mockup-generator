@@ -11,9 +11,17 @@
 //
 // Everything is deliberately cheap on the LCP path: nothing runs until the
 // browser is idle, the canvas stays hidden behind a static poster until it has
-// a full frame to show, and the flat-lay assets — a garment, three props and a
-// wood backdrop, some 4.5MB of PNG — are not fetched at all until the visitor
-// shows intent to switch. Someone who never leaves on model never pays for it.
+// a full frame to show, and the flat-lay assets are not fetched at all until
+// the visitor shows intent to switch. Someone who never leaves on model never
+// pays for it.
+//
+// The hero also draws from its OWN copies of every asset, under /assets/hero,
+// built by scratch/build_hero_assets.cjs. The editor keeps the originals: it
+// exports at up to 2160px where this paints at 452, and sharing one set of
+// files meant the homepage paid export resolution for a thumbnail. Every load
+// below falls back to the original path, so a missing variant or a browser
+// that cannot decode WebP degrades to exactly the old behaviour rather than to
+// a blank frame.
 
 import {
   onModelCache, loadOnModelTemplate, buildOnModelComposed,
@@ -77,6 +85,11 @@ const FLAT_SHADOW_DEPTH = 0.60;
 const FLAT_HIGHLIGHT = 0.15;
 const WOOD_SRC = '/assets/wood_white.png';
 
+// The hero's own variants. Built by scratch/build_hero_assets.cjs; every use
+// site pairs one with the original it falls back to.
+const HERO = '/assets/hero/';
+const heroVariant = (p) => HERO + p.split('/').pop().replace(/\.(png|jpe?g)$/, '.webp');
+
 const SEL = { colour: '#3b82f6', line: 1.5, handle: 6.5 };
 
 export function initHeroStudio() {
@@ -110,7 +123,13 @@ async function boot(el) {
 
   // Keyed through the editor's own routine: the sample cat is a fully opaque
   // PNG on black, so drawing it raw lays a black card across a white shirt.
-  const rawDesign = await loadImage(DESIGN_SRC).catch(() => null);
+  // The hero's variant is keyed identically — it is still opaque-on-black, and
+  // its background stays well inside the keyer's threshold, so the flood fill
+  // behaves the same as on the PNG. The hand-off keeps pointing at the
+  // original: the editor prints this at export resolution.
+  const rawDesign = await loadImage(heroVariant(DESIGN_SRC))
+    .catch(() => loadImage(DESIGN_SRC))
+    .catch(() => null);
   const design = rawDesign ? buildDesignBuffer(rawDesign).buffer : null;
 
   const state = {
@@ -174,9 +193,9 @@ async function boot(el) {
     if (flat.promise) return flat.promise;
     root.setAttribute('data-loading', '');
     flat.promise = Promise.all([
-      loadImage(WOOD_SRC).catch(() => null),
+      loadImage(heroVariant(WOOD_SRC)).catch(() => loadImage(WOOD_SRC)).catch(() => null),
       loadGarmentLayers(state.garment),
-      ...Object.keys(flat.active).map((t) => loadProp(flat.props[t])),
+      ...Object.keys(flat.active).map((t) => loadStagedProp(t)),
     ]).then(([wood]) => {
       flat.wood = wood;
       flat.ready = flat.layers.has(state.garment);
@@ -188,20 +207,56 @@ async function boot(el) {
     return flat.promise;
   }
 
+  // Goes through the shared loader so the hero and the editor decode props the
+  // same way; only the path differs, and it reverts to the original if the
+  // variant is missing or undecodable.
+  async function loadStagedProp(type) {
+    const cfg = flat.props[type];
+    const original = cfg.path;
+    cfg.path = heroVariant(original);
+    await loadProp(cfg);
+    if (!cfg.loaded) {
+      cfg.path = original;
+      await loadProp(cfg);
+    }
+    return cfg.loaded;
+  }
+
   async function loadGarmentLayers(id) {
     if (flat.layers.has(id)) return flat.layers.get(id);
     const cfg = garmentConfigs[id];
     if (!cfg) return null;
-    const img = await loadImage(cfg.path).catch(() => null);
+    const img = await loadImage(heroVariant(cfg.path))
+      .catch(() => loadImage(cfg.path))
+      .catch(() => null);
     if (!img) return null;
+    // Fold extraction reads luminance off whatever resolution it is handed and
+    // the maps are resampled at draw time anyway, so the smaller source costs
+    // the hero nothing visible.
     const layers = buildShirtLayers(img, cfg.yFlat || 215);
     flat.layers.set(id, layers);
     return layers;
   }
 
   // --- template -----------------------------------------------------------
+  // The photograph is lossy — it is only ever displayed here. The weight map is
+  // NOT: R/G/B are three masks the relight reads exact byte values out of, so
+  // the variant is lossless and the build script asserts it decodes
+  // sample-for-sample identical. The shade map is left as the original, being
+  // already small enough that lossless WebP of it comes out bigger.
+  function heroMeta(meta) {
+    return {
+      ...meta,
+      photo: `${HERO}onmodel/${meta.id}-photo.webp`,
+      weight: `${HERO}onmodel/${meta.id}-weight.webp`,
+    };
+  }
+
   async function useTemplate(meta) {
-    const entry = await loadOnModelTemplate(meta);
+    // loadOnModelTemplate throws before it caches, so a failed variant attempt
+    // cannot leave a half-built entry behind for the fallback to trip over.
+    const entry = await loadOnModelTemplate(heroMeta(meta))
+      .catch(() => loadOnModelTemplate(meta));
     state.id = meta.id;
     state.composedKey = '';
     sizeCanvas();

@@ -15,16 +15,22 @@
 
 <div class="hs" id="hero-studio">
   <div class="hs-frame">
-    <!-- LCP element: decoded straight from the network, no JS in the way. -->
-    <img
-      class="hs-poster"
-      id="hs-poster"
-      src="/assets/gallery/onmodel_gallery-f.jpg"
-      alt="Cat design on a t-shirt worn by a model"
-      width="1024"
-      height="1024"
-      fetchpriority="high"
-    />
+    <!-- LCP element: decoded straight from the network, no JS in the way.
+         The WebP is a third of the JPEG at the size this is actually shown;
+         the <img> keeps the JPEG, so a browser that cannot take the source
+         still gets the poster, and fetchpriority still applies to it. -->
+    <picture>
+      <source srcset="/assets/hero/poster-gallery-f.webp" type="image/webp" />
+      <img
+        class="hs-poster"
+        id="hs-poster"
+        src="/assets/gallery/onmodel_gallery-f.jpg"
+        alt="Cat design on a t-shirt worn by a model"
+        width="1024"
+        height="1024"
+        fetchpriority="high"
+      />
+    </picture>
     <canvas class="hs-canvas" id="hs-canvas" width="800" height="800" aria-label="Interactive t-shirt mockup"></canvas>
 
     <div class="hs-slab hs-mode" id="hs-mode" role="tablist" aria-label="Mockup style"></div>
