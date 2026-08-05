@@ -78,6 +78,7 @@ async function boot(el) {
   buildTiles();
   buildSwatches();
   wirePointer();
+  wireHandoff();
 
   root.setAttribute('data-ready', '');
   render();
@@ -306,6 +307,27 @@ async function boot(el) {
       tilesEl.querySelectorAll('img').forEach((n) => n.setAttribute('aria-selected', n === img));
       await useTemplate(meta);
       render();
+    });
+  }
+
+  // The hero is a dead end without this: a visitor arranges a design, clicks
+  // through, and arrives at a fresh editor with none of it. sessionStorage
+  // rather than a query string because the transform is four numbers and a
+  // colour, and none of it belongs in a shareable URL.
+  function wireHandoff() {
+    const cta = document.getElementById('hero-cta-btn');
+    if (!cta) return;
+    cta.addEventListener('click', () => {
+      try {
+        sessionStorage.setItem('teemockup_handoff', JSON.stringify({
+          style: 'onmodel',
+          template: state.id,
+          colour: state.colour,
+          design: DESIGN_SRC,
+          pos: state.pos,
+          scale: state.scale,
+        }));
+      } catch { /* private mode: the editor just opens on its defaults */ }
     });
   }
 

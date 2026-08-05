@@ -1562,15 +1562,22 @@
     }
 
     // Load active design graphic and apply background removal if needed
+    // Returns a promise so callers that need the design in place before their
+    // next step — the homepage hand-off — can wait for it. Nothing else has
+    // to: the resolve is additive and every existing call site ignores it.
     function loadActiveDesign() {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = designSrc;
-      img.onload = () => {
-        designImage = img;
-        preProcessDesign();
-        render();
-      };
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = designSrc;
+        img.onload = () => {
+          designImage = img;
+          preProcessDesign();
+          render();
+          resolve();
+        };
+        img.onerror = () => resolve();
+      });
     }
 
     // Removes black background from a logo using a BFS flood-fill boundary
@@ -2387,6 +2394,63 @@
       document.querySelectorAll('#mockup-style-toggle .style-btn').forEach(btn => {
         btn.addEventListener('click', () => setMockupStyle(btn.dataset.style));
       });
+      await applyHandoff();
+    }
+
+    // Continues whatever the homepage hero had on screen. Read once and
+    // cleared immediately, so a later visit to /editor opens on its own
+    // defaults rather than resurrecting a stale arrangement.
+    async function applyHandoff() {
+      let h = null;
+      try {
+        const raw = sessionStorage.getItem('teemockup_handoff');
+        sessionStorage.removeItem('teemockup_handoff');
+        if (raw) h = JSON.parse(raw);
+      } catch { return; }
+      if (!h || h.style !== 'onmodel') return;
+
+      if (h.template && onModelTemplates.some(t => t.id === h.template)) {
+        activeOnModelId = h.template;
+        // The picker was built before this ran, so its pressed state still
+        // points at the default. Sync it or the canvas and the sidebar
+        // disagree about which model is showing.
+        document.querySelectorAll('#on-model-selector .on-model-card').forEach(b =>
+          b.setAttribute('aria-pressed', b.dataset.template === activeOnModelId));
+      }
+      if (typeof h.colour === 'string' && /^#[0-9a-f]{6}$/i.test(h.colour)) {
+        shirtColor = h.colour;
+        // Same fields the swatch-grid callback keeps in step, so the sidebar
+        // agrees with the canvas the visitor just carried over.
+        if (colorHexLabel) colorHexLabel.innerText = shirtColor;
+        if (customColorPreview) customColorPreview.style.backgroundColor = shirtColor;
+        presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        try { fabricColorPicker.setColor(shirtColor, false); } catch { /* picker not up yet */ }
+      }
+      if (h.design) {
+        const thumb = document.querySelector(`#sample-designs .design-thumb[data-src="${h.design}"]`);
+        if (thumb) {
+          sampleDesigns.querySelectorAll('.design-thumb').forEach(t => t.classList.remove('active'));
+          thumb.classList.add('active');
+        }
+        designSrc = h.design;
+        await loadActiveDesign();
+      }
+      await setMockupStyle('onmodel');
+
+      // Transform goes on AFTER the mode switch: loading a design and entering
+      // on-model both reset placement to their own defaults, so setting it any
+      // earlier is silently undone. The sliders are moved with it, or the
+      // sidebar reports a size the canvas is not drawing.
+      if (h.pos && Number.isFinite(h.pos.x) && Number.isFinite(h.pos.y)) designPos = { x: h.pos.x, y: h.pos.y };
+      if (Number.isFinite(h.scale)) {
+        designScale = Math.max(0.1, Math.min(0.9, h.scale));
+        userHasManuallyScaled = true;
+        const pct = Math.round(designScale * 100);
+        if (scaleSlider) scaleSlider.value = pct;
+        const manual = document.getElementById('scale-manual');
+        if (manual) manual.value = pct;
+      }
+      render();
     }
 
     function render(showHandles = true) {

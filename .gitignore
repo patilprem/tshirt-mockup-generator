@@ -27,3 +27,6 @@ pnpm-debug.log*
 # on-model source renders for the gallery crops — 11.5 MB of inputs whose
 # only output is public/assets/gallery/onmodel_*.jpg, kept out of the repo
 scratch/onmodel-in/
+
+# screenshot from test_hero_handoff.cjs
+hero-handoff.png
