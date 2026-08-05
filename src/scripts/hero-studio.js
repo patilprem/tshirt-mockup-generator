@@ -23,7 +23,7 @@ import {
 import {
   garmentConfigs, defaultPropConfigs, loadProp, buildShirtLayers,
   drawFlatlayScene, designBoxSize,
-  propTransformMetrics, hitProps, hitPropHandles, drawPropChrome,
+  hitProps, hitPropHandles, drawPropChrome,
 } from './flatlay-engine.js';
 
 import {
@@ -158,6 +158,7 @@ async function boot(el) {
   await useTemplate(metas[0]);
   buildModeToggle();
   buildTiles();
+  wireTiles();
   buildSwatches();
   wirePointer();
   wireHandoff();
@@ -756,7 +757,6 @@ async function boot(el) {
     });
   }
 
-  wireTiles();
 }
 
 function loadImage(src) {
