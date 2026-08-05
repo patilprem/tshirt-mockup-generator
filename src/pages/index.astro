@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import '../styles/landing.css';
 import FeedbackWidget from '../components/FeedbackWidget.astro';
+import HeroStudio from '../components/HeroStudio.astro';
 ---
 
 <html lang="en">
@@ -194,7 +195,7 @@ import FeedbackWidget from '../components/FeedbackWidget.astro';
           <div class="hero-actions">
             <a href="/editor" class="btn-hero-primary" id="hero-cta-btn">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              Generate Free Mockup
+              Use my own design
             </a>
             <a href="#how-it-works" class="btn-hero-secondary" id="hero-how-btn">
               See how it works
@@ -218,28 +219,9 @@ import FeedbackWidget from '../components/FeedbackWidget.astro';
           </div>
         </div>
 
-        <!-- Hero visual: Interactive Flatlay Mockup Scene -->
-        <div class="hero-visual" aria-hidden="true">
-          <div class="hero-flatlay-container" id="hero-flatlay-scene">
-            <div class="flatlay-mockup-wrap">
-              <canvas id="hero-shirt-canvas" width="600" height="600"></canvas>
-            </div>
-            <div class="flatlay-prop prop-plant" id="hero-prop-plant">
-              <img src="/assets/props/prop_plant.png" class="prop-img-float-1" alt="" />
-            </div>
-            <div class="flatlay-prop prop-sunglasses" id="hero-prop-sunglasses">
-              <div style="transform: rotate(-10deg);">
-                <img src="/assets/props/prop_sunglasses.png" class="prop-img-float-2" alt="" />
-              </div>
-            </div>
-            <div class="flatlay-prop prop-shoes" id="hero-prop-shoes">
-              <img src="/assets/props/prop_shoes.png" class="prop-img-float-3" alt="" />
-            </div>
-            <div class="flatlay-prop prop-jeans" id="hero-prop-jeans">
-              <img src="/assets/props/prop_jeans.png" class="prop-img-float-4" alt="" />
-            </div>
-          </div>
-        </div>
+        <!-- Hero visual: the real mockup studio, running the on-model engine -->
+        <HeroStudio />
+
       </section>
 
       <!-- ─── GALLERY SHOWCASE (INSPIRATION) ─── -->

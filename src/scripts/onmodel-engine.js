@@ -157,3 +157,142 @@ export function onModelClipCanvas(entry) {
   entry._clipCanvas = c;
   return c;
 }
+
+export function onModelShadeCanvas(entry) {
+  if (entry._shadeCanvas) return entry._shadeCanvas;
+  const { shade, w, h } = entry;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cx = c.getContext('2d');
+  const img = cx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) {
+    // Lift toward white so the multiply darkens folds without dimming the
+    // whole print — mid illumination should read as roughly neutral.
+    const v = 150 + (shade[i] / 255) * 105;
+    img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+  entry._shadeCanvas = c;
+  return c;
+}
+
+// Keys a design for printing: an upload with real alpha is left alone, an
+// opaque one has its flat background removed. The hero needs the identical
+// treatment — the sample cat is a fully opaque PNG on black, and drawing it
+// raw puts a black card on a white shirt.
+export function buildDesignBuffer(img) {
+  const w = img.width;
+  const h = img.height;
+
+  const buffer = document.createElement('canvas');
+  buffer.width = w;
+  buffer.height = h;
+  const dCtx = buffer.getContext('2d');
+  dCtx.drawImage(img, 0, 0);
+
+  // Check if image already has transparent pixels.
+  // If it does, we skip keying to avoid corrupting professional transparent PNGs.
+  const dData = dCtx.getImageData(0, 0, w, h);
+  const pixels = dData.data;
+
+  let hasTransparency = false;
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] < 240) {
+      hasTransparency = true;
+      break;
+    }
+  }
+
+  if (hasTransparency) {
+    // Just keep the original design as is
+    return { buffer, isTransparent: true };
+  }
+
+  // Run Flood-Fill keyer starting from borders to extract outer black background
+  const visited = new Uint8Array(w * h);
+  const queue = [];
+
+  function enqueue(x, y) {
+    if (x >= 0 && x < w && y >= 0 && y < h) {
+      const idx = y * w + x;
+      if (!visited[idx]) {
+        visited[idx] = 1;
+        queue.push(idx);
+      }
+    }
+  }
+
+  // Enqueue all boundary pixels
+  for (let x = 0; x < w; x++) {
+    enqueue(x, 0);
+    enqueue(x, h - 1);
+  }
+  for (let y = 0; y < h; y++) {
+    enqueue(0, y);
+    enqueue(w - 1, y);
+  }
+
+  while (queue.length > 0) {
+    const idx = queue.shift();
+    const px = idx % w;
+    const py = Math.floor(idx / w);
+    const rIdx = idx * 4;
+    
+    const r = pixels[rIdx];
+    const g = pixels[rIdx + 1];
+    const b = pixels[rIdx + 2];
+
+    // Key threshold: pixel is dark (r,g,b < 35)
+    if (r < 35 && g < 35 && b < 35) {
+      pixels[rIdx + 3] = 0; // Make transparent
+
+      // Add 4-connected neighbors
+      enqueue(px + 1, py);
+      enqueue(px - 1, py);
+      enqueue(px, py + 1);
+      enqueue(px, py - 1);
+    }
+  }
+
+  // Smooth transition edges of keyed image
+  for (let idx = 0; idx < w * h; idx++) {
+    if (visited[idx]) continue;
+    
+    const rIdx = idx * 4;
+    const px = idx % w;
+    const py = Math.floor(idx / w);
+    
+    // If not background, check if adjacent to transparent background
+    const r = pixels[rIdx];
+    const g = pixels[rIdx + 1];
+    const b = pixels[rIdx + 2];
+    const isDark = (r < 60 && g < 60 && b < 60);
+
+    if (isDark) {
+      let hasBgNeighbor = false;
+      // check 4 directions
+      const neighbors = [
+        (py > 0) ? (py - 1) * w + px : -1,
+        (py < h - 1) ? (py + 1) * w + px : -1,
+        (px > 0) ? py * w + (px - 1) : -1,
+        (px < w - 1) ? py * w + (px + 1) : -1
+      ];
+      
+      for (let n of neighbors) {
+        if (n !== -1 && visited[n]) {
+          hasBgNeighbor = true;
+          break;
+        }
+      }
+
+      if (hasBgNeighbor) {
+        // Anti-alias edge
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+        pixels[rIdx + 3] = Math.round(255 * (brightness / 60));
+      }
+    }
+  }
+
+  dCtx.putImageData(dData, 0, 0);
+  return { buffer, isTransparent: false };
+}

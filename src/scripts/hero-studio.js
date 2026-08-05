@@ -12,7 +12,7 @@
 
 import {
   onModelCache, loadOnModelTemplate, buildOnModelComposed,
-  onModelHighlightCanvas, onModelClipCanvas,
+  onModelHighlightCanvas, onModelClipCanvas, onModelShadeCanvas, buildDesignBuffer,
 } from './onmodel-engine.js';
 
 // Matches the editor's palette; the second entry is the shirt the poster was
@@ -54,7 +54,10 @@ async function boot(el) {
   const metas = ORDER.map((id) => byId.get(id)).filter(Boolean);
   if (!metas.length) return;
 
-  const design = await loadImage(DESIGN_SRC).catch(() => null);
+  // Keyed through the editor's own routine: the sample cat is a fully opaque
+  // PNG on black, so drawing it raw lays a black card across a white shirt.
+  const rawDesign = await loadImage(DESIGN_SRC).catch(() => null);
+  const design = rawDesign ? buildDesignBuffer(rawDesign).buffer : null;
 
   const state = {
     id: metas[0].id,
@@ -148,8 +151,15 @@ async function boot(el) {
     drawChrome(entry);
   }
 
-  // Clipped to the garment and shaded by the photo's own highlights, the same
-  // two masks the editor composites through.
+  // The editor's two shading passes, in the same order and clipped the same
+  // way: multiply the creases down, screen the lit crests back up, so the
+  // print sits INTO the fabric instead of on top of it.
+  //
+  // Each pass paints across the whole layer, not just where the design is, so
+  // each is re-clipped to the print's own alpha immediately afterwards. Doing
+  // that with the GARMENT mask instead — as this first did — leaves the shade
+  // and highlight painted over the entire shirt, which reads as a black
+  // garment that ignores the colour swatches. Two bugs, one wrong mask.
   function drawDesign(entry) {
     if (!design) return;
     const b = designBox(entry);
@@ -162,10 +172,26 @@ async function boot(el) {
     lc.drawImage(design, -b.w / 2, -b.h / 2, b.w, b.h);
     lc.restore();
 
-    lc.globalCompositeOperation = 'destination-in';
-    lc.drawImage(onModelClipCanvas(entry), 0, 0);
+    // Snapshot the print's alpha once rather than redrawing it per pass.
+    const printAlpha = document.createElement('canvas');
+    printAlpha.width = entry.w; printAlpha.height = entry.h;
+    printAlpha.getContext('2d').drawImage(layer, 0, 0);
+
     lc.globalCompositeOperation = 'multiply';
+    lc.globalAlpha = 0.85;                 // editor default shadowDepth + 0.25
+    lc.drawImage(onModelShadeCanvas(entry), 0, 0);
+    lc.globalAlpha = 1;
+    lc.globalCompositeOperation = 'destination-in';
+    lc.drawImage(printAlpha, 0, 0);
+
+    lc.globalCompositeOperation = 'screen';
+    lc.globalAlpha = 0.15;                 // editor default highlightShine
     lc.drawImage(onModelHighlightCanvas(entry), 0, 0);
+    lc.globalAlpha = 1;
+    lc.globalCompositeOperation = 'destination-in';
+    lc.drawImage(printAlpha, 0, 0);
+
+    // Only now clip to the garment, so the print cannot spill off the shirt.
     lc.globalCompositeOperation = 'destination-in';
     lc.drawImage(onModelClipCanvas(entry), 0, 0);
 
