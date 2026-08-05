@@ -961,7 +961,10 @@
     padding: 100px 40px 60px;
     text-align: center;
     min-height: auto;
-    gap: 60px;
+    /* Stacked, this gap is the ONLY thing that should separate the copy from
+       the studio, and 60px of it plus the margins either side added up to a
+       131px void on a phone. */
+    gap: 36px;
   }
 
   .hero-content {
@@ -977,12 +980,15 @@
   /* The vh-based rhythm above exists to fill a fixed-height two-column row.
      Here the hero is a single column with min-height:auto — there is no dead
      space to absorb, and those clamps only push the studio off the bottom of
-     a phone. The trailing margin comes back too: stacked, it is what separates
-     the copy from the studio rather than pulling the column off-centre. */
+     a phone.
+
+     The last row keeps NO trailing margin. It was restored here on the theory
+     that stacked it separates the copy from the studio, but the grid gap
+     already does that, so all it did was add a third term to the same space. */
   .hero-headline { margin-bottom: 24px; }
   .hero-sub { font-size: 1.1rem; margin-bottom: 36px; }
   .hero-actions { margin-bottom: 24px; }
-  .hero-cta-checklist { margin-bottom: 48px; }
+  .hero-cta-checklist { margin-bottom: 0; }
 
   .hero-visual {
     max-width: 600px;
