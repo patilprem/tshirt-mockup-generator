@@ -1,8 +1,17 @@
-// A phone must always be able to scroll past the hero, even with a thumb on
-// the studio. touch-action:none made the studio a dead zone: the page simply
-// would not move. This drives REAL touch input through CDP rather than
-// synthetic TouchEvents, because synthetic ones never consult touch-action
-// and would pass whatever the CSS said.
+// Two things have to be true at once on a phone, and they pull against each
+// other:
+//
+//   1. The page must scroll when a thumb lands on the studio. touch-action:none
+//      made it a dead zone — the page simply would not move.
+//   2. The design must drag in EVERY direction, including straight down, which
+//      is the one the browser claims the moment you hand scrolling back to it.
+//
+// The resolution is that only the selected element takes touch outright, via a
+// grab surface tracking its box; everything else on the studio scrolls. So this
+// drives real touch through CDP — synthetic TouchEvents never consult
+// touch-action and would pass whatever the CSS happened to say — and it
+// resolves the grab point from the live geometry rather than assuming the
+// design is still wherever it started.
 //
 // Needs the dev server: npm run dev, then node test_hero_touch_scroll.cjs
 const { chromium } = require('playwright');
@@ -17,18 +26,13 @@ const ok = m => console.log('  ok: ' + m);
   const ctx = await br.newContext({ viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const p = await ctx.newPage();
   p.on('pageerror', e => fail('PAGE ERROR: ' + e.message));
-  await p.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await p.waitForFunction(() => document.getElementById('hero-studio')?.hasAttribute('data-ready'), null, { timeout: 25000 });
-  await sleep(1200);
-
   const cdp = await ctx.newCDPSession(p);
-  const touch = async (type, x, y) => {
-    await cdp.send('Input.dispatchTouchEvent', {
-      type,
-      touchPoints: type === 'touchEnd' ? [] : [{ x, y, radiusX: 12, radiusY: 12, force: 1 }],
-    });
-  };
-  const swipe = async (from, dx, dy, steps = 12) => {
+
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', {
+    type,
+    touchPoints: type === 'touchEnd' ? [] : [{ x, y, radiusX: 12, radiusY: 12, force: 1 }],
+  });
+  const swipe = async (from, dx, dy, steps = 14) => {
     await touch('touchStart', from.x, from.y);
     for (let i = 1; i <= steps; i++) {
       await touch('touchMove', from.x + (dx * i) / steps, from.y + (dy * i) / steps);
@@ -38,41 +42,60 @@ const ok = m => console.log('  ok: ' + m);
     await sleep(400);
   };
 
-  const centre = async () => p.evaluate(() => {
-    const r = document.getElementById('hs-canvas').getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  // Fresh page per case: a design dragged 120px in one case is no longer under
+  // the grab point for the next, and that drift would silently turn later
+  // cases into swipes on bare backdrop that pass for the wrong reason.
+  const fresh = async () => {
+    await p.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await p.waitForFunction(() => document.getElementById('hero-studio')?.hasAttribute('data-ready'), null, { timeout: 25000 });
+    await sleep(1200);
+    await p.evaluate(() => document.getElementById('hero-studio').scrollIntoView({ block: 'center' }));
+    await sleep(500);
+  };
+  // Where the design actually is, read off the grab surface the code sizes.
+  const onDesign = () => p.evaluate(() => {
+    const r = document.getElementById('hs-grab').getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: Math.round(r.width), h: Math.round(r.height) };
   });
+  // A point on the studio that is NOT the design: the frame's top-left corner.
+  const offDesign = () => p.evaluate(() => {
+    const r = document.getElementById('hs-canvas').getBoundingClientRect();
+    return { x: r.left + r.width * 0.1, y: r.top + r.height * 0.1 };
+  });
+  const scrollY = () => p.evaluate(() => Math.round(window.scrollY));
   const snap = () => p.evaluate(() => {
     const c = document.getElementById('hs-canvas');
     return [...c.getContext('2d').getImageData(0, 0, c.width, c.height).data].filter((_, i) => i % 97 === 0).join(',');
   });
 
-  // Put the studio on screen, then swipe UP from its middle — the exact
-  // gesture a visitor makes to read past the hero.
-  await p.evaluate(() => document.getElementById('hero-studio').scrollIntoView({ block: 'center' }));
-  await sleep(600);
-  const y0 = await p.evaluate(() => Math.round(scrollY));
-  const before = await snap();
-  await swipe(await centre(), 0, -260);
-  const y1 = await p.evaluate(() => Math.round(scrollY));
-  const afterV = await snap();
-  console.log(`\nvertical swipe on the studio: scrollY ${y0} -> ${y1}`);
+  // --- 1. the page still scrolls -------------------------------------------
+  await fresh();
+  const g = await onDesign();
+  const frame = await p.evaluate(() => Math.round(document.getElementById('hs-canvas').getBoundingClientRect().width));
+  console.log(`\ngrab surface ${g.w}x${g.h}px inside a ${frame}px studio`);
+  const y0 = await scrollY();
+  const s0 = await snap();
+  await swipe(await offDesign(), 0, -260);
+  const y1 = await scrollY();
+  console.log(`\nswipe off the design: scrollY ${y0} -> ${y1}`);
   y1 > y0 + 100 ? ok('the page scrolled') : fail(`the page did not scroll (${y0} -> ${y1}) — the studio is a dead zone`);
-  afterV === before ? ok('the design stayed put while scrolling') : fail('the design moved while the page scrolled');
+  (await snap()) === s0 ? ok('the design stayed put') : fail('the design moved during a scroll');
 
-  // A sideways drag is still the studio's own gesture.
-  await p.evaluate(() => document.getElementById('hero-studio').scrollIntoView({ block: 'center' }));
-  await sleep(600);
-  const y2 = await p.evaluate(() => Math.round(scrollY));
-  const beforeH = await snap();
-  await swipe(await centre(), 90, 0);
-  const y3 = await p.evaluate(() => Math.round(scrollY));
-  const afterH = await snap();
-  console.log(`horizontal drag on the design: scrollY ${y2} -> ${y3}`);
-  Math.abs(y3 - y2) < 20 ? ok('the page held still') : fail(`the page scrolled during a sideways drag (${y2} -> ${y3})`);
-  afterH !== beforeH ? ok('the design moved') : fail('the design did not move — dragging is broken on touch');
+  // --- 2. the design drags every direction ---------------------------------
+  for (const [name, dx, dy] of [['down', 0, 120], ['up', 0, -120], ['left', -120, 0], ['right', 120, 0], ['diagonal', 85, 85]]) {
+    await fresh();
+    const from = await onDesign();
+    const sy = await scrollY();
+    const before = await snap();
+    await swipe(from, dx, dy);
+    const moved = (await snap()) !== before;
+    const drift = Math.abs((await scrollY()) - sy);
+    console.log(`drag ${name.padEnd(9)}: design ${moved ? 'moved' : 'DID NOT MOVE'}, page ${drift < 20 ? 'held' : 'SCROLLED ' + drift + 'px'}`);
+    if (!moved) fail(`dragging ${name} did not move the design`);
+    if (drift >= 20) fail(`dragging ${name} scrolled the page instead`);
+  }
 
   await br.close();
-  console.log(bad ? `\n${bad} failure(s)` : '\nthe hero scrolls and still drags');
+  console.log(bad ? `\n${bad} failure(s)` : '\nthe page scrolls, and the design drags every direction');
   process.exit(bad ? 1 : 0);
 })();

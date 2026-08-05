@@ -33,6 +33,10 @@
     </picture>
     <canvas class="hs-canvas" id="hs-canvas" width="800" height="800" aria-label="Interactive t-shirt mockup"></canvas>
 
+    <!-- The grab surface. Tracks whatever is selected, and is the only part of
+         the studio that claims a touch outright — see the styles below. -->
+    <div class="hs-grab" id="hs-grab" aria-hidden="true"></div>
+
     <div class="hs-slab hs-mode" id="hs-mode" role="tablist" aria-label="Mockup style"></div>
 
     <div class="hs-slab hs-tiles" id="hs-tiles" role="listbox" aria-label="Choose a scene"></div>
@@ -69,11 +73,20 @@
   /* pan-y, not none. The studio is a big target in the middle of a scrolling
      page, and touch-action:none meant a thumb that landed on it could not
      scroll past the hero at all — the page was stuck. pan-y hands vertical
-     gestures back to the browser to scroll with; a gesture that starts
-     sideways is still ours, and once the browser has given it to us we get
-     both axes for the rest of the drag. Same trade the sliders make in
-     global.css. */
+     gestures back to the browser to scroll with. */
   .hs-canvas { z-index: 0; opacity: 0; transition: opacity 0.25s ease; touch-action: pan-y; }
+
+  /* pan-y alone would cost the design its vertical drag, since the browser
+     keeps every downward gesture for itself. So the selected element gets a
+     grab surface of its own — sized to its box plus its handles, and the one
+     place on the studio that takes touch outright. Drag it in any direction;
+     touch anywhere else and the page scrolls as it should.
+     Below the slabs so it can never swallow a picker or swatch tap. */
+  .hs-grab {
+    position: absolute; z-index: 2; display: none;
+    touch-action: none; background: transparent;
+  }
+  .hs[data-ready] .hs-grab { display: block; }
   .hs[data-ready] .hs-canvas { z-index: 2; opacity: 1; }
   .hs[data-ready] .hs-poster { opacity: 0; }
 

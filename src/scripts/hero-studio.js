@@ -31,7 +31,7 @@ import {
 import {
   garmentConfigs, defaultPropConfigs, loadProp, buildShirtLayers,
   drawFlatlayScene, designBoxSize,
-  hitProps, hitPropHandles, drawPropChrome,
+  propTransformMetrics, hitProps, hitPropHandles, drawPropChrome,
 } from './flatlay-engine.js';
 
 import {
@@ -92,6 +92,16 @@ const heroVariant = (p) => HERO + p.split('/').pop().replace(/\.(png|jpe?g)$/, '
 
 const SEL = { colour: '#3b82f6', line: 1.5, handle: 6.5 };
 
+// Fingertip margin round the grab surface, in CSS pixels.
+const GRAB_PAD = 22;
+// How far a canvas touch must travel sideways before it counts as a drag
+// rather than a scroll — the same threshold the sliders use.
+const DRAG_PX = 8;
+
+// Mouse only. On touch, preventDefault here would cancel the scroll before the
+// gesture has shown which direction it is going.
+function pdMouse(e) { if (!e.touches) e.preventDefault(); }
+
 export function initHeroStudio() {
   const root = document.getElementById('hero-studio');
   if (!root) return;
@@ -99,16 +109,17 @@ export function initHeroStudio() {
   const tilesEl = document.getElementById('hs-tiles');
   const swEl = document.getElementById('hs-swatches');
   const modeEl = document.getElementById('hs-mode');
+  const grabEl = document.getElementById('hs-grab');
   if (!canvas) return;
 
   // A phone that never scrolls to the hero should not pay for any of this.
-  const start = () => boot({ root, canvas, tilesEl, swEl, modeEl }).catch(() => {});
+  const start = () => boot({ root, canvas, tilesEl, swEl, modeEl, grabEl }).catch(() => {});
   if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2500 });
   else setTimeout(start, 1200);
 }
 
 async function boot(el) {
-  const { root, canvas, tilesEl, swEl, modeEl } = el;
+  const { root, canvas, tilesEl, swEl, modeEl, grabEl } = el;
 
   let templates = [];
   try {
@@ -328,8 +339,50 @@ async function boot(el) {
 
   // --- render -------------------------------------------------------------
   function render() {
-    if (state.mode === 'flatlay') return renderFlat();
-    return renderOnModel();
+    if (state.mode === 'flatlay') renderFlat(); else renderOnModel();
+    updateGrab();
+  }
+
+  // Keeps the grab surface over whatever is selected. Sized from the same
+  // geometry the chrome is drawn from, so what you can grab is by construction
+  // what you can see — an axis-aligned box round the corners, the rotate
+  // handle, and enough margin for a fingertip.
+  function updateGrab() {
+    if (!grabEl) return;
+    const hide = () => { grabEl.style.width = '0px'; grabEl.style.height = '0px'; };
+    if (!design) return hide();
+
+    let pts = null;
+    if (state.mode === 'flatlay') {
+      if (!flat.ready) return hide();
+      const perUnit = canvas.clientWidth / 1000;
+      const u = flatUnits();
+      if (state.selected === 'design') {
+        const b = designBoxSize(design, state.scale);
+        const r = flatDesignRotHandle(b, u);
+        pts = flatDesignCorners(b).concat([r]);
+      } else if (flat.active[state.selected]) {
+        const m = propTransformMetrics(flat.props[state.selected], u);
+        if (!m) return hide();
+        pts = Object.values(m.corners).concat([m.rot]);
+      } else return hide();
+      pts = pts.map((p) => ({ x: p.x * perUnit, y: p.y * perUnit }));
+    } else {
+      const entry = onModelCache.get(state.id);
+      if (!entry) return hide();
+      const perPx = canvas.clientWidth / canvas.width;
+      pts = corners(designBox(entry)).map(toCanvas)
+        .map((p) => ({ x: p.x * perPx, y: p.y * perPx }));
+    }
+
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const l = Math.min(...xs) - GRAB_PAD;
+    const t = Math.min(...ys) - GRAB_PAD;
+    grabEl.style.left = l + 'px';
+    grabEl.style.top = t + 'px';
+    grabEl.style.width = (Math.max(...xs) - Math.min(...xs) + GRAB_PAD * 2) + 'px';
+    grabEl.style.height = (Math.max(...ys) - Math.min(...ys) + GRAB_PAD * 2) + 'px';
   }
 
   function renderOnModel() {
@@ -536,18 +589,22 @@ async function boot(el) {
   // finger while the page scrolled past it. A gesture that goes vertical is
   // abandoned outright; one that goes sideways is ours, both axes, until the
   // finger lifts.
-  const DRAG_PX = 8;
-
-  // Mouse only. On touch, preventDefault here would cancel the scroll before
-  // the gesture has shown which direction it is going.
-  const pdMouse = (e) => { if (!e.touches) e.preventDefault(); };
 
   function wirePointer() {
-    const down = (e) => {
+    // fromGrab: the touch landed on the selected element's own grab surface,
+    // which has touch-action:none. The browser is not going to scroll with it,
+    // so it needs no proving and no axis restriction — it drags, any direction.
+    const down = (e, fromGrab) => {
       state.drag = null;
       if (state.mode === 'flatlay') flatDown(e); else onModelDown(e);
+      if (fromGrab && !state.drag) {
+        // Landed in the fingertip margin rather than on the box itself. The
+        // page will not scroll here either way, so treat it as a grab of what
+        // is already selected rather than as nothing at all.
+        armFallbackDrag(e);
+      }
       const t = e.touches && e.touches[0];
-      if (state.drag && t) {
+      if (state.drag && t && !fromGrab) {
         state.drag.pending = true;
         state.drag.sx = t.clientX;
         state.drag.sy = t.clientY;
@@ -572,12 +629,34 @@ async function boot(el) {
 
     const up = () => { state.drag = null; };
 
-    canvas.addEventListener('mousedown', down);
-    canvas.addEventListener('touchstart', down, { passive: false });
+    canvas.addEventListener('mousedown', (e) => down(e, false));
+    canvas.addEventListener('touchstart', (e) => down(e, false), { passive: false });
+    if (grabEl) {
+      grabEl.addEventListener('mousedown', (e) => down(e, true));
+      grabEl.addEventListener('touchstart', (e) => down(e, true), { passive: false });
+    }
     window.addEventListener('mousemove', move);
     window.addEventListener('touchmove', move, { passive: false });
     window.addEventListener('mouseup', up);
     window.addEventListener('touchend', up);
+  }
+
+  // Grabs whatever is selected at the point touched, without hit-testing.
+  function armFallbackDrag(e) {
+    const pt = toTemplate(e);
+    if (state.mode === 'flatlay') {
+      if (state.selected === 'design') {
+        state.drag = { what: 'design', mode: 'move', dx: pt.x - state.pos.x, dy: pt.y - state.pos.y };
+      } else if (flat.active[state.selected]) {
+        const cfg = flat.props[state.selected];
+        state.drag = { what: 'prop', prop: state.selected, mode: 'move', dx: pt.x - cfg.x, dy: pt.y - cfg.y };
+      }
+      return;
+    }
+    const entry = onModelCache.get(state.id);
+    if (!entry) return;
+    const b = designBox(entry);
+    state.drag = { mode: 'move', start: pt, cx0: b.cx, cy0: b.cy };
   }
 
   function onModelDown(e) {
