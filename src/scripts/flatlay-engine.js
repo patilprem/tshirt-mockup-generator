@@ -12,6 +12,8 @@
 // reading editor globals, which is what lets the hero drive the identical code
 // from a completely different set of variables.
 
+import { SEL_ROT_GAP, SEL_LINE, SEL_COLOUR, drawSelectionChrome } from './selection-chrome.js';
+
 // printArea: printable rect in the 1000×1000 asset frame, calibrated with
 // scratch/calibrate_print_areas.cjs (clears collars, the polo placket, the
 // hoodie hood, and the hoodie/sweatshirt kangaroo pockets).
@@ -324,6 +326,173 @@ export function drawFlatlayScene(targetCtx, w, h, s, opts = {}) {
     targetCtx.scale(shirtZoom, shirtZoom);
     drawProps(targetCtx, opts.propConfigs, opts.activeProps, scale);
     targetCtx.restore();
+  }
+}
+
+// --- prop drag / select layer -----------------------------------------------
+// All of this works in artboard units. `u` throughout is how many artboard
+// units make one CSS pixel on screen (the caller's shirtZoom divided out), so
+// the chrome and its grab targets come out the same physical size whatever
+// preset or zoom the artboard is being drawn at.
+
+export function propTransformMetrics(config, u = 1) {
+  if (!config) return null;
+
+  const w = config.w;
+  const h = config.h;
+  const rotation = config.rotation || 0;
+  const centerX = config.x + w / 2;
+  const centerY = config.y + h / 2;
+
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  function localToGlobal(lx, ly) {
+    return {
+      x: lx * cos - ly * sin + centerX,
+      y: lx * sin + ly * cos + centerY
+    };
+  }
+
+  return {
+    width: w,
+    height: h,
+    center: { x: centerX, y: centerY },
+    corners: {
+      tl: localToGlobal(-w / 2, -h / 2),
+      tr: localToGlobal(w / 2, -h / 2),
+      br: localToGlobal(w / 2, h / 2),
+      bl: localToGlobal(-w / 2, h / 2)
+    },
+    // Below the box, through the same constant the design uses, so the two
+    // controls put the rotate button in the same place relative to what is
+    // being rotated. Hit-testing reads this too, so the grab follows the
+    // drawing by construction.
+    rot: localToGlobal(0, h / 2 + SEL_ROT_GAP * u)
+  };
+}
+
+export function isPointInsidePropBox(config, cx, cy) {
+  if (!config) return false;
+
+  const centerX = config.x + config.w / 2;
+  const centerY = config.y + config.h / 2;
+  const rotation = config.rotation || 0;
+
+  const tx = cx - centerX;
+  const ty = cy - centerY;
+
+  const ux = tx * Math.cos(-rotation) - ty * Math.sin(-rotation);
+  const uy = tx * Math.sin(-rotation) + ty * Math.cos(-rotation);
+
+  return (
+    ux >= -config.w / 2 &&
+    ux <= config.w / 2 &&
+    uy >= -config.h / 2 &&
+    uy <= config.h / 2
+  );
+}
+
+// Topmost prop under the point, matching the draw order back to front.
+export function hitProps(propConfigs, activeProps, cx, cy) {
+  const propTypes = Object.keys(activeProps);
+  for (let i = propTypes.length - 1; i >= 0; i--) {
+    const type = propTypes[i];
+    if (!activeProps[type]) continue;
+    const config = propConfigs[type];
+    if (config && config.loaded && config.img && isPointInsidePropBox(config, cx, cy)) {
+      return type;
+    }
+  }
+  return null;
+}
+
+export function hitPropHandles(config, cx, cy, u = 1, clickRadius = 30) {
+  const metrics = propTransformMetrics(config, u);
+  if (!metrics) return null;
+
+  if (Math.hypot(metrics.rot.x - cx, metrics.rot.y - cy) < clickRadius) {
+    return { type: 'rotate' };
+  }
+
+  for (const [corner, pt] of Object.entries(metrics.corners)) {
+    if (Math.hypot(pt.x - cx, pt.y - cy) < clickRadius) {
+      return { type: 'scale', corner: corner };
+    }
+  }
+  return null;
+}
+
+// opts: { propConfigs, activeProps, selected, hovered, dragged, units }
+// `selected` is the prop type currently selected, or 'design'/null when the
+// selection is not a prop — this only ever draws prop chrome.
+export function drawPropChrome(ctx, opts) {
+  const { propConfigs, activeProps, selected, hovered, dragged } = opts;
+  const u = opts.units || 1;
+
+  // 1. Selection box & handles for the selected prop.
+  if (selected && selected !== 'design' && activeProps[selected]) {
+    const config = propConfigs[selected];
+    if (config && config.loaded && config.img) {
+      const metrics = propTransformMetrics(config, u);
+      if (metrics) {
+        // The same drawSelectionChrome the design uses, through the same
+        // units, rather than a second control that merely resembles it.
+        // A prop used to be a dashed box with square corners, a centre dot
+        // and the rotate button above, while the print in the middle of the
+        // same canvas had a solid box, round corners and rotate below — two
+        // gestures to learn for one canvas, and the handles drawn at a fixed
+        // pixel size so they grew and shrank with the preset.
+        ctx.save();
+        ctx.translate(metrics.center.x, metrics.center.y);
+        ctx.rotate(config.rotation || 0);
+        drawSelectionChrome(ctx, [
+          { x: -metrics.width / 2, y: -metrics.height / 2 },
+          { x: metrics.width / 2, y: -metrics.height / 2 },
+          { x: metrics.width / 2, y: metrics.height / 2 },
+          { x: -metrics.width / 2, y: metrics.height / 2 },
+        ], { x: 0, y: metrics.height / 2 + SEL_ROT_GAP * u }, u);
+        ctx.restore();
+      }
+    }
+  }
+
+  // 2. Hover outline for the hovered prop (only if it's not the selected one).
+  if (hovered && hovered !== selected && activeProps[hovered]) {
+    const config = propConfigs[hovered];
+    if (config && config.loaded && config.img) {
+      const metrics = propTransformMetrics(config, u);
+      if (metrics) {
+        ctx.save();
+        ctx.translate(metrics.center.x, metrics.center.y);
+        ctx.rotate(config.rotation || 0);
+        // Hover stays a faint dashed outline — it is a hint, not a control,
+        // and must not read as a selection. Same hue as the chrome it
+        // precedes, so the two belong to one palette.
+        ctx.strokeStyle = SEL_COLOUR;
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = SEL_LINE * u;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
+        ctx.restore();
+      }
+    }
+  }
+
+  // 3. Dragged prop indicator.
+  if (dragged) {
+    const config = propConfigs[dragged];
+    const metrics = propTransformMetrics(config, u);
+    if (metrics) {
+      ctx.save();
+      ctx.translate(metrics.center.x, metrics.center.y);
+      ctx.rotate(config.rotation || 0);
+      ctx.strokeStyle = '#008ab3';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
+      ctx.restore();
+    }
   }
 }
 

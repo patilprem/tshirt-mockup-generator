@@ -517,7 +517,12 @@
     garmentConfigs, defaultPropConfigs, loadProp as loadPropImage,
     buildShirtLayers, drawFlatlayBackground, drawProps, drawFlatlayScene,
     designBoxSize, placementToRelative, placementFromRelative, centerChestPlacement,
+    propTransformMetrics, hitProps, hitPropHandles, drawPropChrome,
   } from '../scripts/flatlay-engine.js';
+  import {
+    SEL_HANDLE_R, SEL_ROT_R, SEL_ROT_GAP,
+    drawSelectionChrome, selGrabCss,
+  } from '../scripts/selection-chrome.js';
 
   // Full-spectrum HSV Custom Color Picker helper class
   class CustomColorPicker {
@@ -2238,12 +2243,6 @@
     // canvas pixels on an 800x1200 one — and a constant in either space comes
     // out a different physical size in the other. Passing the conversion in is
     // what makes the control genuinely identical rather than merely similar.
-    const SEL_HANDLE_R = 6.5;  // corner circle radius
-    const SEL_ROT_R = 10;      // rotate button radius
-    const SEL_ROT_GAP = 30;    // gap between box and rotate button
-    const SEL_LINE = 1.5;      // outline width
-    const SEL_COLOUR = '#3b82f6';
-
     function selCanvasScale() {
       const shown = canvas.clientWidth;
       return shown ? canvas.width / shown : 1;
@@ -2252,69 +2251,6 @@
     // shirtZoom transform, so that zoom has to be divided back out.
     function selUnitsFlat() {
       return selCanvasScale() / getShirtZoom();
-    }
-    // Grab radius in CSS pixels: a fingertip needs far more than the handle
-    // shows, and that slack is invisible so it costs the artwork nothing.
-    function selGrabCss() {
-      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-      return coarse ? 24 : 16;
-    }
-
-    // A circular arrow, so the control says what it does rather than being a
-    // plain dot the user has to discover.
-    function drawRotateIcon(c, cx, cy, r, u) {
-      c.save();
-      c.strokeStyle = SEL_COLOUR;
-      c.fillStyle = SEL_COLOUR;
-      c.lineWidth = Math.max(1.4 * u, r * 0.26);
-      c.lineCap = 'round';
-      const a0 = Math.PI * 0.72, a1 = Math.PI * 2.05;
-      c.beginPath();
-      c.arc(cx, cy, r, a0, a1);
-      c.stroke();
-      // Arrowhead on the open end, pointing along the tangent there.
-      const hx = cx + r * Math.cos(a1), hy = cy + r * Math.sin(a1);
-      const t = a1 + Math.PI / 2;
-      const s = r * 0.9;
-      c.beginPath();
-      c.moveTo(hx + s * Math.cos(t), hy + s * Math.sin(t));
-      c.lineTo(hx + s * 0.7 * Math.cos(t + 2.3), hy + s * 0.7 * Math.sin(t + 2.3));
-      c.lineTo(hx + s * 0.7 * Math.cos(t - 2.3), hy + s * 0.7 * Math.sin(t - 2.3));
-      c.closePath();
-      c.fill();
-      c.restore();
-    }
-
-    // corners: four points in the CURRENT drawing space, clockwise from
-    // top-left. rot: the rotate button's centre in the same space.
-    // u: how many units of that space make one CSS pixel on screen.
-    function drawSelectionChrome(c, corners, rot, u) {
-      c.save();
-      c.strokeStyle = SEL_COLOUR;
-      c.lineWidth = SEL_LINE * u;
-      c.beginPath();
-      c.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < 4; i++) c.lineTo(corners[i].x, corners[i].y);
-      c.closePath();
-      c.stroke();
-
-      const bottom = { x: (corners[2].x + corners[3].x) / 2, y: (corners[2].y + corners[3].y) / 2 };
-      c.beginPath();
-      c.moveTo(bottom.x, bottom.y);
-      c.lineTo(rot.x, rot.y);
-      c.stroke();
-
-      c.fillStyle = '#ffffff';
-      for (const p of corners) {
-        c.beginPath();
-        c.arc(p.x, p.y, SEL_HANDLE_R * u, 0, Math.PI * 2);
-        c.fill(); c.stroke();
-      }
-      c.beginPath();
-      c.arc(rot.x, rot.y, SEL_ROT_R * u, 0, Math.PI * 2);
-      c.fill(); c.stroke();
-      drawRotateIcon(c, rot.x, rot.y, SEL_ROT_R * u * 0.52, u);
-      c.restore();
     }
 
     // Draws bounding box outline, scale corners, and rotation handle
@@ -2336,11 +2272,6 @@
       ], { x: 0, y: rotY }, u);
       ctx.restore();
     }
-
-    // ----------------------------------------------------
-    // Shared geometry helpers for Canva-style anchored resize & angle snapping
-    // ----------------------------------------------------
-    const OPPOSITE_CORNER = { tl: 'br', tr: 'bl', br: 'tl', bl: 'tr' };
 
     function cornerLocalPoint(w, h, corner) {
       switch (corner) {
@@ -2369,169 +2300,26 @@
     }
 
     function getPropTransformMetrics(type) {
-      const config = propConfigs[type];
-      if (!config) return null;
-
-      const w = config.w;
-      const h = config.h;
-      const rotation = config.rotation || 0;
-      const centerX = config.x + w / 2;
-      const centerY = config.y + h / 2;
-
-      const cos = Math.cos(rotation);
-      const sin = Math.sin(rotation);
-
-      function localToGlobal(lx, ly) {
-        return {
-          x: lx * cos - ly * sin + centerX,
-          y: lx * sin + ly * cos + centerY
-        };
-      }
-
-      return {
-        width: w,
-        height: h,
-        center: { x: centerX, y: centerY },
-        corners: {
-          tl: localToGlobal(-w / 2, -h / 2),
-          tr: localToGlobal(w / 2, -h / 2),
-          br: localToGlobal(w / 2, h / 2),
-          bl: localToGlobal(-w / 2, h / 2)
-        },
-        // Below the box, through the same constant the design uses, so the two
-        // controls put the rotate button in the same place relative to what is
-        // being rotated. Hit-testing reads this too, so the grab follows the
-        // drawing by construction.
-        rot: localToGlobal(0, h / 2 + SEL_ROT_GAP * selUnitsFlat())
-      };
-    }
-
-    function isPointInsidePropBox(type, cx, cy) {
-      const config = propConfigs[type];
-      if (!config) return false;
-      const metrics = getPropTransformMetrics(type);
-      if (!metrics) return false;
-
-      const centerX = config.x + config.w / 2;
-      const centerY = config.y + config.h / 2;
-      const rotation = config.rotation || 0;
-
-      const tx = cx - centerX;
-      const ty = cy - centerY;
-
-      const ux = tx * Math.cos(-rotation) - ty * Math.sin(-rotation);
-      const uy = tx * Math.sin(-rotation) + ty * Math.cos(-rotation);
-
-      return (
-        ux >= -metrics.width / 2 &&
-        ux <= metrics.width / 2 &&
-        uy >= -metrics.height / 2 &&
-        uy <= metrics.height / 2
-      );
+      return propTransformMetrics(propConfigs[type], selUnitsFlat());
     }
 
     function checkHitProps(cx, cy) {
-      const propTypes = Object.keys(activeProps);
-      for (let i = propTypes.length - 1; i >= 0; i--) {
-        const type = propTypes[i];
-        if (activeProps[type]) {
-          const config = propConfigs[type];
-          if (config.loaded && config.img) {
-            if (isPointInsidePropBox(type, cx, cy)) {
-              return type;
-            }
-          }
-        }
-      }
-      return null;
+      return hitProps(propConfigs, activeProps, cx, cy);
     }
 
     function checkHitPropHandles(type, cx, cy) {
-      const metrics = getPropTransformMetrics(type);
-      if (!metrics) return null;
-      
-      const clickRadius = 30; // hit area in canvas pixels (generous, Canva-style)
-      
-      // Check rotation handle
-      if (Math.hypot(metrics.rot.x - cx, metrics.rot.y - cy) < clickRadius) {
-        return { type: 'rotate' };
-      }
-      
-      // Check scale corner handles
-      for (const [corner, pt] of Object.entries(metrics.corners)) {
-        if (Math.hypot(pt.x - cx, pt.y - cy) < clickRadius) {
-          return { type: 'scale', corner: corner };
-        }
-      }
-      return null;
+      return hitPropHandles(propConfigs[type], cx, cy, selUnitsFlat());
     }
 
     function drawPropHandles() {
-      // 1. Draw selection box & handles for selected prop
-      if (selectedElement && selectedElement !== 'design' && activeProps[selectedElement]) {
-        const config = propConfigs[selectedElement];
-        if (config.loaded && config.img) {
-          const metrics = getPropTransformMetrics(selectedElement);
-          if (metrics) {
-            // The same drawSelectionChrome the design uses, through the same
-            // units, rather than a second control that merely resembles it.
-            // A prop used to be a dashed box with square corners, a centre dot
-            // and the rotate button above, while the print in the middle of the
-            // same canvas had a solid box, round corners and rotate below — two
-            // gestures to learn for one canvas, and the handles drawn at a fixed
-            // pixel size so they grew and shrank with the preset.
-            const u = selUnitsFlat();
-            ctx.save();
-            ctx.translate(metrics.center.x, metrics.center.y);
-            ctx.rotate(config.rotation || 0);
-            drawSelectionChrome(ctx, [
-              { x: -metrics.width / 2, y: -metrics.height / 2 },
-              { x: metrics.width / 2, y: -metrics.height / 2 },
-              { x: metrics.width / 2, y: metrics.height / 2 },
-              { x: -metrics.width / 2, y: metrics.height / 2 },
-            ], { x: 0, y: metrics.height / 2 + SEL_ROT_GAP * u }, u);
-            ctx.restore();
-          }
-        }
-      }
-
-      // 2. Draw hover outline for hovered prop (only if it's not the selected one)
-      if (hoveredPropType && hoveredPropType !== selectedElement && activeProps[hoveredPropType]) {
-        const config = propConfigs[hoveredPropType];
-        if (config.loaded && config.img) {
-          const metrics = getPropTransformMetrics(hoveredPropType);
-          if (metrics) {
-            ctx.save();
-            ctx.translate(metrics.center.x, metrics.center.y);
-            ctx.rotate(config.rotation || 0);
-            // Hover stays a faint dashed outline — it is a hint, not a control,
-            // and must not read as a selection. Same hue as the chrome it
-            // precedes, so the two belong to one palette.
-            ctx.strokeStyle = SEL_COLOUR;
-            ctx.globalAlpha = 0.5;
-            ctx.lineWidth = SEL_LINE * selUnitsFlat();
-            ctx.setLineDash([4, 3]);
-            ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
-            ctx.restore();
-          }
-        }
-      }
-
-      // 3. Draw dragged prop indicator
-      if (draggedPropType) {
-        const config = propConfigs[draggedPropType];
-        const metrics = getPropTransformMetrics(draggedPropType);
-        if (metrics) {
-          ctx.save();
-          ctx.translate(metrics.center.x, metrics.center.y);
-          ctx.rotate(config.rotation || 0);
-          ctx.strokeStyle = '#008ab3';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([6, 4]);
-          ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
-          ctx.restore();
-        }
-      }
+      drawPropChrome(ctx, {
+        propConfigs,
+        activeProps,
+        selected: selectedElement,
+        hovered: hoveredPropType,
+        dragged: draggedPropType,
+        units: selUnitsFlat(),
+      });
     }
 
     // ----------------------------------------------------
