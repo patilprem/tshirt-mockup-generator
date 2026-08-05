@@ -34,21 +34,21 @@ import HeroStudio from '../components/HeroStudio.astro';
 
     <!-- Primary SEO -->
     <title>Free T-Shirt Mockup Generator</title>
-    <meta name="description" content="Create stunning T-shirt mockups for free! Upload your image, customize your design, and download your unique T-shirt as a PNG in no time!" />
+    <meta name="description" content="Free t-shirt mockup generator — on-model and flat lay. Upload a design, recolour the garment, download a print-ready PNG. No signup, no watermark, commercial use." />
     <link rel="canonical" href="https://freeteemockup.com" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://freeteemockup.com" />
     <meta property="og:title" content="Free T-Shirt Mockup Generator" />
-    <meta property="og:description" content="Create stunning T-shirt mockups for free! Upload your image, customize your design, and download your unique T-shirt as a PNG in no time!" />
+    <meta property="og:description" content="Free t-shirt mockup generator — on-model and flat lay. Upload a design, recolour the garment, download a print-ready PNG. No signup, no watermark, commercial use." />
     <meta property="og:image" content="https://freeteemockup.com/og-image.png" />
     <meta property="og:site_name" content="TeeMockup" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Free T-Shirt Mockup Generator" />
-    <meta name="twitter:description" content="Create stunning T-shirt mockups for free! Upload your image, customize your design, and download your unique T-shirt as a PNG in no time!" />
+    <meta name="twitter:description" content="Free t-shirt mockup generator — on-model and flat lay. Upload a design, recolour the garment, download a print-ready PNG. No signup, no watermark, commercial use." />
     <meta name="twitter:image" content="https://freeteemockup.com/og-image.png" />
 
     <!-- SEO -->
@@ -65,17 +65,20 @@ import HeroStudio from '../components/HeroStudio.astro';
       "operatingSystem": "Web",
       "applicationCategory": "DesignApplication",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-      "description": "The best free tshirt mockup generator online. Upload your design, pick a color, and download a 1000px PNG — no signup, no watermark. AI 3D fabric fold engine, 8 garment types.",
+      "description": "Free t-shirt mockup generator with two styles: on-model photography and styled flat lay. Upload your design, recolour the garment, and download a print-ready PNG — no signup, no watermark.",
       "url": "https://freeteemockup.com",
       "featureList": [
         "Free tshirt mockup generator — no signup required",
         "AI tshirt mockup generator with 3D fabric fold shading",
         "Tshirt mockup generator online — runs in your browser",
-        "8 garment types: crewneck, hoodie, polo, long sleeve, sweatshirt, V-neck, ladies tee, tank top",
-        "120 color presets + full HSV color picker",
+        "On-model mockups: photographed models, recoloured to any shade with the photo\u2019s own folds kept",
+        "Flat lay mockups on wood, solid or transparent backgrounds",
+        "Garment types: crewneck, hoodie, polo, long sleeve, sweatshirt, V-neck, ladies tee, tank top",
+        "Color presets plus a full HSV color picker",
         "Drag, scale, rotate design placement",
         "Flatlay aesthetic props",
-        "1000×1000px PNG export, no watermark"
+        "Export at the sizes Etsy, Shopify and Instagram expect",
+        "PNG export, no watermark, commercial use"
       ]
     }
     </script>
@@ -99,7 +102,7 @@ import HeroStudio from '../components/HeroStudio.astro';
         {
           "@type": "Question",
           "name": "What mockup types are supported?",
-          "acceptedAnswer": { "@type": "Answer", "text": "We support crewneck t-shirts, hoodies, polo shirts, long sleeves, sweatshirts, v-necks, ladies tees, and tank tops." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Two mockup styles. On-model puts your design on a real photographed person, across scenes from urban street and park path to gallery and cozy home. Flat lay lays the garment out with props, across crewneck t-shirts, hoodies, polo shirts, long sleeves, sweatshirts, v-necks, ladies tees, and tank tops." }
         },
         {
           "@type": "Question",
@@ -346,15 +349,20 @@ import HeroStudio from '../components/HeroStudio.astro';
         <div class="section-inner how-inner">
           <div class="how-header">
             <div class="section-tag">How it Works</div>
-            <h2 id="how-heading" class="section-title">From blank to mockup<br /><span class="gradient-text">in under 60 seconds</span></h2>
+            <h2 id="how-heading" class="section-title">Your design on a real model<br /><span class="gradient-text">or a styled flat lay</span></h2>
+            <p class="section-subtitle">
+              No photoshoot to book, no models to hire, no Photoshop licence. Upload your artwork and
+              see it worn by a real person or laid out flat with props — in about a minute, in your
+              browser. Then download a print-ready PNG and list it the same day.
+            </p>
           </div>
           <ol class="steps-list" aria-label="Steps to create a mockup">
             <li class="step-item">
               <div class="step-content">
                 <div class="step-number" aria-hidden="true">01</div>
-                <div class="step-icon" aria-hidden="true">👕</div>
-                <h3>Choose Your Garment</h3>
-                <p>Pick from 8 professionally photographed garments — crewneck, hoodie, polo, long sleeve, sweatshirt, V-neck, ladies tee, or tank top.</p>
+                <div class="step-icon" aria-hidden="true">📸</div>
+                <h3>Pick On-Model or Flat Lay</h3>
+                <p>Put your design on a photographed model, or lay the garment out flat with props. One tap switches between them.</p>
               </div>
               <div class="step-arrow" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -364,8 +372,8 @@ import HeroStudio from '../components/HeroStudio.astro';
               <div class="step-content">
                 <div class="step-number" aria-hidden="true">02</div>
                 <div class="step-icon" aria-hidden="true">🎨</div>
-                <h3>Upload &amp; Position Design</h3>
-                <p>Drag-and-drop your PNG or JPG. Reposition with drag, resize with corner handles, rotate freely — background auto-removed.</p>
+                <h3>Drop In Your Design</h3>
+                <p>Drag and drop a PNG or JPG — the background is keyed out for you. Move, resize, rotate, recolour. On a model, the photo's real folds and shadows stay.</p>
               </div>
               <div class="step-arrow" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -375,8 +383,8 @@ import HeroStudio from '../components/HeroStudio.astro';
               <div class="step-content">
                 <div class="step-number" aria-hidden="true">03</div>
                 <div class="step-icon" aria-hidden="true">📥</div>
-                <h3>Download Mockup</h3>
-                <p>Hit Download — get a 1000×1000px PNG instantly. No email, no login, no waiting. Ready for Etsy, Shopify, or social media.</p>
+                <h3>Download and List It</h3>
+                <p>Export at the size Etsy, Shopify or Instagram expects. No email, no login, no watermark — cleared for commercial use.</p>
               </div>
             </li>
           </ol>
@@ -455,12 +463,12 @@ import HeroStudio from '../components/HeroStudio.astro';
       <script type="application/ld+json" set:html={JSON.stringify({
         "@context": "https://schema.org",
         "@type": "HowTo",
-        "name": "How to create a free t-shirt mockup",
+        "name": "How to create a free on-model or flat lay t-shirt mockup",
         "totalTime": "PT1M",
         "step": [
-          { "@type": "HowToStep", "position": 1, "name": "Choose your garment", "text": "Pick from 8 garment types — crewneck, hoodie, polo, long sleeve, sweatshirt, V-neck, ladies tee, or tank top." },
-          { "@type": "HowToStep", "position": 2, "name": "Upload and position your design", "text": "Upload your PNG artwork and drag to place and resize it on the garment. Files are processed in your browser." },
-          { "@type": "HowToStep", "position": 3, "name": "Download your PNG", "text": "Export a 1000x1000 PNG mockup with no watermark, ready for commercial use." }
+          { "@type": "HowToStep", "position": 1, "name": "Pick on-model or flat lay", "text": "Put your design on a photographed model, or lay the garment out flat with props. One tap switches between them." },
+          { "@type": "HowToStep", "position": 2, "name": "Drop in your design", "text": "Drag and drop a PNG or JPG — the background is keyed out for you. Move, resize, rotate, recolour. On a model, the photo\u2019s real folds and shadows stay. Files are processed in your browser." },
+          { "@type": "HowToStep", "position": 3, "name": "Download and list it", "text": "Export at the size Etsy, Shopify or Instagram expects. No email, no login, no watermark, cleared for commercial use." }
         ]
       })}></script>
 
@@ -490,7 +498,7 @@ import HeroStudio from '../components/HeroStudio.astro';
 
               <details class="faq-item" role="listitem">
                 <summary class="faq-question">What mockup types are supported?</summary>
-                <p class="faq-answer">We support crewneck t-shirts, hoodies, polo shirts, long sleeves, sweatshirts, v-necks, ladies tees, and tank tops.</p>
+                <p class="faq-answer">Two styles. <strong>On-model</strong> puts your design on a real photographed person, across scenes from urban street and park path to gallery and cozy home. <strong>Flat lay</strong> lays the garment out with props, across crewneck t-shirts, hoodies, polo shirts, long sleeves, sweatshirts, v-necks, ladies tees, and tank tops.</p>
               </details>
 
               <details class="faq-item" role="listitem">

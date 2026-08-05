@@ -46,7 +46,11 @@ const ok = m => console.log('  ok: ' + m);
   // the grab point for the next, and that drift would silently turn later
   // cases into swipes on bare backdrop that pass for the wrong reason.
   const fresh = async () => {
-    await p.goto(BASE + '/', { waitUntil: 'networkidle' });
+    // domcontentloaded, not networkidle: this reloads six times, and waiting
+    // for the network to fall quiet on a busy dev server timed out on one run
+    // of six. data-ready below is the signal that actually matters — it fires
+    // when the studio has a frame — so networkidle was only ever adding flake.
+    await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForFunction(() => document.getElementById('hero-studio')?.hasAttribute('data-ready'), null, { timeout: 25000 });
     await sleep(1200);
     await p.evaluate(() => document.getElementById('hero-studio').scrollIntoView({ block: 'center' }));

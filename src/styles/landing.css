@@ -490,8 +490,28 @@
 }
 
 /* ─── SECTIONS SHARED ─── */
+/* Used by the how-it-works and batch sections. It had no rule at all — the
+   batch one carried its own inline max-width and margin and inherited
+   everything else, so the two read differently. Those inline values still win
+   where they are set. */
+.section-subtitle {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  max-width: 660px;
+  margin: 0 auto;
+  text-align: center;
+}
+
 .section {
-  padding: 100px 24px;
+  /* Every other spacing on this page scales with the viewport; this one never
+     got a breakpoint, so a 393px phone was given the same 100px top and bottom
+     as a 1440px monitor. Two of them meet at every seam, and ~215px of nothing
+     on an 852px screen is a quarter of the viewport — on a dark theme, with no
+     texture to say the page is still there, that reads as a failed image
+     rather than as breathing room.
+     Desktop is unchanged: 8vw passes 100px at 1250px wide and clamps there. */
+  padding: clamp(56px, 8vw, 100px) 24px;
   position: relative;
 }
 
