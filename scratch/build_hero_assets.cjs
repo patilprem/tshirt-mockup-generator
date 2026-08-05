@@ -42,9 +42,13 @@ const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public', 'assets');
 const OUT = path.join(PUB, 'hero');
 
-// The hero's frame is 452 CSS px wide and the artboard is 1000 units, so one
-// artboard unit is 0.452 px. Everything is generated at 2x for retina.
-const UNIT_PX = 0.452;
+// The hero's frame is 560 CSS px wide and the artboard is 1000 units, so one
+// artboard unit is 0.56 px. Everything is generated at 2x for retina.
+//
+// This MUST track the `.hs` width in HeroStudio.astro. Widening the frame
+// without rerunning this leaves every flat-lay asset undersized for it, which
+// shows up as a studio that got bigger and softer at the same time.
+const UNIT_PX = 0.56;
 const DPR = 2;
 const heroPx = (units) => Math.round(units * UNIT_PX * DPR);
 

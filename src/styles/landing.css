@@ -246,20 +246,30 @@
 }
 
 .hero-headline {
+  /* Held at 3.8rem deliberately. Growing it does fill the column, but past
+     roughly this size "Create Professional" no longer fits on one line and
+     the headline breaks to a four-line stack with "Create" orphaned. The
+     space is better spent on the gaps below than on losing that break. */
   font-size: clamp(2.4rem, 5vw, 3.8rem);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -1.5px;
-  margin-bottom: 24px;
+  /* Every gap in the hero column is vh-based between a floor and a ceiling.
+     The row has ~590px of unused height at 1080 and ~190px at 900, so a fixed
+     value either wastes the tall screen or overflows the short one; tying it
+     to viewport height lets the column breathe exactly as far as there is
+     room, and the floors are the old fixed values so nothing ever gets
+     tighter than it is today. */
+  margin-bottom: clamp(24px, 5.2vh, 70px);
   animation: fade-slide-up 0.6s 0.1s ease-out both;
 }
 
 .hero-sub {
-  font-size: 1.1rem;
+  font-size: clamp(1.1rem, 1.02rem + 0.35vh, 1.22rem);
   color: var(--text-secondary);
-  line-height: 1.7;
+  line-height: 1.75;
   max-width: 480px;
-  margin-bottom: 36px;
+  margin-bottom: clamp(36px, 7.4vh, 100px);
   animation: fade-slide-up 0.6s 0.2s ease-out both;
 }
 
@@ -267,7 +277,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: clamp(24px, 4.8vh, 64px);
   flex-wrap: wrap;
   animation: fade-slide-up 0.6s 0.3s ease-out both;
 }
@@ -317,7 +327,11 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  margin-bottom: 48px;
+  /* No trailing margin on the hero's last row: the column is vertically
+     centred, so a bottom margin there pushes everything visibly off-centre.
+     The .batch-checklist reuse of this class further down the page still
+     wants the spacing, so it keeps it. */
+  margin-bottom: 0;
   animation: fade-slide-up 0.6s 0.35s ease-out both;
   flex-wrap: wrap;
 }
@@ -959,6 +973,16 @@
   .hero-badge { margin: 0 auto 28px; }
   .hero-actions { justify-content: center; }
   .hero-proof { justify-content: center; }
+
+  /* The vh-based rhythm above exists to fill a fixed-height two-column row.
+     Here the hero is a single column with min-height:auto — there is no dead
+     space to absorb, and those clamps only push the studio off the bottom of
+     a phone. The trailing margin comes back too: stacked, it is what separates
+     the copy from the studio rather than pulling the column off-centre. */
+  .hero-headline { margin-bottom: 24px; }
+  .hero-sub { font-size: 1.1rem; margin-bottom: 36px; }
+  .hero-actions { margin-bottom: 24px; }
+  .hero-cta-checklist { margin-bottom: 48px; }
 
   .hero-visual {
     max-width: 600px;
