@@ -529,14 +529,42 @@ async function boot(el) {
     return { x: ((cx - r.left) * sx - state.view.ox) / state.view.k, y: ((cy - r.top) * sy - state.view.oy) / state.view.k };
   }
 
+  // A touch drag is held back until the gesture proves itself horizontal, the
+  // same 8px threshold the sliders use. touch-action: pan-y already hands
+  // vertical gestures to the browser to scroll with, but this handler still
+  // receives them — without the check the design would slide around under the
+  // finger while the page scrolled past it. A gesture that goes vertical is
+  // abandoned outright; one that goes sideways is ours, both axes, until the
+  // finger lifts.
+  const DRAG_PX = 8;
+
+  // Mouse only. On touch, preventDefault here would cancel the scroll before
+  // the gesture has shown which direction it is going.
+  const pdMouse = (e) => { if (!e.touches) e.preventDefault(); };
+
   function wirePointer() {
     const down = (e) => {
-      if (state.mode === 'flatlay') return flatDown(e);
-      return onModelDown(e);
+      state.drag = null;
+      if (state.mode === 'flatlay') flatDown(e); else onModelDown(e);
+      const t = e.touches && e.touches[0];
+      if (state.drag && t) {
+        state.drag.pending = true;
+        state.drag.sx = t.clientX;
+        state.drag.sy = t.clientY;
+      }
     };
 
     const move = (e) => {
       if (!state.drag) return;
+      if (state.drag.pending) {
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        const dx = t.clientX - state.drag.sx;
+        const dy = t.clientY - state.drag.sy;
+        if (Math.abs(dx) <= DRAG_PX && Math.abs(dy) <= DRAG_PX) return;
+        if (Math.abs(dy) > Math.abs(dx)) { state.drag = null; return; }
+        state.drag.pending = false;
+      }
       e.preventDefault();
       if (state.mode === 'flatlay') return flatMove(e);
       return onModelMove(e);
@@ -561,13 +589,13 @@ async function boot(el) {
     const pts = corners(b);
     for (let i = 0; i < 4; i++) {
       if (Math.hypot(pt.x - pts[i].x, pt.y - pts[i].y) <= tol) {
-        e.preventDefault();
+        pdMouse(e);
         state.drag = { mode: 'scale', anchor: pts[(i + 2) % 4], scale0: state.scale, d0: Math.hypot(b.w, b.h) };
         return;
       }
     }
     if (Math.abs(pt.x - b.cx) <= b.w / 2 && Math.abs(pt.y - b.cy) <= b.h / 2) {
-      e.preventDefault();
+      pdMouse(e);
       state.drag = { mode: 'move', start: pt, cx0: b.cx, cy0: b.cy };
     }
   }
@@ -604,13 +632,13 @@ async function boot(el) {
       const pts = flatDesignCorners(b);
       const rot = flatDesignRotHandle(b, u);
       if (Math.hypot(pt.x - rot.x, pt.y - rot.y) <= SEL_ROT_R * u + grab / 2) {
-        e.preventDefault();
+        pdMouse(e);
         state.drag = { what: 'design', mode: 'rotate', rot0: state.rot, a0: Math.atan2(pt.y - state.pos.y, pt.x - state.pos.x) };
         return;
       }
       for (let i = 0; i < 4; i++) {
         if (Math.hypot(pt.x - pts[i].x, pt.y - pts[i].y) <= SEL_HANDLE_R * u + grab / 2) {
-          e.preventDefault();
+          pdMouse(e);
           state.drag = { what: 'design', mode: 'scale', anchor: pts[(i + 2) % 4], scale0: state.scale, d0: Math.hypot(b.w, b.h) };
           return;
         }
@@ -619,7 +647,7 @@ async function boot(el) {
       const cfg = flat.props[state.selected];
       const hit = hitPropHandles(cfg, pt.x, pt.y, u, grab);
       if (hit) {
-        e.preventDefault();
+        pdMouse(e);
         const cx = cfg.x + cfg.w / 2, cy = cfg.y + cfg.h / 2;
         if (hit.type === 'rotate') {
           state.drag = { what: 'prop', prop: state.selected, mode: 'rotate', rot0: cfg.rotation || 0, a0: Math.atan2(pt.y - cy, pt.x - cx) };
@@ -632,7 +660,7 @@ async function boot(el) {
 
     const prop = hitProps(flat.props, flat.active, pt.x, pt.y);
     if (prop) {
-      e.preventDefault();
+      pdMouse(e);
       state.selected = prop;
       const cfg = flat.props[prop];
       state.drag = { what: 'prop', prop, mode: 'move', dx: pt.x - cfg.x, dy: pt.y - cfg.y };
@@ -643,7 +671,7 @@ async function boot(el) {
     const b = designBoxSize(design, state.scale);
     const local = rotatePoint(pt.x - state.pos.x, pt.y - state.pos.y, -state.rot);
     if (Math.abs(local.x) <= b.w / 2 && Math.abs(local.y) <= b.h / 2) {
-      e.preventDefault();
+      pdMouse(e);
       state.selected = 'design';
       state.drag = { what: 'design', mode: 'move', dx: pt.x - state.pos.x, dy: pt.y - state.pos.y };
       render();

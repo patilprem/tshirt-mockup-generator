@@ -66,7 +66,14 @@
   .hs-poster { object-fit: cover; z-index: 1; }
   /* The canvas sits under the poster until it has something to show, so there
      is never a flash of empty box between the two. */
-  .hs-canvas { z-index: 0; opacity: 0; transition: opacity 0.25s ease; touch-action: none; }
+  /* pan-y, not none. The studio is a big target in the middle of a scrolling
+     page, and touch-action:none meant a thumb that landed on it could not
+     scroll past the hero at all — the page was stuck. pan-y hands vertical
+     gestures back to the browser to scroll with; a gesture that starts
+     sideways is still ours, and once the browser has given it to us we get
+     both axes for the rest of the drag. Same trade the sliders make in
+     global.css. */
+  .hs-canvas { z-index: 0; opacity: 0; transition: opacity 0.25s ease; touch-action: pan-y; }
   .hs[data-ready] .hs-canvas { z-index: 2; opacity: 1; }
   .hs[data-ready] .hs-poster { opacity: 0; }
 
