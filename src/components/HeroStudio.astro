@@ -4,7 +4,8 @@
 // A visitor lands on a scene that is already set up — cat preset on the shirt,
 // controls on the design — and can drag it, resize it, recolour the shirt and
 // swap the model without clicking through to anything. On model is the default
-// because it is the half of the product competitors cannot show.
+// because it is the half of the product competitors cannot show; flat lay is
+// the second tab, staged with props rather than shown bare.
 //
 // The first paint is a static JPEG, the same crop the gallery uses, so the
 // largest element on the page is an image the browser can fetch immediately.
@@ -14,17 +15,25 @@
 
 <div class="hs" id="hero-studio">
   <div class="hs-frame">
-    <!-- LCP element: decoded straight from the network, no JS in the way. -->
-    <img
-      class="hs-poster"
-      id="hs-poster"
-      src="/assets/gallery/onmodel_gallery-f.jpg"
-      alt="Cat design on a t-shirt worn by a model"
-      width="1024"
-      height="1024"
-      fetchpriority="high"
-    />
+    <!-- LCP element: decoded straight from the network, no JS in the way.
+         The WebP is a third of the JPEG at the size this is actually shown;
+         the <img> keeps the JPEG, so a browser that cannot take the source
+         still gets the poster, and fetchpriority still applies to it. -->
+    <picture>
+      <source srcset="/assets/hero/poster-gallery-f.webp" type="image/webp" />
+      <img
+        class="hs-poster"
+        id="hs-poster"
+        src="/assets/gallery/onmodel_gallery-f.jpg"
+        alt="Cat design on a t-shirt worn by a model"
+        width="1024"
+        height="1024"
+        fetchpriority="high"
+      />
+    </picture>
     <canvas class="hs-canvas" id="hs-canvas" width="800" height="800" aria-label="Interactive t-shirt mockup"></canvas>
+
+    <div class="hs-slab hs-mode" id="hs-mode" role="tablist" aria-label="Mockup style"></div>
 
     <div class="hs-slab hs-tiles" id="hs-tiles" role="listbox" aria-label="Choose a scene"></div>
 
@@ -33,7 +42,9 @@
 </div>
 
 <style>
-  .hs { position: relative; justify-self: center; width: min(452px, 100%); }
+  /* The top margin is the toggle's overhang: it hangs 21px above the frame,
+     and without the clearance it would sit on whatever precedes the studio. */
+  .hs { position: relative; justify-self: center; width: min(452px, 100%); margin-top: 24px; }
   .hs-frame { position: relative; aspect-ratio: 1; }
 
   .hs-poster,
@@ -64,17 +75,44 @@
     box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
   }
 
+  /* Straddles the TOP edge, the way the swatches straddle the bottom. On model
+     is first and default — it is the half of the product competitors cannot
+     show, so it is what the hero should be showing when you arrive. */
+  .hs-mode {
+    height: 42px; padding: 5px; gap: 4px; border-radius: 99px;
+    left: 50%; transform: translateX(-50%); top: -21px;
+  }
+  .hs-mode :global(button) {
+    height: 32px; padding: 0 15px; border-radius: 99px; border: 0; cursor: pointer;
+    background: transparent; color: hsl(210, 20%, 74%);
+    font-size: 13px; font-weight: 600; font-family: inherit; white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+  }
+  .hs-mode :global(button[aria-selected='true']) {
+    background: hsl(186, 100%, 45%); color: hsl(215, 32%, 8%);
+  }
+
   .hs-tiles {
     flex-direction: column; width: 68px; padding: 13px 0; gap: 10px;
     justify-content: center; border-radius: 18px;
     right: -34px; top: 50%; transform: translateY(-50%);
   }
-  .hs-tiles :global(img) {
+  /* Two contents, one slot: model photographs on model, garment silhouettes in
+     flat lay. Both are 46px boxes in the same column, so the toggle swaps what
+     the column offers without the frame moving. */
+  .hs-tiles :global(img),
+  .hs-tiles :global(button) {
     width: 46px; height: 46px; border-radius: 10px; object-fit: cover; cursor: pointer;
     border: 2px solid hsla(210, 25%, 36%, 0.6); opacity: 0.62;
-    background: hsla(215, 25%, 16%, 0.6); transition: opacity 0.2s, border-color 0.2s;
+    background: hsla(215, 25%, 16%, 0.6); transition: opacity 0.2s, border-color 0.2s, color 0.2s;
   }
-  .hs-tiles :global(img[aria-selected='true']) { opacity: 1; border-color: hsl(186, 100%, 55%); }
+  .hs-tiles :global(button) {
+    display: grid; place-items: center; padding: 8px; color: hsl(210, 20%, 78%);
+  }
+  .hs-tiles :global(button svg) { width: 100%; height: 100%; display: block; }
+  .hs-tiles :global(img[aria-selected='true']),
+  .hs-tiles :global(button[aria-selected='true']) { opacity: 1; border-color: hsl(186, 100%, 55%); }
+  .hs-tiles :global(button[aria-selected='true']) { color: hsl(186, 100%, 74%); }
 
   .hs-swatches {
     height: 56px; padding: 0 18px; gap: 12px; border-radius: 99px;
@@ -89,18 +127,36 @@
     box-shadow: 0 0 0 3px hsla(186, 100%, 42%, 0.25);
   }
 
+  /* Switching to flat lay pulls a garment, three props and a wood backdrop —
+     several megabytes of PNG — so the wait gets an honest cue rather than a
+     frame that appears to have frozen. */
+  .hs[data-loading] .hs-canvas { opacity: 0.45; }
+  .hs[data-loading] .hs-frame::after {
+    content: ''; position: absolute; z-index: 4;
+    left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+    border-radius: 50%; border: 3px solid hsla(0, 0%, 100%, 0.25);
+    border-top-color: hsl(186, 100%, 55%);
+    animation: hs-spin 0.8s linear infinite;
+  }
+  @keyframes hs-spin { to { transform: rotate(360deg); } }
+
   /* A 300px stage leaves 45px to the viewport edge, so a 56px column hanging
      28px out still clears it — the vertical picker survives the phone. */
   @media (max-width: 980px) {
     .hs { width: 300px; margin: 42px auto 26px; }
     .hs-tiles { width: 56px; padding: 11px 0; gap: 8px; border-radius: 15px; right: -28px; }
-    .hs-tiles :global(img) { width: 38px; height: 38px; border-radius: 9px; }
+    .hs-tiles :global(img),
+    .hs-tiles :global(button) { width: 38px; height: 38px; border-radius: 9px; }
+    .hs-tiles :global(button) { padding: 6px; }
+    .hs-mode { height: 38px; padding: 4px; top: -19px; }
+    .hs-mode :global(button) { height: 30px; padding: 0 13px; font-size: 12px; }
     .hs-swatches { height: 48px; padding: 0 14px; gap: 9px; bottom: -24px; }
     .hs-swatches :global(button) { width: 26px; height: 26px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .hs-canvas, .hs-poster { transition: none; }
+    .hs[data-loading] .hs-frame::after { animation: none; }
   }
 </style>
 

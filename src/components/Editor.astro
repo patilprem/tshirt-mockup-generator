@@ -513,6 +513,16 @@
     onModelCache, onModelRelightLut, loadOnModelTemplate,
     buildOnModelComposed, onModelHighlightCanvas, onModelClipCanvas, onModelShadeCanvas, buildDesignBuffer,
   } from '../scripts/onmodel-engine.js';
+  import {
+    garmentConfigs, defaultPropConfigs, loadProp as loadPropImage,
+    buildShirtLayers, drawFlatlayBackground, drawProps, drawFlatlayScene,
+    designBoxSize, placementToRelative, placementFromRelative, centerChestPlacement,
+    propTransformMetrics, hitProps, hitPropHandles, drawPropChrome,
+  } from '../scripts/flatlay-engine.js';
+  import {
+    SEL_HANDLE_R, SEL_ROT_R, SEL_ROT_GAP,
+    drawSelectionChrome, selGrabCss,
+  } from '../scripts/selection-chrome.js';
 
   // Full-spectrum HSV Custom Color Picker helper class
   class CustomColorPicker {
@@ -891,32 +901,7 @@
     // ----------------------------------------------------
     // 2. Editor State & Presets Configuration
     // ----------------------------------------------------
-    // printArea: printable rect in the 1000×1000 asset frame, calibrated with
-    // scratch/calibrate_print_areas.cjs (clears collars, the polo placket, the
-    // hoodie hood, and the hoodie/sweatshirt kangaroo pockets).
-    // pxPerIn: pixels per real-world inch, from torso width ÷ chest width of a
-    // standard size M — lets placements be expressed in inches per garment.
-    const garmentConfigs = {
-      'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230, label: 'Crewneck Tee', printArea: { x: 310, y: 265, w: 384, h: 365 }, pxPerIn: 25.5 },
-      'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225, label: 'Ladies Tee', printArea: { x: 302, y: 225, w: 396, h: 375 }, pxPerIn: 30.8 },
-      'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225, label: 'Polo Shirt', printArea: { x: 306, y: 400, w: 402, h: 245 }, pxPerIn: 25.3 },
-      'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230, label: 'Long Sleeve', printArea: { x: 327, y: 265, w: 353, h: 375 }, pxPerIn: 23.3 },
-      'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230, label: 'Hoodie', printArea: { x: 346, y: 340, w: 312, h: 310 }, pxPerIn: 18.7 },
-      'sweatshirt': { chestY: 410, centerY: 480, bellyY: 570, defaultScale: 0.33, path: '/assets/processed/tshirt_sweatshirt.png', yFlat: 235, label: 'Sweatshirt', printArea: { x: 333, y: 265, w: 334, h: 305 }, pxPerIn: 20.0 },
-      'vneck': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.35, path: '/assets/processed/tshirt_vneck.png', yFlat: 225, label: 'V-Neck Tee', printArea: { x: 296, y: 270, w: 409, h: 370 }, pxPerIn: 26.9 },
-      'tanktop': { chestY: 380, centerY: 460, bellyY: 550, defaultScale: 0.35, path: '/assets/processed/tshirt_tanktop.png', yFlat: 235, label: 'Tank Top', printArea: { x: 310, y: 330, w: 380, h: 310 }, pxPerIn: 33.5 }
-    };
-
-    const propConfigs = {
-      'plant': { path: '/assets/props/prop_plant.png', x: 40, y: 40, w: 200, h: 200, rotation: 0, loaded: false, img: null },
-      'hat': { path: '/assets/props/prop_hat.png', x: 610, y: 100, w: 330, h: 330, rotation: 0, loaded: false, img: null },
-      'shoes': { path: '/assets/props/prop_shoes.png', x: 50, y: 600, w: 330, h: 330, rotation: 0, loaded: false, img: null },
-      'sunglasses': { path: '/assets/props/prop_sunglasses.png', x: 740, y: 400, w: 180, h: 72, rotation: 0, loaded: false, img: null },
-      'jeans': { path: '/assets/props/prop_jeans.png', x: 630, y: 520, w: 300, h: 375, rotation: 0, loaded: false, img: null },
-      'bag': { path: '/assets/props/prop_bag.png', x: 255, y: 6, w: 500, h: 256, rotation: 0, loaded: false, img: null },
-      'distressedshorts': { path: '/assets/props/prop_shorts_distressed.png', x: 250, y: 247, w: 520, h: 412, rotation: 0, loaded: false, img: null },
-      'leaf': { path: '/assets/props/prop_leaf.png', x: 610, y: 0, w: 380, h: 380, rotation: 0, loaded: false, img: null }
-    };
+    const propConfigs = defaultPropConfigs();
 
     let activeProps = {
       'plant': false,
@@ -1125,65 +1110,79 @@
     // Loading State
     let isShirtLoaded = false;
     let rawShirtImage = new Image();
+    // Bumped per loadGarment call so a slower earlier load cannot overwrite a
+    // later one's result. See loadGarment.
+    let garmentLoadToken = 0;
 
     // ----------------------------------------------------
     // 3. Image Pre-processing Logic
     // ----------------------------------------------------
     
     // Hot-swapping Garment Templates Helper
+    //
+    // Returns a promise that settles once the garment is processed and its
+    // default placement has been applied. Callers that then want a placement of
+    // their own — the homepage hand-off — must wait for it: this resets
+    // designPos in an image onload callback, so anything set before that fires
+    // is silently overwritten. Every other call site ignores the return, as it
+    // did when this was void.
     function loadGarment(type) {
       const config = garmentConfigs[type];
-      if (!config) return;
+      if (!config) return Promise.resolve();
 
       activeGarmentType = type;
       isShirtLoaded = false;
-      
+
       // Show loading spinner
       if (canvasLoading) canvasLoading.style.display = 'flex';
 
-      rawShirtImage = new Image();
-      rawShirtImage.crossOrigin = 'anonymous';
-      rawShirtImage.src = config.path;
-      rawShirtImage.onload = () => {
-        preProcessShirt();
-        isShirtLoaded = true;
-        
-        // Hide loading spinner
-        if (canvasLoading) canvasLoading.style.display = 'none';
-
-        // Set layout variables based on garment config (if scale was not manually adjusted)
-        if (!userHasManuallyScaled) {
-          designScale = config.defaultScale;
-          scaleSlider.value = Math.round(designScale * 100);
-          scaleManual.value = Math.round(designScale * 100);
-        }
-
-        designPos.x = 500;
-        designPos.y = config.chestY; // default to chest placement
-
-        // If design is already loaded, re-render, otherwise load it
-        if (designImage) {
-          render();
-        } else {
-          loadActiveDesign();
-        }
-      };
-    }
-
-    function loadProp(type) {
-      const config = propConfigs[type];
-      if (!config || config.loaded) return Promise.resolve();
+      // Which load is the current one. Two can be in flight at once — the
+      // initial crewneck and a hand-off's garment landing on top of it — and
+      // before this, the loser's onload still ran preProcessShirt, which reads
+      // the SHARED rawShirtImage. That meant processing an image that had not
+      // decoded yet, and getImageData threw "source width is 0".
+      const token = ++garmentLoadToken;
 
       return new Promise((resolve) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.src = config.path + '?v=' + Date.now();
         img.onload = () => {
-          config.img = img;
-          config.loaded = true;
+          if (token !== garmentLoadToken) return resolve(); // superseded
+          rawShirtImage = img;
+          preProcessShirt();
+          isShirtLoaded = true;
+
+          // Hide loading spinner
+          if (canvasLoading) canvasLoading.style.display = 'none';
+
+          // Set layout variables based on garment config (if scale was not manually adjusted)
+          if (!userHasManuallyScaled) {
+            designScale = config.defaultScale;
+            scaleSlider.value = Math.round(designScale * 100);
+            scaleManual.value = Math.round(designScale * 100);
+          }
+
+          designPos.x = 500;
+          designPos.y = config.chestY; // default to chest placement
+
+          // If design is already loaded, re-render, otherwise load it
+          if (designImage) {
+            render();
+            resolve();
+          } else {
+            loadActiveDesign().then(resolve);
+          }
+        };
+        img.onerror = () => {
+          if (token === garmentLoadToken && canvasLoading) canvasLoading.style.display = 'none';
           resolve();
         };
+        img.src = config.path;
       });
+    }
+
+    function loadProp(type) {
+      return loadPropImage(propConfigs[type]);
     }
 
     // Initial load — honor ?garment= deep links from the landing pages
@@ -1457,102 +1456,6 @@
     // Build the mask/shadow/highlight layer canvases for a garment image.
     // Pure with respect to editor state so batch export can process garments
     // other than the active one (results cached per garment type).
-    function buildShirtLayers(shirtImage, yFlatBaseline) {
-      const w = shirtImage.width;
-      const h = shirtImage.height;
-
-      // 1. Create canvases
-      const mask = document.createElement('canvas');
-      mask.width = w;
-      mask.height = h;
-      const maskCtx = mask.getContext('2d');
-      maskCtx.drawImage(shirtImage, 0, 0);
-
-      const shadows = document.createElement('canvas');
-      shadows.width = w;
-      shadows.height = h;
-      const shadowCtx = shadows.getContext('2d');
-
-      const highlights = document.createElement('canvas');
-      highlights.width = w;
-      highlights.height = h;
-      const highlightCtx = highlights.getContext('2d');
-
-      // 2. Read pixels
-      const maskData = maskCtx.getImageData(0, 0, w, h);
-      const mPixels = maskData.data;
-
-      const shadowData = shadowCtx.createImageData(w, h);
-      const sPixels = shadowData.data;
-
-      const highlightData = highlightCtx.createImageData(w, h);
-      const hPixels = highlightData.data;
-
-      // No BFS background removal needed on the client side since the garment image is already pre-cropped and transparent!
-
-      const Y_FLAT = yFlatBaseline || 215; // flat fabric baseline for white shirt
-
-      // 3. Process remaining non-background pixels to build full intensity wrinkle & shine maps
-      for (let idx = 0; idx < w * h; idx++) {
-        const rIdx = idx * 4;
-        const alpha = mPixels[rIdx + 3];
-
-        if (alpha === 0) {
-          // background
-          sPixels[rIdx] = 255;
-          sPixels[rIdx + 1] = 255;
-          sPixels[rIdx + 2] = 255;
-          sPixels[rIdx + 3] = 0;
-
-          hPixels[rIdx] = 0;
-          hPixels[rIdx + 1] = 0;
-          hPixels[rIdx + 2] = 0;
-          hPixels[rIdx + 3] = 0;
-          continue;
-        }
-
-        const r = mPixels[rIdx];
-        const g = mPixels[rIdx + 1];
-        const b = mPixels[rIdx + 2];
-
-        const Y = 0.299 * r + 0.587 * g + 0.114 * b;
-
-        // A. Shadow (creases): values below Y_FLAT represent folds with contrast-enhancing gamma curve
-        let sVal = 255;
-        if (Y < Y_FLAT) {
-          sVal = Math.max(0, Math.min(255, Math.round(255 * Math.pow(Y / Y_FLAT, 1.8))));
-        }
-
-        // FADE OUT SHADOWS ON SEMI-TRANSPARENT EDGES TO PREVENT JAGGED DARK OUTLINES
-        if (alpha < 255) {
-          const factor = alpha / 255;
-          sVal = Math.round(sVal * factor + 255 * (1 - factor));
-        }
-
-        sPixels[rIdx] = sVal;
-        sPixels[rIdx + 1] = sVal;
-        sPixels[rIdx + 2] = sVal;
-        sPixels[rIdx + 3] = alpha;
-
-        // B. Highlights (sheen): values above Y_FLAT represent shines
-        let hVal = 0;
-        if (Y > Y_FLAT) {
-          hVal = Math.max(0, Math.min(255, Math.round(255 * ((Y - Y_FLAT) / (255 - Y_FLAT)))));
-        }
-        hPixels[rIdx] = 255;
-        hPixels[rIdx + 1] = 255;
-        hPixels[rIdx + 2] = 255;
-        hPixels[rIdx + 3] = Math.round(hVal * (alpha / 255));
-      }
-
-      // Write processed canvases
-      maskCtx.putImageData(maskData, 0, 0);
-      shadowCtx.putImageData(shadowData, 0, 0);
-      highlightCtx.putImageData(highlightData, 0, 0);
-
-      return { mask, shadows, highlights };
-    }
-
     function preProcessShirt() {
       const config = garmentConfigs[activeGarmentType];
       const layers = buildShirtLayers(rawShirtImage, config ? (config.yFlat || 215) : 215);
@@ -1594,81 +1497,10 @@
     // ----------------------------------------------------
     // 4. Custom Background Rendering Helpers
     // ----------------------------------------------------
-    function drawBackground(ctxTarget, w, h, isExport = false) {
-      switch (activeBgType) {
-        case 'transparent':
-          ctxTarget.clearRect(0, 0, w, h);
-          break;
-          
-        case 'solid-picker':
-          ctxTarget.fillStyle = customBgColor;
-          ctxTarget.fillRect(0, 0, w, h);
-          break;
-
-        case 'wood-white':
-          if (woodWhiteImg) {
-            ctxTarget.drawImage(woodWhiteImg, 0, 0, w, h);
-          } else {
-            ctxTarget.fillStyle = '#e8e8e6';
-            ctxTarget.fillRect(0, 0, w, h);
-          }
-          break;
-
-        case 'wood-brown':
-          if (woodBrownImg) {
-            ctxTarget.drawImage(woodBrownImg, 0, 0, w, h);
-          } else {
-            ctxTarget.fillStyle = '#563e2a';
-            ctxTarget.fillRect(0, 0, w, h);
-          }
-          break;
-
-        default:
-          ctxTarget.fillStyle = customBgColor;
-          ctxTarget.fillRect(0, 0, w, h);
-          break;
-      }
-    }
-
-    function drawProps(ctxTarget, scale = 1) {
-      Object.keys(activeProps).forEach(type => {
-        if (activeProps[type]) {
-          const config = propConfigs[type];
-          if (config.loaded && config.img) {
-            ctxTarget.save();
-            
-            // Translate to center of prop in scaled space
-            const cx = (config.x + config.w / 2) * scale;
-            const cy = (config.y + config.h / 2) * scale;
-            ctxTarget.translate(cx, cy);
-            
-            // Rotate
-            const rot = config.rotation || 0;
-            ctxTarget.rotate(rot);
-            
-            // Fixed screen shadow offset (down & right) — soft contact shadow, not a hard drop shadow
-            const cos = Math.cos(rot);
-            const sin = Math.sin(rot);
-            const shadowX = 3 * cos + 5 * sin;
-            const shadowY = 5 * cos - 3 * sin;
-
-            ctxTarget.shadowColor = 'rgba(0, 0, 0, 0.25)';
-            ctxTarget.shadowBlur = 26 * scale;
-            ctxTarget.shadowOffsetX = shadowX * scale;
-            ctxTarget.shadowOffsetY = shadowY * scale;
-            
-            // Draw image centered at origin
-            ctxTarget.drawImage(
-              config.img, 
-              -config.w / 2 * scale, 
-              -config.h / 2 * scale, 
-              config.w * scale, 
-              config.h * scale
-            );
-            ctxTarget.restore();
-          }
-        }
-      });
+    // The editor's own background state, packaged the way the shared
+    // engine wants it. The wood images are decoded here and handed over.
+    function bgState() {
+      return { type: activeBgType, customColor: customBgColor, woodWhite: woodWhiteImg, woodBrown: woodBrownImg };
     }
 
     // ----------------------------------------------------
@@ -1697,98 +1529,13 @@
     }
 
     function drawScene(targetCtx, w, h, scale = 1, isExport = false, scene = null) {
-      const s = scene || currentScene();
-
-      // The garment/design composition always renders into a fixed square
-      // "artboard" (1000 units * scale); for non-1:1 canvas aspects the frame
-      // (w,h) is larger in one dimension, so the artboard is centered within it
-      // (letterboxed) rather than stretching the garment to fill the frame.
-      // Some presets (Etsy/Instagram Story) also apply a slight zoom so the
-      // garment doesn't look small against all the extra letterboxed space.
-      const shirtZoom = getShirtZoom();
-      const artboardSize = 1000 * scale;
-      const zoomedArtboardSize = artboardSize * shirtZoom;
-      const offsetX = (w - zoomedArtboardSize) / 2;
-      const offsetY = (h - zoomedArtboardSize) / 2;
-
-      // 1. Draw Backdrop (fills the full frame, including any letterbox margin)
-      drawBackground(targetCtx, w, h, isExport);
-
-      // 2. Render T-Shirt + Design offscreen to handle masking correctly
-      const tshirtOffscreen = document.createElement('canvas');
-      tshirtOffscreen.width = artboardSize;
-      tshirtOffscreen.height = artboardSize;
-      const offCtx = tshirtOffscreen.getContext('2d');
-
-      // A. Draw the transparent silhouette mask
-      offCtx.drawImage(s.shirtMask, 0, 0, artboardSize, artboardSize);
-
-      // B. Mask with T-shirt base color
-      offCtx.globalCompositeOperation = 'source-in';
-      offCtx.fillStyle = s.shirtColor;
-      offCtx.fillRect(0, 0, artboardSize, artboardSize);
-
-      // C. Draw graphic design layer on top
-      if (s.designImage) {
-        offCtx.globalCompositeOperation = 'source-atop';
-        offCtx.save();
-        offCtx.translate(s.designPos.x * scale, s.designPos.y * scale);
-        offCtx.rotate(s.designRotation);
-
-        // Calculate graphic size
-        const baseSize = 500 * scale; // base bounding size
-        const dAspect = s.designImage.width / s.designImage.height;
-        let dW = baseSize * s.designScale;
-        let dH = baseSize * s.designScale;
-        if (dAspect > 1) {
-          dH = dW / dAspect;
-        } else {
-          dW = dH * dAspect;
-        }
-
-        offCtx.globalAlpha = s.designOpacity;
-
-        const sourceGraphic = s.isDesignTransparent ? s.designImage : s.designBuffer;
-        offCtx.drawImage(sourceGraphic, -dW / 2, -dH / 2, dW, dH);
-        offCtx.restore();
-      }
-
-      // D. Apply fabric shadow and highlight overlays
-      if (s.useRealisticBlending) {
-        // Multiply creases on top of colored shirt + logo
-        offCtx.globalCompositeOperation = 'source-atop';
-        offCtx.save();
-        offCtx.globalAlpha = s.shadowDepth;
-        offCtx.globalCompositeOperation = 'multiply';
-        offCtx.drawImage(s.shirtShadows, 0, 0, artboardSize, artboardSize);
-        offCtx.restore();
-
-        // Screen/Overlay highlights on top
-        offCtx.globalCompositeOperation = 'source-atop';
-        offCtx.save();
-        offCtx.globalAlpha = s.highlightShine;
-        offCtx.globalCompositeOperation = 'screen';
-        offCtx.drawImage(s.shirtHighlights, 0, 0, artboardSize, artboardSize);
-        offCtx.restore();
-      }
-
-      // E. Draw finished offscreen mockup onto main viewport canvas, centered
-      targetCtx.save();
-      if (activeBgType !== 'transparent') {
-        targetCtx.shadowColor = 'rgba(0, 0, 0, 0.20)';
-        targetCtx.shadowBlur = 32 * scale;
-        targetCtx.shadowOffsetY = 16 * scale;
-      }
-      targetCtx.drawImage(tshirtOffscreen, offsetX, offsetY, zoomedArtboardSize, zoomedArtboardSize);
-      targetCtx.restore();
-
-      // F. Draw active aesthetic props with realistic drop shadows — same
-      // offset + zoom as the shirt above, so props stay aligned to it.
-      targetCtx.save();
-      targetCtx.translate(offsetX, offsetY);
-      targetCtx.scale(shirtZoom, shirtZoom);
-      drawProps(targetCtx, scale);
-      targetCtx.restore();
+      drawFlatlayScene(targetCtx, w, h, scene || currentScene(), {
+        scale,
+        shirtZoom: getShirtZoom(),
+        bg: bgState(),
+        propConfigs,
+        activeProps,
+      });
     }
 
     // ----------------------------------------------------
@@ -2407,7 +2154,18 @@
         sessionStorage.removeItem('teemockup_handoff');
         if (raw) h = JSON.parse(raw);
       } catch { return; }
-      if (!h || h.style !== 'onmodel') return;
+      if (!h || (h.style !== 'onmodel' && h.style !== 'flatlay')) return;
+
+      // Flat lay carries a garment and a prop arrangement the on-model branch
+      // has no equivalent of, so it gets its own path. Colour, design and the
+      // transform below are shared — those mean the same thing in both modes.
+      if (h.style === 'flatlay' && h.garment && garmentConfigs[h.garment]) {
+        garmentSelector.querySelectorAll('.garment-card').forEach(c =>
+          c.classList.toggle('active', c.dataset.garment === h.garment));
+        // Awaited: this resets designPos to the garment's chest default, and
+        // the transform below would be overwritten by it landing late.
+        await loadGarment(h.garment);
+      }
 
       if (h.template && onModelTemplates.some(t => t.id === h.template)) {
         activeOnModelId = h.template;
@@ -2435,12 +2193,32 @@
         designSrc = h.design;
         await loadActiveDesign();
       }
-      await setMockupStyle('onmodel');
+      await setMockupStyle(h.style);
 
-      // Transform goes on AFTER the mode switch: loading a design and entering
-      // on-model both reset placement to their own defaults, so setting it any
-      // earlier is silently undone. The sliders are moved with it, or the
-      // sidebar reports a size the canvas is not drawing.
+      // Props go on after the mode switch too — setMockupStyle('flatlay')
+      // is what makes the props section live again.
+      if (h.style === 'flatlay' && Array.isArray(h.props)) {
+        await Promise.all(h.props.map(async (p) => {
+          if (!p || !propConfigs[p.type]) return;
+          activeProps[p.type] = true;
+          const card = propsSelector.querySelector(`.prop-card[data-prop="${p.type}"]`);
+          if (card) card.classList.add('active');
+          const cfg = propConfigs[p.type];
+          // Each field guarded on its own: a prop that arrives with only a
+          // position keeps the default size rather than collapsing to zero.
+          if (Number.isFinite(p.x)) cfg.x = p.x;
+          if (Number.isFinite(p.y)) cfg.y = p.y;
+          if (Number.isFinite(p.w) && p.w > 0) cfg.w = p.w;
+          if (Number.isFinite(p.h) && p.h > 0) cfg.h = p.h;
+          if (Number.isFinite(p.rotation)) cfg.rotation = p.rotation;
+          await loadProp(p.type);
+        }));
+      }
+
+      // Transform goes on AFTER the mode switch: loading a design, loading a
+      // garment and entering either mode all reset placement to their own
+      // defaults, so setting it any earlier is silently undone. The sliders are
+      // moved with it, or the sidebar reports a size the canvas is not drawing.
       if (h.pos && Number.isFinite(h.pos.x) && Number.isFinite(h.pos.y)) designPos = { x: h.pos.x, y: h.pos.y };
       if (Number.isFinite(h.scale)) {
         designScale = Math.max(0.1, Math.min(0.9, h.scale));
@@ -2449,6 +2227,12 @@
         if (scaleSlider) scaleSlider.value = pct;
         const manual = document.getElementById('scale-manual');
         if (manual) manual.value = pct;
+      }
+      if (Number.isFinite(h.rotation)) {
+        designRotation = h.rotation;
+        const rdeg = Math.round(designRotation * 180 / Math.PI);
+        if (rotateSlider) rotateSlider.value = rdeg;
+        if (rotateManual) rotateManual.value = rdeg;
       }
       render();
     }
@@ -2522,12 +2306,6 @@
     // canvas pixels on an 800x1200 one — and a constant in either space comes
     // out a different physical size in the other. Passing the conversion in is
     // what makes the control genuinely identical rather than merely similar.
-    const SEL_HANDLE_R = 6.5;  // corner circle radius
-    const SEL_ROT_R = 10;      // rotate button radius
-    const SEL_ROT_GAP = 30;    // gap between box and rotate button
-    const SEL_LINE = 1.5;      // outline width
-    const SEL_COLOUR = '#3b82f6';
-
     function selCanvasScale() {
       const shown = canvas.clientWidth;
       return shown ? canvas.width / shown : 1;
@@ -2536,69 +2314,6 @@
     // shirtZoom transform, so that zoom has to be divided back out.
     function selUnitsFlat() {
       return selCanvasScale() / getShirtZoom();
-    }
-    // Grab radius in CSS pixels: a fingertip needs far more than the handle
-    // shows, and that slack is invisible so it costs the artwork nothing.
-    function selGrabCss() {
-      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-      return coarse ? 24 : 16;
-    }
-
-    // A circular arrow, so the control says what it does rather than being a
-    // plain dot the user has to discover.
-    function drawRotateIcon(c, cx, cy, r, u) {
-      c.save();
-      c.strokeStyle = SEL_COLOUR;
-      c.fillStyle = SEL_COLOUR;
-      c.lineWidth = Math.max(1.4 * u, r * 0.26);
-      c.lineCap = 'round';
-      const a0 = Math.PI * 0.72, a1 = Math.PI * 2.05;
-      c.beginPath();
-      c.arc(cx, cy, r, a0, a1);
-      c.stroke();
-      // Arrowhead on the open end, pointing along the tangent there.
-      const hx = cx + r * Math.cos(a1), hy = cy + r * Math.sin(a1);
-      const t = a1 + Math.PI / 2;
-      const s = r * 0.9;
-      c.beginPath();
-      c.moveTo(hx + s * Math.cos(t), hy + s * Math.sin(t));
-      c.lineTo(hx + s * 0.7 * Math.cos(t + 2.3), hy + s * 0.7 * Math.sin(t + 2.3));
-      c.lineTo(hx + s * 0.7 * Math.cos(t - 2.3), hy + s * 0.7 * Math.sin(t - 2.3));
-      c.closePath();
-      c.fill();
-      c.restore();
-    }
-
-    // corners: four points in the CURRENT drawing space, clockwise from
-    // top-left. rot: the rotate button's centre in the same space.
-    // u: how many units of that space make one CSS pixel on screen.
-    function drawSelectionChrome(c, corners, rot, u) {
-      c.save();
-      c.strokeStyle = SEL_COLOUR;
-      c.lineWidth = SEL_LINE * u;
-      c.beginPath();
-      c.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < 4; i++) c.lineTo(corners[i].x, corners[i].y);
-      c.closePath();
-      c.stroke();
-
-      const bottom = { x: (corners[2].x + corners[3].x) / 2, y: (corners[2].y + corners[3].y) / 2 };
-      c.beginPath();
-      c.moveTo(bottom.x, bottom.y);
-      c.lineTo(rot.x, rot.y);
-      c.stroke();
-
-      c.fillStyle = '#ffffff';
-      for (const p of corners) {
-        c.beginPath();
-        c.arc(p.x, p.y, SEL_HANDLE_R * u, 0, Math.PI * 2);
-        c.fill(); c.stroke();
-      }
-      c.beginPath();
-      c.arc(rot.x, rot.y, SEL_ROT_R * u, 0, Math.PI * 2);
-      c.fill(); c.stroke();
-      drawRotateIcon(c, rot.x, rot.y, SEL_ROT_R * u * 0.52, u);
-      c.restore();
     }
 
     // Draws bounding box outline, scale corners, and rotation handle
@@ -2620,11 +2335,6 @@
       ], { x: 0, y: rotY }, u);
       ctx.restore();
     }
-
-    // ----------------------------------------------------
-    // Shared geometry helpers for Canva-style anchored resize & angle snapping
-    // ----------------------------------------------------
-    const OPPOSITE_CORNER = { tl: 'br', tr: 'bl', br: 'tl', bl: 'tr' };
 
     function cornerLocalPoint(w, h, corner) {
       switch (corner) {
@@ -2649,182 +2359,30 @@
     }
 
     function getDesignBoxSize(scale) {
-      const baseSize = 500;
-      const dAspect = designImage.width / designImage.height;
-      let dW = baseSize * scale;
-      let dH = baseSize * scale;
-      if (dAspect > 1) {
-        dH = dW / dAspect;
-      } else {
-        dW = dH * dAspect;
-      }
-      return { w: dW, h: dH };
+      return designBoxSize(designImage, scale);
     }
 
     function getPropTransformMetrics(type) {
-      const config = propConfigs[type];
-      if (!config) return null;
-
-      const w = config.w;
-      const h = config.h;
-      const rotation = config.rotation || 0;
-      const centerX = config.x + w / 2;
-      const centerY = config.y + h / 2;
-
-      const cos = Math.cos(rotation);
-      const sin = Math.sin(rotation);
-
-      function localToGlobal(lx, ly) {
-        return {
-          x: lx * cos - ly * sin + centerX,
-          y: lx * sin + ly * cos + centerY
-        };
-      }
-
-      return {
-        width: w,
-        height: h,
-        center: { x: centerX, y: centerY },
-        corners: {
-          tl: localToGlobal(-w / 2, -h / 2),
-          tr: localToGlobal(w / 2, -h / 2),
-          br: localToGlobal(w / 2, h / 2),
-          bl: localToGlobal(-w / 2, h / 2)
-        },
-        // Below the box, through the same constant the design uses, so the two
-        // controls put the rotate button in the same place relative to what is
-        // being rotated. Hit-testing reads this too, so the grab follows the
-        // drawing by construction.
-        rot: localToGlobal(0, h / 2 + SEL_ROT_GAP * selUnitsFlat())
-      };
-    }
-
-    function isPointInsidePropBox(type, cx, cy) {
-      const config = propConfigs[type];
-      if (!config) return false;
-      const metrics = getPropTransformMetrics(type);
-      if (!metrics) return false;
-
-      const centerX = config.x + config.w / 2;
-      const centerY = config.y + config.h / 2;
-      const rotation = config.rotation || 0;
-
-      const tx = cx - centerX;
-      const ty = cy - centerY;
-
-      const ux = tx * Math.cos(-rotation) - ty * Math.sin(-rotation);
-      const uy = tx * Math.sin(-rotation) + ty * Math.cos(-rotation);
-
-      return (
-        ux >= -metrics.width / 2 &&
-        ux <= metrics.width / 2 &&
-        uy >= -metrics.height / 2 &&
-        uy <= metrics.height / 2
-      );
+      return propTransformMetrics(propConfigs[type], selUnitsFlat());
     }
 
     function checkHitProps(cx, cy) {
-      const propTypes = Object.keys(activeProps);
-      for (let i = propTypes.length - 1; i >= 0; i--) {
-        const type = propTypes[i];
-        if (activeProps[type]) {
-          const config = propConfigs[type];
-          if (config.loaded && config.img) {
-            if (isPointInsidePropBox(type, cx, cy)) {
-              return type;
-            }
-          }
-        }
-      }
-      return null;
+      return hitProps(propConfigs, activeProps, cx, cy);
     }
 
     function checkHitPropHandles(type, cx, cy) {
-      const metrics = getPropTransformMetrics(type);
-      if (!metrics) return null;
-      
-      const clickRadius = 30; // hit area in canvas pixels (generous, Canva-style)
-      
-      // Check rotation handle
-      if (Math.hypot(metrics.rot.x - cx, metrics.rot.y - cy) < clickRadius) {
-        return { type: 'rotate' };
-      }
-      
-      // Check scale corner handles
-      for (const [corner, pt] of Object.entries(metrics.corners)) {
-        if (Math.hypot(pt.x - cx, pt.y - cy) < clickRadius) {
-          return { type: 'scale', corner: corner };
-        }
-      }
-      return null;
+      return hitPropHandles(propConfigs[type], cx, cy, selUnitsFlat());
     }
 
     function drawPropHandles() {
-      // 1. Draw selection box & handles for selected prop
-      if (selectedElement && selectedElement !== 'design' && activeProps[selectedElement]) {
-        const config = propConfigs[selectedElement];
-        if (config.loaded && config.img) {
-          const metrics = getPropTransformMetrics(selectedElement);
-          if (metrics) {
-            // The same drawSelectionChrome the design uses, through the same
-            // units, rather than a second control that merely resembles it.
-            // A prop used to be a dashed box with square corners, a centre dot
-            // and the rotate button above, while the print in the middle of the
-            // same canvas had a solid box, round corners and rotate below — two
-            // gestures to learn for one canvas, and the handles drawn at a fixed
-            // pixel size so they grew and shrank with the preset.
-            const u = selUnitsFlat();
-            ctx.save();
-            ctx.translate(metrics.center.x, metrics.center.y);
-            ctx.rotate(config.rotation || 0);
-            drawSelectionChrome(ctx, [
-              { x: -metrics.width / 2, y: -metrics.height / 2 },
-              { x: metrics.width / 2, y: -metrics.height / 2 },
-              { x: metrics.width / 2, y: metrics.height / 2 },
-              { x: -metrics.width / 2, y: metrics.height / 2 },
-            ], { x: 0, y: metrics.height / 2 + SEL_ROT_GAP * u }, u);
-            ctx.restore();
-          }
-        }
-      }
-
-      // 2. Draw hover outline for hovered prop (only if it's not the selected one)
-      if (hoveredPropType && hoveredPropType !== selectedElement && activeProps[hoveredPropType]) {
-        const config = propConfigs[hoveredPropType];
-        if (config.loaded && config.img) {
-          const metrics = getPropTransformMetrics(hoveredPropType);
-          if (metrics) {
-            ctx.save();
-            ctx.translate(metrics.center.x, metrics.center.y);
-            ctx.rotate(config.rotation || 0);
-            // Hover stays a faint dashed outline — it is a hint, not a control,
-            // and must not read as a selection. Same hue as the chrome it
-            // precedes, so the two belong to one palette.
-            ctx.strokeStyle = SEL_COLOUR;
-            ctx.globalAlpha = 0.5;
-            ctx.lineWidth = SEL_LINE * selUnitsFlat();
-            ctx.setLineDash([4, 3]);
-            ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
-            ctx.restore();
-          }
-        }
-      }
-
-      // 3. Draw dragged prop indicator
-      if (draggedPropType) {
-        const config = propConfigs[draggedPropType];
-        const metrics = getPropTransformMetrics(draggedPropType);
-        if (metrics) {
-          ctx.save();
-          ctx.translate(metrics.center.x, metrics.center.y);
-          ctx.rotate(config.rotation || 0);
-          ctx.strokeStyle = '#008ab3';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([6, 4]);
-          ctx.strokeRect(-metrics.width / 2, -metrics.height / 2, metrics.width, metrics.height);
-          ctx.restore();
-        }
-      }
+      drawPropChrome(ctx, {
+        propConfigs,
+        activeProps,
+        selected: selectedElement,
+        hovered: hoveredPropType,
+        dragged: draggedPropType,
+        units: selUnitsFlat(),
+      });
     }
 
     // ----------------------------------------------------
@@ -3533,24 +3091,17 @@
 
       selectedElement = 'design';
 
-      const defaultPropConfigs = {
-        'plant': { x: 40, y: 40, w: 200, h: 200 },
-        'hat': { x: 610, y: 100, w: 330, h: 330 },
-        'shoes': { x: 50, y: 600, w: 330, h: 330 },
-        'sunglasses': { x: 740, y: 400, w: 180, h: 72 },
-        'jeans': { x: 630, y: 520, w: 300, h: 375 },
-        'bag': { x: 255, y: 6, w: 500, h: 256 },
-        'distressedshorts': { x: 250, y: 247, w: 520, h: 412 },
-        'leaf': { x: 610, y: 0, w: 380, h: 380 }
-      };
-
+      // Reset to the engine's own defaults rather than a third copy of the
+      // table — this used to shadow the import with a literal that had to be
+      // kept in step with it by hand.
+      const propDefaults = defaultPropConfigs();
       Object.keys(activeProps).forEach(type => {
         activeProps[type] = false;
-        if (propConfigs[type] && defaultPropConfigs[type]) {
-          propConfigs[type].x = defaultPropConfigs[type].x;
-          propConfigs[type].y = defaultPropConfigs[type].y;
-          propConfigs[type].w = defaultPropConfigs[type].w;
-          propConfigs[type].h = defaultPropConfigs[type].h;
+        if (propConfigs[type] && propDefaults[type]) {
+          propConfigs[type].x = propDefaults[type].x;
+          propConfigs[type].y = propDefaults[type].y;
+          propConfigs[type].w = propDefaults[type].w;
+          propConfigs[type].h = propDefaults[type].h;
           propConfigs[type].rotation = 0;
         }
       });
@@ -3823,40 +3374,6 @@
     // A placement is portable when expressed relative to a garment's printArea:
     // u/v = design center as a fraction of the area, size = design bounding box
     // width as a fraction of the area width.
-    function placementToRelative(pos, scaleVal, garmentType) {
-      const pa = garmentConfigs[garmentType].printArea;
-      return {
-        u: (pos.x - pa.x) / pa.w,
-        v: (pos.y - pa.y) / pa.h,
-        size: (500 * scaleVal) / pa.w,
-      };
-    }
-
-    function clampVal(val, lo, hi) {
-      if (lo > hi) return (lo + hi) / 2;
-      return Math.min(Math.max(val, lo), hi);
-    }
-
-    function placementFromRelative(rel, garmentType) {
-      const pa = garmentConfigs[garmentType].printArea;
-      const size = Math.min(rel.size, 1); // never wider than the print area
-      const half = (size * pa.w) / 2;
-      const x = clampVal(pa.x + rel.u * pa.w, pa.x + half, pa.x + pa.w - half);
-      const y = clampVal(pa.y + rel.v * pa.h, pa.y + half, pa.y + pa.h - half);
-      return { pos: { x, y }, scale: (size * pa.w) / 500 };
-    }
-
-    // Standards-accurate center chest: 11″ wide print (clamped to the print
-    // area), top edge ~0.75″ below the top of the printable area.
-    function centerChestPlacement(garmentType) {
-      const cfg = garmentConfigs[garmentType];
-      const pa = cfg.printArea;
-      const wPx = Math.min(11 * cfg.pxPerIn, pa.w);
-      const half = wPx / 2;
-      const y = clampVal(pa.y + 0.75 * cfg.pxPerIn + half, pa.y + half, pa.y + pa.h - half);
-      return { pos: { x: pa.x + pa.w / 2, y }, scale: wPx / 500 };
-    }
-
     // --- Garment layer cache --------------------------------------------------
     // Mask/shadow/highlight extraction is the expensive per-garment step; cache
     // it so N colors of the same garment cost one preprocessing pass.

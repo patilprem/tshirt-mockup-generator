@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:hero-assets": "node scratch/build_hero_assets.cjs",
+    "build:gallery-assets": "node scratch/build_gallery_assets.cjs",
     "preview": "astro preview",
     "astro": "astro"
   },

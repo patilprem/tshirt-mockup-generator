@@ -28,5 +28,6 @@ pnpm-debug.log*
 # only output is public/assets/gallery/onmodel_*.jpg, kept out of the repo
 scratch/onmodel-in/
 
-# screenshot from test_hero_handoff.cjs
+# screenshots from the hero tests
 hero-handoff.png
+hero-handoff-flatlay.png
