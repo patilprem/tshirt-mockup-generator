@@ -490,6 +490,19 @@
 }
 
 /* ─── SECTIONS SHARED ─── */
+/* Used by the how-it-works and batch sections. It had no rule at all — the
+   batch one carried its own inline max-width and margin and inherited
+   everything else, so the two read differently. Those inline values still win
+   where they are set. */
+.section-subtitle {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  max-width: 660px;
+  margin: 0 auto;
+  text-align: center;
+}
+
 .section {
   /* Every other spacing on this page scales with the viewport; this one never
      got a breakpoint, so a 393px phone was given the same 100px top and bottom
