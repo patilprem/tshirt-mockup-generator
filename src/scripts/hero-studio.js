@@ -17,7 +17,7 @@
 //
 // The hero also draws from its OWN copies of every asset, under /assets/hero,
 // built by scratch/build_hero_assets.cjs. The editor keeps the originals: it
-// exports at up to 2160px where this paints at 452, and sharing one set of
+// exports at up to 2160px where this paints at 560, and sharing one set of
 // files meant the homepage paid export resolution for a thumbnail. Every load
 // below falls back to the original path, so a missing variant or a browser
 // that cannot decode WebP degrades to exactly the old behaviour rather than to
@@ -47,14 +47,14 @@ const START_COLOUR = 1;
 const ORDER = ['gallery-f', 'street-m', 'miami-f', 'park-m'];
 const DESIGN_SRC = '/assets/designs/cat.png';
 
-// Four silhouettes chosen because they stay distinct at 46px — sleeve length
+// Four silhouettes chosen because they stay distinct at 54px — sleeve length
 // and neckline are the only cues that survive that size, so this is a tee, a
 // long sleeve, a hoodie and a tank rather than four tees.
 //
 // Drawn as inline SVG rather than as the garment PNGs: those are ~700KB each,
 // and four of them as thumbnails would cost more to fetch than the mode they
 // advertise. The editor's own picker sidesteps this by captioning one shared
-// shirt icon, which a 46px column has no room for.
+// shirt icon, which a 54px column has no room for.
 const GARMENTS = [
   { id: 'crewneck', label: 'Crewneck tee',
     path: 'M8.5 2 2 5.2l1.4 4.2L6 8.6V22h12V8.6l2.6.8L22 5.2 15.5 2a3.5 3.5 0 0 1-7 0z' },
@@ -264,18 +264,37 @@ async function boot(el) {
   }
 
   // Both modes render into a square, so the frame never reflows on toggle:
-  // on model to the 1:1 crop the editor's 1:1 preset uses, flat lay to the
-  // 1000-unit artboard itself, which makes artboard units and canvas pixels
-  // the same thing and keeps the pointer maths trivial.
+  // on model to the 1:1 crop the editor's 1:1 preset uses, flat lay to enough
+  // pixels to cover the frame on the current display.
+  //
+  // Flat lay used to be a flat 1000 — one canvas pixel per artboard unit, which
+  // made the pointer maths trivial. At a 452px frame that was oversampled and
+  // fine; at 560 on a retina screen the frame wants 1120 device pixels and a
+  // fixed 1000 would be upscaled, so the studio would have got bigger and
+  // softer at the same time. The scale factor is now carried explicitly by
+  // flatK() instead of being assumed to be 1.
   function sizeCanvas() {
     if (state.mode === 'flatlay') {
-      if (canvas.width !== 1000) { canvas.width = 1000; canvas.height = 1000; }
+      const css = canvas.clientWidth || 560;
+      const dpr = window.devicePixelRatio || 1;
+      // Never below the artboard (that would throw away detail the maths
+      // assumes) and never past 2000 (beyond which the per-frame composite
+      // costs more than the sharpness is worth on a hero).
+      const want = Math.max(1000, Math.min(2000, Math.round(css * dpr)));
+      if (canvas.width !== want) { canvas.width = want; canvas.height = want; }
       return;
     }
     const entry = onModelCache.get(state.id);
     if (!entry) return;
     const crop = cropRect(entry);
-    const side = Math.round(Math.min(crop.w, crop.h) * 0.75);
+    // Same reasoning as flat lay, with a hard ceiling the photograph sets:
+    // asking for more pixels than the source crop has would upscale the
+    // template rather than sharpen it. The old flat 0.75 factor was tuned for
+    // a 452px frame and left the canvas upscaled once the frame grew.
+    const css = canvas.clientWidth || 560;
+    const dpr = window.devicePixelRatio || 1;
+    const cap = Math.round(Math.min(crop.w, crop.h));
+    const side = Math.max(600, Math.min(cap, Math.round(css * dpr)));
     if (canvas.width !== side) { canvas.width = side; canvas.height = side; }
   }
 
@@ -339,10 +358,20 @@ async function boot(el) {
     drawChrome(entry);
   }
 
+  // Canvas pixels per artboard unit. 1.0 only when the canvas happens to be
+  // exactly 1000 wide; everything that speaks artboard coordinates goes
+  // through it.
+  function flatK() {
+    return canvas.width / 1000;
+  }
+
   // Artboard units per CSS pixel on screen. The shared chrome is specified in
-  // CSS pixels, so this is what converts it into the space being drawn in.
+  // CSS pixels, so this is what converts it into the space being drawn in —
+  // and since the chrome is drawn inside the flatK() transform, that scale has
+  // to be divided back out, exactly as the editor divides out its shirtZoom.
   function flatUnits() {
-    return canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+    const perCss = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+    return perCss / flatK();
   }
 
   function renderFlat() {
@@ -368,14 +397,18 @@ async function boot(el) {
       shadowDepth: FLAT_SHADOW_DEPTH,
       highlightShine: FLAT_HIGHLIGHT,
     }, {
-      scale: 1,
+      scale: flatK(),
       shirtZoom: 1,
       bg: { type: 'wood-white', woodWhite: flat.wood },
       propConfigs: flat.props,
       activeProps: flat.active,
     });
 
+    // Chrome is specified in artboard coordinates, so it is drawn inside the
+    // same transform the scene was composited through.
     const u = flatUnits();
+    ctx.save();
+    ctx.scale(flatK(), flatK());
     if (state.selected === 'design') drawFlatDesignChrome(u);
     drawPropChrome(ctx, {
       propConfigs: flat.props,
@@ -385,6 +418,7 @@ async function boot(el) {
       dragged: state.drag && state.drag.prop ? state.drag.prop : null,
       units: u,
     });
+    ctx.restore();
   }
 
   function drawFlatDesignChrome(u) {
@@ -489,8 +523,8 @@ async function boot(el) {
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
     if (state.mode === 'flatlay') {
-      // Canvas pixels ARE artboard units here — sizeCanvas made them so.
-      return { x: (cx - r.left) * sx, y: (cy - r.top) * sy };
+      const k = flatK();
+      return { x: (cx - r.left) * sx / k, y: (cy - r.top) * sy / k };
     }
     return { x: ((cx - r.left) * sx - state.view.ox) / state.view.k, y: ((cy - r.top) * sy - state.view.oy) / state.view.k };
   }
@@ -734,7 +768,7 @@ async function boot(el) {
       // picker rather than four broken images.
       tilesEl.innerHTML = metas
         .map((m) => `<img src="${HERO}tiles/${m.id}.webp" alt="${m.label}" role="option"
-          aria-selected="${m.id === state.id}" data-id="${m.id}" loading="lazy" width="46" height="46"
+          aria-selected="${m.id === state.id}" data-id="${m.id}" loading="lazy" width="54" height="54"
           onerror="this.onerror=null;this.src='/assets/gallery/onmodel_${m.id}.jpg'" />`)
         .join('');
     }

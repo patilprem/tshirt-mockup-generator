@@ -42,9 +42,16 @@
 </div>
 
 <style>
-  /* The top margin is the toggle's overhang: it hangs 21px above the frame,
+  /* 560px, not 452: the hero column is 570px wide and the row had ~590px of
+     unused height, so the studio was the smallest thing in the largest space.
+     The picker hangs 34px past the right edge, reaching 29px beyond the
+     column — absorbed by the hero's own 60px padding, so nothing clips.
+     scratch/build_hero_assets.cjs is pinned to this number; changing it
+     without regenerating leaves the assets undersized for the frame.
+
+     The top margin is the toggle's overhang: it hangs 21px above the frame,
      and without the clearance it would sit on whatever precedes the studio. */
-  .hs { position: relative; justify-self: center; width: min(452px, 100%); margin-top: 24px; }
+  .hs { position: relative; justify-self: center; width: min(560px, 100%); margin-top: 24px; }
   .hs-frame { position: relative; aspect-ratio: 1; }
 
   .hs-poster,
@@ -92,17 +99,20 @@
     background: hsl(186, 100%, 45%); color: hsl(215, 32%, 8%);
   }
 
+  /* Sized against the frame, not in isolation: at 452px a 46px tile read as
+     proportionate, and beside a 560px studio the same tile reads as an
+     afterthought stuck to the edge. */
   .hs-tiles {
-    flex-direction: column; width: 68px; padding: 13px 0; gap: 10px;
-    justify-content: center; border-radius: 18px;
-    right: -34px; top: 50%; transform: translateY(-50%);
+    flex-direction: column; width: 78px; padding: 14px 0; gap: 11px;
+    justify-content: center; border-radius: 20px;
+    right: -39px; top: 50%; transform: translateY(-50%);
   }
   /* Two contents, one slot: model photographs on model, garment silhouettes in
-     flat lay. Both are 46px boxes in the same column, so the toggle swaps what
+     flat lay. Both are 54px boxes in the same column, so the toggle swaps what
      the column offers without the frame moving. */
   .hs-tiles :global(img),
   .hs-tiles :global(button) {
-    width: 46px; height: 46px; border-radius: 10px; object-fit: cover; cursor: pointer;
+    width: 54px; height: 54px; border-radius: 12px; object-fit: cover; cursor: pointer;
     border: 2px solid hsla(210, 25%, 36%, 0.6); opacity: 0.62;
     background: hsla(215, 25%, 16%, 0.6); transition: opacity 0.2s, border-color 0.2s, color 0.2s;
   }
