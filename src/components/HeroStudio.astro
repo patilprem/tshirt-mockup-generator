@@ -153,7 +153,9 @@
   /* A 300px stage leaves 45px to the viewport edge, so a 56px column hanging
      28px out still clears it — the vertical picker survives the phone. */
   @media (max-width: 980px) {
-    .hs { width: 300px; margin: 42px auto 26px; }
+    /* 30px, not 42: enough to clear the toggle's 19px overhang with room to
+       spare, without stacking onto the hero's own grid gap above it. */
+    .hs { width: 300px; margin: 30px auto 26px; }
     .hs-tiles { width: 56px; padding: 11px 0; gap: 8px; border-radius: 15px; right: -28px; }
     .hs-tiles :global(img),
     .hs-tiles :global(button) { width: 38px; height: 38px; border-radius: 9px; }
