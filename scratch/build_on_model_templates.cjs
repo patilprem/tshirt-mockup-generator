@@ -1184,12 +1184,27 @@ const TEMPLATES = [
         // that otherwise loads one template on demand. About 10KB each instead.
         ...(() => {
           const TW = 112, TH = 168;
+          // Scaled to COVER the tile and centre-cropped, not stretched into it.
+          // Every template was 2:3 when this was written, so drawing the whole
+          // source into a fixed 112x168 box happened to be exact and the
+          // distinction never came up. A template at any other aspect gets
+          // squashed instead: cafe-f is 1285x1600, which is 17% narrower than
+          // it should be in the picker, and the model reads visibly squeezed.
+          //
+          // Cover keeps the picker's grid uniform, which is what the fixed tile
+          // is for, and keeps proportions, which is what it is showing. The
+          // same transform is applied to all three layers — a weight or shade
+          // map cropped differently from its photo would misalign the picker's
+          // live recolour. A 2:3 source scales to exactly 112x168 with nothing
+          // cropped, so the other templates are untouched.
           const small = (srcCv, type, q) => {
             const c = document.createElement('canvas');
             c.width = TW; c.height = TH;
             const x = c.getContext('2d');
             x.imageSmoothingQuality = 'high';
-            x.drawImage(srcCv, 0, 0, TW, TH);
+            const s = Math.max(TW / srcCv.width, TH / srcCv.height);
+            const w = srcCv.width * s, h = srcCv.height * s;
+            x.drawImage(srcCv, (TW - w) / 2, (TH - h) / 2, w, h);
             return c.toDataURL(type, q);
           };
           return {
