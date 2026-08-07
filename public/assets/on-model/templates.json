@@ -457,5 +457,56 @@
       "w": 793,
       "h": 735
     }
+  },
+  {
+    "id": "beach-m",
+    "label": "Beach",
+    "model": "male",
+    "scene": "Sandy beach, open sky, sea behind",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/beach-m-photo.jpg?v=b1b8d114",
+    "weight": "/assets/on-model/beach-m-weight.png?v=339332a4",
+    "shade": "/assets/on-model/beach-m-shade.jpg?v=b3698b98",
+    "thumbPhoto": "/assets/on-model/beach-m-thumb-photo.jpg?v=d756b382",
+    "thumbWeight": "/assets/on-model/beach-m-thumb-weight.png?v=72d8011f",
+    "thumbShade": "/assets/on-model/beach-m-thumb-shade.jpg?v=5592c1b9",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9579,
+      0.9766,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      100.1,
+      63,
+      131
+    ],
+    "quad": {
+      "tl": [
+        383.70000000000005,
+        640
+      ],
+      "tr": [
+        720.3,
+        640
+      ],
+      "br": [
+        719.8,
+        1040
+      ],
+      "bl": [
+        383.20000000000005,
+        1040
+      ]
+    },
+    "bbox": {
+      "x": 134,
+      "y": 425,
+      "w": 851,
+      "h": 1025
+    }
   }
 ]
