@@ -25,6 +25,11 @@ fs.mkdirSync(SHOTS, { recursive: true });
 // which is exactly what both pages expect to be handed.
 const SAMPLE = path.join(ROOT, 'public/assets/on-model/gallery-f-photo.jpg');
 
+// The raw generation whose hem sits against pale trousers — the shape that drew
+// a broken dark line along the bottom edge of the shirt in every colour, and
+// passed every gate while doing it.
+const HEM_SAMPLE = path.join(ROOT, 'scratch/on-model-src/window-f.webp');
+
 function chromePath() {
   if (process.env.PW_CHROMIUM) return process.env.PW_CHROMIUM;
   const base = '/opt/pw-browsers';
@@ -162,15 +167,59 @@ async function checkColourView(browser) {
   await page.close();
 }
 
+// The complaint this was written for was not only that a hem broke, but that
+// the validator passed it while it did. So what is asserted here is that the
+// gate SEES this defect class: the hem-against-pale-trousers photograph is fed
+// to the validator and its edge-audit row must not come back clean.
+//
+// That row used to read 1 px on this image and sat green, because the audit
+// inspected only pixels the matte was confident about and the whole broken line
+// lived in the ones it had given up on. Auditing every boundary pixel — and
+// subtracting the excursion the photograph already has, so a real hem shadow
+// cancels — it reads in the tens and flags. The image genuinely does still have
+// a residue the pipeline cannot remove, where the matte has no answer at all,
+// so 'not clean' is the honest verdict and the one to hold it to.
+//
+// If a later change makes this photograph genuinely clean at the edges, this
+// check will fail. That is deliberate: the number is a claim about a real
+// image, and it should be re-read by a person rather than quietly relaxed.
+async function checkEdgeAuditSees(browser) {
+  console.log('\nedge audit (template-studio.html)');
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1100 } });
+  await watch(page, 'edge-audit');
+  await page.goto(wrap(path.join(DIST, 'template-studio.html')));
+  await page.setInputFiles('#file', HEM_SAMPLE);
+  await page.waitForSelector('#valResults:not(.hidden)', { timeout: 120000 });
+  await page.waitForTimeout(400);
+
+  const row = await page.evaluate(`(() => {
+    const el = [...document.querySelectorAll('#checks .check')]
+      .find(e => /Clean matte edge/.test(e.textContent));
+    if (!el) return null;
+    return { cls: el.className, num: el.querySelector('.num').textContent.trim() };
+  })()`);
+
+  check('the edge audit row is present', !!row, row ? row.num : 'row missing');
+  if (row) {
+    check('the edge audit does not pass a hem that breaks', !/\bok\b/.test(row.cls),
+      `${row.num} — ${/fail/.test(row.cls) ? 'fail' : /warn/.test(row.cls) ? 'warn' : 'ok'}`);
+  }
+  await page.screenshot({ path: path.join(SHOTS, 'edge-audit.png'), fullPage: true });
+  await page.close();
+}
+
 (async () => {
-  if (!fs.existsSync(SAMPLE)) {
-    console.error('missing sample photograph: ' + SAMPLE);
-    process.exit(1);
+  for (const f of [SAMPLE, HEM_SAMPLE]) {
+    if (!fs.existsSync(f)) {
+      console.error('missing sample photograph: ' + f);
+      process.exit(1);
+    }
   }
   const browser = await chromium.launch({ executablePath: chromePath() });
   try {
     await checkStudio(browser);
     await checkColourView(browser);
+    await checkEdgeAuditSees(browser);
   } finally {
     await browser.close();
   }
