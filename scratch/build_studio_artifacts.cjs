@@ -22,6 +22,7 @@
  */
 
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
@@ -84,8 +85,29 @@ function studioFragment(src) {
   return `<title>${title}</title>\n\n${head.trim()}\n${body.trim()}\n`;
 }
 
+// Which revision of the pipeline this page carries. The published copies do not
+// update themselves — the maths can move on in the repo while a browser tab is
+// still showing a page from two changes ago, which looks perfectly plausible and
+// is how a fixed defect gets reported as still broken. Stamping the build makes
+// the two distinguishable at a glance, on the page itself.
+function stamp() {
+  const files = ['scratch/template-studio.html', 'scratch/build_on_model_templates.cjs'];
+  try {
+    const sha = execFileSync('git', ['log', '-1', '--format=%h', '--', ...files],
+      { cwd: ROOT, encoding: 'utf8' }).trim();
+    const when = execFileSync('git', ['log', '-1', '--format=%cs', '--', ...files],
+      { cwd: ROOT, encoding: 'utf8' }).trim();
+    const dirty = execFileSync('git', ['status', '--porcelain', '--', ...files],
+      { cwd: ROOT, encoding: 'utf8' }).trim();
+    return `${when} ${sha}${dirty ? ' +local edits' : ''}`;
+  } catch {
+    return 'unversioned build';
+  }
+}
+
 function main() {
   const studioSrc = fs.readFileSync(STUDIO, 'utf8');
+  const built = stamp();
 
   // The Studio's stylesheet and its two pieces of pipeline maths, lifted whole.
   const style = slice(studioSrc, '<style>', '</style>', 'stylesheet');
@@ -108,7 +130,9 @@ function main() {
   fs.mkdirSync(OUT, { recursive: true });
   fs.mkdirSync(LOCAL, { recursive: true });
 
-  const write = (name, fragment) => {
+  const write = (name, fragmentRaw) => {
+    const fragment = fragmentRaw.replace('<span id="buildStamp"></span>',
+      `<span id="buildStamp">· ${built}</span>`);
     const a = path.join(OUT, name);
     fs.writeFileSync(a, fragment);
     console.log(`wrote ${path.relative(ROOT, a)} (${kb(fs.statSync(a).size)})`);
