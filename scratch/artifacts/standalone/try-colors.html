@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour View</title>
+</head>
+<body>
+<title>Colour View</title>
+
+<style>
+:root {
+    --paper: #f6f4f9; --surface: #ffffff; --sunk: #efecf4; --ink: #1b1725;
+    --muted: #6b6480; --line: #e3dfec; --accent: #6d45c4; --accent-soft: #ece5fa;
+    --ok: #1d7a4f; --ok-soft: #e2f3ea; --warn: #9a6b1f; --warn-soft: #faf0dc;
+    --fail: #b03636; --fail-soft: #fbe7e7;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --shadow: 0 1px 2px rgba(27,23,37,.06), 0 8px 24px -12px rgba(27,23,37,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:#121019; --surface:#1b1826; --sunk:#16131f; --ink:#ece9f4;
+      --muted:#968ead; --line:#2d2840; --accent:#a684f0; --accent-soft:#2a2140;
+      --ok:#5ecf96; --ok-soft:#15291f; --warn:#e0b45c; --warn-soft:#2b2313;
+      --fail:#e07a7a; --fail-soft:#301717;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper:#f6f4f9; --surface:#ffffff; --sunk:#efecf4; --ink:#1b1725;
+    --muted:#6b6480; --line:#e3dfec; --accent:#6d45c4; --accent-soft:#ece5fa;
+    --ok:#1d7a4f; --ok-soft:#e2f3ea; --warn:#9a6b1f; --warn-soft:#faf0dc;
+    --fail:#b03636; --fail-soft:#fbe7e7;
+    --shadow: 0 1px 2px rgba(27,23,37,.06), 0 8px 24px -12px rgba(27,23,37,.18);
+  }
+  :root[data-theme="dark"] {
+    --paper:#121019; --surface:#1b1826; --sunk:#16131f; --ink:#ece9f4;
+    --muted:#968ead; --line:#2d2840; --accent:#a684f0; --accent-soft:#2a2140;
+    --ok:#5ecf96; --ok-soft:#15291f; --warn:#e0b45c; --warn-soft:#2b2313;
+    --fail:#e07a7a; --fail-soft:#301717;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 36px 22px 80px; }
+  header { margin-bottom: 26px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  h1 { margin: 6px 0 8px; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.02em; }
+  .lede { margin: 0; color: var(--muted); max-width: 68ch; }
+
+  .steps { display: flex; flex-direction: column; gap: 26px; margin-top: 26px; }
+  .step {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 22px;
+  }
+  .step-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .step-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--accent); letter-spacing: .08em;
+  }
+  .step h2 { margin: 0; font-size: 1.12rem; }
+  .step .sub { color: var(--muted); font-size: 13.5px; margin: 4px 0 16px; max-width: 72ch; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  input[type="text"], select, textarea {
+    font: inherit; color: var(--ink); background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  }
+  textarea { width: 100%; min-height: 190px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; }
+  .btn {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 9px;
+    padding: 9px 16px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+
+  .drop {
+    border: 2px dashed var(--line); border-radius: 12px; background: var(--sunk);
+    padding: 34px 20px; text-align: center; color: var(--muted); cursor: pointer;
+    transition: border-color .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); }
+  .drop b { color: var(--ink); }
+  .drop input { display: none; }
+
+  .val-layout { display: grid; grid-template-columns: 280px minmax(0,1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .val-layout { grid-template-columns: 1fr; } }
+  .val-layout img.preview, .val-layout canvas.preview {
+    width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block;
+  }
+  .checks { display: flex; flex-direction: column; gap: 7px; }
+  .check {
+    display: grid; grid-template-columns: 70px minmax(0,1fr) auto; gap: 10px;
+    align-items: baseline; padding: 8px 12px; border-radius: 8px;
+    background: var(--sunk); font-size: 13.5px;
+  }
+  .check .tag {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    letter-spacing: .08em; padding: 2px 7px; border-radius: 5px; text-align: center;
+  }
+  .check.ok .tag { background: var(--ok-soft); color: var(--ok); }
+  .check.warn .tag { background: var(--warn-soft); color: var(--warn); }
+  .check.fail .tag { background: var(--fail-soft); color: var(--fail); }
+  .check .num { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .verdict {
+    margin-top: 14px; padding: 13px 16px; border-radius: 10px; font-weight: 700;
+  }
+  .verdict.ok { background: var(--ok-soft); color: var(--ok); }
+  .verdict.warn { background: var(--warn-soft); color: var(--warn); }
+  .verdict.fail { background: var(--fail-soft); color: var(--fail); }
+  .verdict small { display: block; font-weight: 400; margin-top: 3px; font-size: 12.5px; }
+
+  .try-layout { display: grid; grid-template-columns: minmax(0,1fr) 230px; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .try-layout { grid-template-columns: 1fr; } }
+  #tryCanvas { width: 100%; max-width: 430px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); display: block; }
+  .swatches { display: grid; grid-template-columns: repeat(6, 34px); gap: 8px; }
+  .sw {
+    width: 34px; height: 34px; border-radius: 50%; cursor: pointer; padding: 0;
+    border: 1px solid var(--line);
+    box-shadow: inset 0 0 0 2px var(--surface);
+  }
+  .sw[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--surface), 0 0 0 2px var(--accent); }
+  .maps { display: flex; gap: 8px; margin-top: 12px; }
+  .maps figure { margin: 0; flex: 1; }
+  .maps canvas { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
+  .maps figcaption { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .06em; }
+
+  .push-code {
+    background: var(--sunk); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; font-family: var(--mono); font-size: 12.5px;
+    white-space: pre-wrap; overflow-x: auto;
+  }
+  .insp-drop {
+    border: 2px dashed var(--line); border-radius: 10px; background: var(--sunk);
+    padding: 14px 16px; font-size: 12.5px; color: var(--muted); cursor: pointer;
+    transition: border-color .15s;
+  }
+  .insp-drop:hover { border-color: var(--accent); }
+  .insp-drop.armed { border-color: var(--accent); background: var(--accent-soft); }
+  .insp-drop b { color: var(--ink); }
+  .insp-drop input { display: none; }
+  .insp-out { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 14px; margin-top: 10px; align-items: start; }
+  .insp-out img { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
+    background: var(--sunk); border: 1px solid var(--line); border-radius: 999px;
+    padding: 3px 10px; color: var(--ink);
+  }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .fix-head { display: flex; align-items: center; gap: 10px; }
+  .fix-head b { font-size: 13px; }
+  #fixOut {
+    width: 100%; min-height: 150px; font-family: var(--mono); font-size: 12px;
+    line-height: 1.6; color: var(--ink); background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+  }
+  .meta-preview {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+  }
+  .meta-preview span {
+    font-family: var(--mono); font-size: 11.5px; background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px;
+  }
+  .meta-preview b { color: var(--accent); font-weight: 700; }
+  .lock-row {
+    display: flex; gap: 9px; align-items: flex-start; margin-top: 10px;
+    font-size: 12.5px; color: var(--muted); cursor: pointer; line-height: 1.5;
+  }
+  .lock-row input { accent-color: var(--accent); margin-top: 2px; flex: 0 0 auto; }
+  .lock-row b { color: var(--ink); font-weight: 600; }
+  label.f.locked { opacity: .55; }
+  label.f.locked input, label.f.locked select { cursor: not-allowed; }
+  .hidden { display: none !important; }
+  .note { font-size: 12.5px; color: var(--muted); }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Page-specific. Everything above comes from template-studio.html, so this
+   page and the Template Studio are visibly one tool. */
+
+.view-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 22px; align-items: start; }
+@media (max-width: 780px) { .view-layout { grid-template-columns: 1fr; } }
+
+#mainCanvas {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--sunk);
+  display: block;
+}
+
+.rail-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.rail-block > .label {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.hex-row { display: flex; align-items: center; gap: 8px; }
+.hex-row input[type="color"] {
+  width: 40px; height: 32px; padding: 2px; cursor: pointer;
+  background: var(--sunk); border: 1px solid var(--line); border-radius: 8px;
+}
+.hex-row .val { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* The sheet: the same photograph in every shipping colourway, side by side.
+   One colour at a time answers "does this work"; all twelve at once answers
+   "is anything about this template colour-dependent", which is the question
+   that actually decides whether it ships. */
+.grid-sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.grid-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.grid-cell button {
+  padding: 0; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+  background: var(--sunk); cursor: zoom-in; display: block;
+  transition: border-color .15s, box-shadow .15s;
+}
+.grid-cell button:hover { border-color: var(--accent); }
+.grid-cell[data-current] button { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.grid-cell canvas { width: 100%; display: block; }
+.grid-cell figcaption,
+.grid-cell .cap {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-family: var(--mono); font-size: 11.5px; }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+.busy { font-family: var(--mono); font-size: 12px; color: var(--muted); min-height: 18px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">FreeTeeMockup · internal</span>
+    <h1>Colour View</h1>
+    <p class="lede">
+      Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
+      every shipping colourway, recoloured by the same maths the site runs. No upload,
+      no build step: the analysis happens in this tab, on the image you paste.
+    </p>
+  </header>
+
+  <div class="steps">
+    <section class="step">
+      <div class="step-head"><h2>Paste the photo</h2></div>
+      <p class="sub">
+        Ctrl/Cmd-V anywhere on this page, drop a file onto the box, or click it to browse.
+        The photo never leaves the tab.
+      </p>
+      <div class="drop" id="drop">
+        <p><b>Paste, drop or click</b> to load a candidate template</p>
+        <p class="note">JPEG, PNG or WebP · analysed at up to 1600px on the long edge</p>
+        <input type="file" id="file" accept="image/*">
+      </div>
+      <p class="busy" id="status"></p>
+    </section>
+
+    <section class="step hidden" id="viewStep">
+      <div class="step-head"><h2>One colour at a time</h2></div>
+      <p class="sub">
+        The recolour runs the shipping formula: the photograph plus the shirt's own weight
+        times the relit target, with the violet it was photographed in subtracted back out.
+      </p>
+      <div class="view-layout">
+        <div>
+          <canvas id="mainCanvas" width="600" height="800" aria-label="Recoloured photograph"></canvas>
+          <div class="maps" id="mapsRow">
+            <figure><canvas id="mapWeight"></canvas><figcaption>weight</figcaption></figure>
+            <figure><canvas id="mapClip"></canvas><figcaption>print area</figcaption></figure>
+            <figure><canvas id="mapShade"></canvas><figcaption>shade</figcaption></figure>
+          </div>
+        </div>
+
+        <div>
+          <div class="rail-block">
+            <span class="label">Shipping palette</span>
+            <div class="swatches" id="swatches"></div>
+          </div>
+
+          <div class="rail-block">
+            <span class="label">Any colour</span>
+            <div class="hex-row">
+              <input type="color" id="custom" value="#ffffff" aria-label="Custom shirt colour">
+              <span class="val" id="customVal">#FFFFFF</span>
+            </div>
+          </div>
+
+          <div class="rail-block">
+            <span class="label">Compare</span>
+            <button class="btn" id="toggleOriginal" aria-pressed="false">Show the violet original</button>
+            <button class="btn" id="download">Download this colour</button>
+          </div>
+
+          <div class="rail-block">
+            <span class="label">What the analysis measured</span>
+            <dl class="stats" id="stats"></dl>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="step hidden" id="gridStep">
+      <div class="step-head"><h2>Every colour at once</h2></div>
+      <p class="sub">
+        Twelve frames from one analysis. A template that only fails in one colourway —
+        violet surviving in the shadows of a dark shirt, an edge that goes chalky on a pale
+        one — fails here and nowhere else. Click a frame to bring it up above.
+      </p>
+      <div class="grid-sheet" id="gridSheet"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const MAX_EDGE = 1600;
+function hsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const M = Math.max(r, g, b), m = Math.min(r, g, b), d = M - m;
+  let h = 0;
+  if (d) { if (M === r) h = ((g - b) / d) % 6; else if (M === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+  return [h, M ? d / M : 0, M];
+}
+const ad = (a, b) => { let d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+const smooth = (x, a, b) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+function analyze(img) {
+  const k = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+  const W = Math.round(img.width * k), H = Math.round(img.height * k), N = W * H;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, W, H);
+  const src = ctx.getImageData(0, 0, W, H).data;
+
+  const bins = new Float64Array(36);
+  const hA = new Float32Array(N), sA = new Float32Array(N), vA = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const o = i * 4; const [h, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
+    hA[i] = h; sA[i] = s; vA[i] = v;
+    if (s > 0.25 && v > 0.15) bins[Math.floor(h / 10) % 36] += s * v;
+  }
+  let bb = 0, bv = -1;
+  for (let i = 0; i < 36; i++) if (bins[i] > bv) { bv = bins[i]; bb = i; }
+  const shirtHue = bb * 10 + 5;
+
+  const wRaw = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const hd = ad(hA[i], shirtHue);
+    const wh = hd <= 22 ? 1 : hd >= 40 ? 0 : 0.5 + 0.5 * Math.cos((hd - 22) / 18 * Math.PI);
+    wRaw[i] = wh * smooth(sA[i], 0.08, 0.22) * smooth(vA[i], 0.05, 0.12);
+  }
+
+  const vis = new Uint8Array(N), blobs = [];
+  let best = null, bestN = 0;
+  const qx = new Int32Array(N), qy = new Int32Array(N);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i0 = y * W + x;
+    if (vis[i0] || wRaw[i0] < 0.5) continue;
+    let qh = 0, qt = 0; qx[qt] = x; qy[qt] = y; qt++; vis[i0] = 1;
+    const mem = [i0];
+    while (qh < qt) {
+      const cx = qx[qh], cy = qy[qh]; qh++;
+      for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (vis[ni] || wRaw[ni] < 0.5) continue;
+        vis[ni] = 1; qx[qt] = nx; qy[qt] = ny; qt++; mem.push(ni);
+      }
+    }
+    blobs.push(mem);
+    if (mem.length > bestN) { bestN = mem.length; best = mem; }
+  }
+  if (!best) return { W, H, shirtHue, noGarment: true };
+
+  let bx0 = W, by0 = H, bx1 = 0, by1 = 0;
+  for (const i of best) { const x = i % W, y = (i / W) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+  const PAD = Math.round(Math.max(bx1 - bx0, by1 - by0) * 0.25), FMIN = bestN * 0.002;
+  const kept = [];
+  let strayViolet = 0;
+  for (const m of blobs) {
+    if (m === best) { kept.push(m); continue; }
+    if (m.length < FMIN) { continue; }
+    let ccx = 0, ccy = 0;
+    for (const i of m) { ccx += i % W; ccy += (i / W) | 0; }
+    ccx /= m.length; ccy /= m.length;
+    if (ccx >= bx0 - PAD && ccx <= bx1 + PAD && ccy >= by0 - PAD && ccy <= by1 + PAD) kept.push(m);
+    else strayViolet += m.length;
+  }
+  const fragments = kept.length;
+  const blob = kept.flat();
+
+  const dil = m => { const o = new Uint8Array(N); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (m[i] || (x + 1 < W && m[i + 1]) || (x > 0 && m[i - 1]) || (y + 1 < H && m[i + W]) || (y > 0 && m[i - W])) o[i] = 1; } return o; };
+  const ero = m => { const o = new Uint8Array(N); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; const l = x > 0 ? m[i - 1] : 0, rr = x + 1 < W ? m[i + 1] : 0, u = y > 0 ? m[i - W] : 0, d = y + 1 < H ? m[i + W] : 0; o[i] = (m[i] && l && rr && u && d) ? 1 : 0; } return o; };
+
+  const isDarkShadow = i => { const v = vA[i]; if (v >= 0.32) return false; if (v < 0.12 && sA[i] < 0.15) return true; return ad(hA[i], shirtHue) < 100; };
+  const plausible = new Uint8Array(N);
+  for (let i = 0; i < N; i++) plausible[i] = (wRaw[i] > 0.02 || isDarkShadow(i)) ? 1 : 0;
+  let core = new Uint8Array(N);
+  for (const i of blob) core[i] = 1;
+  const CR = Math.max(3, Math.round(W / 220));
+  let cl = core;
+  for (let i = 0; i < CR; i++) cl = dil(cl);
+  for (let i = 0; i < CR; i++) cl = ero(cl);
+  for (let i = 0; i < N; i++) core[i] = (cl[i] && plausible[i]) ? 1 : 0;
+
+  const FEATHER = Math.max(1, Math.round(W / 1000));
+  function boxBlur(srcArr, R) {
+    const tmp = new Float32Array(N), dst = new Float32Array(N);
+    for (let y = 0; y < H; y++) {
+      let acc = 0;
+      for (let x = -R; x <= R; x++) acc += srcArr[y * W + Math.min(W - 1, Math.max(0, x))];
+      for (let x = 0; x < W; x++) {
+        tmp[y * W + x] = acc / (R * 2 + 1);
+        const out = Math.min(W - 1, Math.max(0, x - R));
+        const inn = Math.min(W - 1, Math.max(0, x + R + 1));
+        acc += srcArr[y * W + inn] - srcArr[y * W + out];
+      }
+    }
+    for (let x = 0; x < W; x++) {
+      let acc = 0;
+      for (let y = -R; y <= R; y++) acc += tmp[Math.min(H - 1, Math.max(0, y)) * W + x];
+      for (let y = 0; y < H; y++) {
+        dst[y * W + x] = acc / (R * 2 + 1);
+        const out = Math.min(H - 1, Math.max(0, y - R));
+        const inn = Math.min(H - 1, Math.max(0, y + R + 1));
+        acc += tmp[inn * W + x] - tmp[out * W + x];
+      }
+    }
+    return dst;
+  }
+  let clip = new Float32Array(N);
+  for (let i = 0; i < N; i++) clip[i] = core[i] ? 1 : 0;
+  for (let p = 0; p < 3; p++) clip = boxBlur(clip, FEATHER);
+
+  const gate = new Uint8Array(N);
+  {
+    const DMX = Math.max(30, Math.round(W / 8));
+    const dist = new Int16Array(N).fill(-1);
+    let fh = 0, ft = 0;
+    const fx2 = new Int32Array(N), fy2 = new Int32Array(N);
+    for (let i = 0; i < N; i++) if (core[i]) { dist[i] = 0; fx2[ft] = i % W; fy2[ft] = (i / W) | 0; ft++; }
+    while (fh < ft) {
+      const cx2 = fx2[fh], cy2 = fy2[fh]; fh++;
+      const dd = dist[cy2 * W + cx2];
+      if (dd >= DMX) continue;
+      for (const [nx, ny] of [[cx2 + 1, cy2], [cx2 - 1, cy2], [cx2, cy2 + 1], [cx2, cy2 - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (dist[ni] !== -1 || !plausible[ni]) continue;
+        dist[ni] = dd + 1; fx2[ft] = nx; fy2[ft] = ny; ft++;
+      }
+    }
+    let gm = new Uint8Array(N);
+    for (let i = 0; i < N; i++) gm[i] = dist[i] !== -1 ? 1 : 0;
+    const GR = Math.max(3, Math.round(W / 150));
+    for (let i = 0; i < GR; i++) gm = dil(gm);
+    gate.set(gm);
+  }
+
+  // Channel ordering, as a backstop for what the hue angle loses. Violet
+  // fabric keeps GREEN as its smallest channel under any illuminant, because
+  // dimming scales all three channels together — the ordering survives shadow
+  // that the angle does not. The angle swings toward whatever light reaches
+  // the pixel, in a direction set by the pose: a sky-lit fold reads bluer,
+  // fabric shadowed by hair or an arm loses the blue skylight and reads up to
+  // +60deg warmer, past where the window has collapsed. Skin, hair and wood
+  // put BLUE lowest, foliage puts green highest, neutrals have no strict
+  // minimum. Saturation keeps it off edge mixes, which the background dilutes.
+  // Kept in step with build_on_model_templates.cjs — the studio has to fail
+  // what the builder fails or it waves through images the builder rejects.
+  const orderEv = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    if (!gate[i]) continue;
+    const o = i * 4;
+    const vMax = Math.max(src[o], src[o + 1], src[o + 2]) || 1;
+    const gMin = Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) / vMax;
+    orderEv[i] = smooth(gMin, 0.06, 0.14)
+      * smooth(sA[i], 0.20, 0.32)
+      * (1 - smooth(vA[i], 0.55, 0.72));
+  }
+
+  const outside = new Uint8Array(N);
+  {
+    let fh2 = 0, ft2 = 0;
+    const ox = new Int32Array(N), oy = new Int32Array(N);
+    const push = (x, y) => { const i = y * W + x; if (!outside[i] && !core[i]) { outside[i] = 1; ox[ft2] = x; oy[ft2] = y; ft2++; } };
+    for (let x = 0; x < W; x++) { push(x, 0); push(x, H - 1); }
+    for (let y = 0; y < H; y++) { push(0, y); push(W - 1, y); }
+    while (fh2 < ft2) {
+      const cx2 = ox[fh2], cy2 = oy[fh2]; fh2++;
+      for (const [nx, ny] of [[cx2 + 1, cy2], [cx2 - 1, cy2], [cx2, cy2 + 1], [cx2, cy2 - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        push(nx, ny);
+      }
+    }
+  }
+
+  const sgn = h => ((h - shirtHue + 540) % 360) - 180;
+  let wMap = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    if (!gate[i]) continue;
+    const d = sgn(hA[i]);
+    // Shadows shift blue-ward: in a deep fold the ambient sky/room bounce
+        // dominates over the direct light, so violet fabric reads up to ~70deg
+        // bluer than in full light. A fixed limit clips exactly those pixels and
+        // leaves half-recoloured specks in creases. Denim stays excluded because
+        // the widening only applies to dark pixels and denim is bright.
+        const lim = d >= 0 ? 65 : 45 + 25 * (1 - smooth(vA[i], 0.10, 0.30));
+    const a = Math.abs(d);
+    const wide = (a <= 30 ? 1 : a >= lim ? 0 : 0.5 + 0.5 * Math.cos((a - 30) / (lim - 30) * Math.PI))
+      * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08);
+    const dark = (a < 80 ? 1 : 0) * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34));
+    const enclosed = (!core[i] && !outside[i])
+      ? (1 - smooth(sA[i], 0.10, 0.20)) * (1 - smooth(vA[i], 0.16, 0.28)) : 0;
+    // border-connected background never takes the clip floor — letting it
+    // paints the target colour onto the wall as a rim around the silhouette
+    const clipIn = outside[i] ? 0 : clip[i];
+    wMap[i] = Math.max(clipIn, wRaw[i], wide, dark, enclosed);
+  }
+  wMap = boxBlur(wMap, 1);
+  // Background-side recolour weight follows the strict key only, smoothly
+  // tapered (a hard cutoff makes a jagged edge; painting further out risks a
+  // glowing target-coloured rim on pale shirts). All other background-side
+  // violet — bloom scattered off the fabric, compression bleed, seam pixels
+  // mixed with skin (mauve corridor: hue up to +80 magenta-ward, violet
+  // content showing as blue exceeding green, which skin, foliage and warm
+  // walls never have) — is NEUTRALISED IN THE PHOTO: chroma pulled toward
+  // the pixel's own luminance in proportion to the evidence. That is
+  // target-independent, so it can never glow and never paint.
+  const evAny = new Float32Array(N);
+  const neut = new Float32Array(N);
+  for (let i = 0; i < N; i++) if (outside[i]) {
+    const d2 = sgn(hA[i]);
+    const lim2 = d2 >= 0 ? 65 : 45 + 25 * (1 - smooth(vA[i], 0.10, 0.30));
+    const a2 = Math.abs(d2);
+    const hueClose = a2 <= 30 ? 1 : a2 >= lim2 ? 0 : 0.5 + 0.5 * Math.cos((a2 - 30) / (lim2 - 30) * Math.PI);
+    const evChroma = hueClose * smooth(sA[i], 0.05, 0.18);
+    const o = i * 4;
+    // green-deficit: violet content pushes both R and B above G; skin,
+    // foliage and warm walls never do. Catches mauve seam mixes whose
+    // blue-excess alone is masked by the skin's red dominance.
+    const gd = Math.max(0, (src[o] + src[o + 2]) / 2 - src[o + 1]) / 255;
+    const hueMix = d2 >= -10 && d2 <= 70 ? 1
+      : d2 > 70 && d2 < 90 ? 0.5 + 0.5 * Math.cos((d2 - 70) / 20 * Math.PI)
+      : d2 < -10 && d2 > -25 ? 0.5 + 0.5 * Math.cos((-10 - d2) / 15 * Math.PI)
+      : 0;
+    const evMix = hueMix * smooth(gd, 0.015, 0.07) * smooth(clip[i], 0.01, 0.12);
+    const tap = smooth(wRaw[i], 0.008, 0.05);
+    // A deep underarm or hem crevice is GARMENT in shadow, not an edge
+    // mix: the strict key drops it (hue drifts and the value floor
+    // cuts it) but it is still strongly saturated violet, which a
+    // fabric/background mixture never is — a mixed pixel's saturation
+    // is diluted by the background. High saturation inside the violet
+    // hue corridor therefore means fabric, and it keeps full weight so
+    // the crevice recolours to a dark tone of the target instead of
+    // staying black under a white shirt.
+    const fabricEv = hueClose * smooth(sA[i], 0.18, 0.32);
+    wMap[i] *= Math.max(tap, fabricEv, orderEv[i]);
+    neut[i] = Math.max(evChroma, evMix);
+    evAny[i] = Math.max(tap, fabricEv, orderEv[i], evChroma, evMix);
+  }
+
+  const cV = [], cR = [], cG = [], cB = [];
+  for (let i = 0; i < N; i++) if (core[i]) { const o = i * 4; cV.push(vA[i]); cR.push(src[o]); cG.push(src[o + 1]); cB.push(src[o + 2]); }
+  cV.sort((x, y) => x - y);
+  const pct = p => cV[Math.min(cV.length - 1, Math.floor(cV.length * p))];
+  const vRef = pct(0.88), REL_MAX = 1.45;
+  const med = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+  const shirtRGB = [med(cR), med(cG), med(cB)];
+  const chromaMax = Math.max(...shirtRGB);
+  const violetBase = shirtRGB.map(c => c / chromaMax * vRef * 255);
+
+  const aR = [], aG = [], aB = [];
+  for (let i = 0; i < N; i += 5) {
+    if (gate[i]) continue;
+    const o = i * 4; const [h, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
+    if (s < 0.18 && v > 0.55) { aR.push(src[o]); aG.push(src[o + 1]); aB.push(src[o + 2]); }
+  }
+  const amb = aR.length > 500 ? [med(aR), med(aG), med(aB)] : [200, 198, 194];
+  const aM = Math.max(...amb);
+  const ambientTint = amb.map(c => c / aM);
+
+  // an isolated painted pixel inside dark background-side shadow reads
+  // as speckle; give it its darkest neighbour's weight so crevices are
+  // treated uniformly (photographic penumbra, not dots)
+  {
+    const wm2 = new Float32Array(wMap);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (!outside[i] || vA[i] > 0.34 || evAny[i] > 0.25) continue;
+      let mn = wMap[i];
+      for (const ni of [i - 1, i + 1, i - W, i + W, i - W - 1, i - W + 1, i + W - 1, i + W + 1])
+        if (wMap[ni] < mn) mn = wMap[ni];
+      wm2[i] = mn;
+    }
+    wMap = wm2;
+  }
+
+  const shadeVal = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const rel = vA[i] / Math.max(1e-6, vRef);
+    shadeVal[i] = Math.max(0, Math.min(1, rel / REL_MAX));
+  }
+  // a boundary pixel's own brightness is contaminated by the background behind
+  // it; propagate fabric shade outward so its delta is the fabric's delta
+  {
+    const have = new Uint8Array(N);
+    for (let i = 0; i < N; i++) have[i] = outside[i] ? 0 : 1;
+    for (let pass = 0; pass < 8; pass++) {
+      const nh = new Uint8Array(have);
+      for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        const i = y * W + x;
+        if (have[i] || !gate[i] || !outside[i]) continue;
+        let sum = 0, c = 0;
+        for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sum += shadeVal[ni]; c++; }
+        // min(): a boundary pixel takes the fabric shade only when its own
+        // reading is BRIGHTER (background contamination). A dark crevice
+        // pixel keeps its own darkness — assigning it the lit fabric shade
+        // makes the runtime add a lit-target-minus-lit-violet delta to a
+        // dark pixel: green flecks on white. Safe now that the matting bake
+        // keeps subtraction self-consistent at any shade.
+        if (c) { shadeVal[i] = Math.min(shadeVal[i], sum / c); nh[i] = 1; }
+      }
+      have.set(nh);
+    }
+  }
+  const shade = new Uint8ClampedArray(N);
+  for (let i = 0; i < N; i++) shade[i] = Math.round(shadeVal[i] * 255);
+
+  // ---- boundary alpha matting (same as builder) ----
+  // Every silhouette pixel is a*fabric + (1-a)*background; a is SOLVED per
+  // pixel from the diffused fabric and background colours, the photo baked to
+  // a*V(shade) + (1-a)*background, and the runtime reconstructs the convex
+  // blend (1-a)*background + a*T(shade) — dark outlines, halos, glow and
+  // leftover violet are all outside that hull. Unexplainable pixels (hair,
+  // real seam shadows) keep their photographic reality via low confidence.
+  const lutVm = relightLut(violetBase, { ambientTint, relMax: REL_MAX });
+  const RING = Math.max(4, Math.round(W / 220));
+  const distC = new Int16Array(N).fill(-1);
+  {
+    let qh = 0, qt = 0;
+    const qxx = new Int32Array(N), qyy = new Int32Array(N);
+    for (let i = 0; i < N; i++) if (core[i]) { distC[i] = 0; qxx[qt] = i % W; qyy[qt] = (i / W) | 0; qt++; }
+    while (qh < qt) {
+      const cx3 = qxx[qh], cy3 = qyy[qh]; qh++;
+      const dd = distC[cy3 * W + cx3];
+      if (dd >= RING) continue;
+      for (const [nx, ny] of [[cx3 + 1, cy3], [cx3 - 1, cy3], [cx3, cy3 + 1], [cx3, cy3 - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (distC[ni] !== -1) continue;
+        distC[ni] = dd + 1; qxx[qt] = nx; qyy[qt] = ny; qt++;
+      }
+    }
+  }
+  const ring = new Uint8Array(N);
+  for (let i = 0; i < N; i++) if (outside[i] && distC[i] > 0) ring[i] = 1;
+  const diffuseInto = (seedMask) => {
+    const out = new Float32Array(N * 3);
+    const fd = new Int16Array(N).fill(-1);
+    const have = new Uint8Array(N);
+    for (let i = 0; i < N; i++) if (seedMask(i)) {
+      have[i] = 1; fd[i] = 0; const o = i * 4;
+      out[i * 3] = src[o]; out[i * 3 + 1] = src[o + 1]; out[i * 3 + 2] = src[o + 2];
+    }
+    for (let pass = 0; pass < RING + 6; pass++) {
+      const nh = new Uint8Array(have);
+      for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        const i = y * W + x;
+        if (have[i] || !ring[i]) continue;
+        let sr = 0, sg = 0, sb2 = 0, c = 0;
+        for (const ni of [i - 1, i + 1, i - W, i + W]) if (have[ni]) { sr += out[ni * 3]; sg += out[ni * 3 + 1]; sb2 += out[ni * 3 + 2]; c++; }
+        if (c) { out[i * 3] = sr / c; out[i * 3 + 1] = sg / c; out[i * 3 + 2] = sb2 / c; nh[i] = 1; fd[i] = pass + 1; }
+      }
+      have.set(nh);
+    }
+    return { c: out, fd };
+  };
+  const bgF = diffuseInto(i => outside[i] && !ring[i]);
+  const fgF = diffuseInto(i => !outside[i]);
+  const bgC = bgF.c, fgC = fgF.c;
+  // A deep crevice (underarm gap, hem fold) is enclosed by garment: no
+  // real background is reachable, yet the border flood labelled it
+  // 'outside' by squeezing through the gap. Left alone it keeps the
+  // photograph's near-black violet and reads as a black hole under a
+  // white shirt. Dark pixels close to the garment whose background is
+  // unreachable are therefore GARMENT shadow: full weight, and clip 1
+  // so the runtime subtracts the pixel's own value (chroma-exact — no
+  // green cast) and lands on the target's own shadow tone.
+  const CREV = Math.max(RING + 2, Math.round(W / 18));
+  const distX = new Int16Array(N).fill(-1);
+  {
+    let qh = 0, qt = 0;
+    const ax = new Int32Array(N), ay = new Int32Array(N);
+    for (let i = 0; i < N; i++) if (core[i]) { distX[i] = 0; ax[qt] = i % W; ay[qt] = (i / W) | 0; qt++; }
+    while (qh < qt) {
+      const cx4 = ax[qh], cy4 = ay[qh]; qh++;
+      const dd = distX[cy4 * W + cx4];
+      if (dd >= CREV) continue;
+      for (const [nx, ny] of [[cx4 + 1, cy4], [cx4 - 1, cy4], [cx4, cy4 + 1], [cx4, cy4 - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (distX[ni] !== -1) continue;
+        distX[ni] = dd + 1; ax[qt] = nx; ay[qt] = ny; qt++;
+      }
+    }
+  }
+  // Proximity alone is not enclosure — dark hair and dark scenery also
+  // sit near the garment. A crevice is surrounded BY the garment, so
+  // rays cast from it hit fabric in almost every direction; hair beside
+  // a shoulder has open sky on most rays.
+  // Enclosure and darkness are measured as CONTINUOUS quantities, not
+  // used to make a yes/no call. A near-black pixel carries no usable hue
+  // or saturation - it is codec noise - so any per-pixel decision there
+  // flips neighbours differently and produces isolated specks. What is
+  // recorded instead is how UNRELIABLE each pixel's own reading is.
+  // Unreliability means one thing only: the pixel carries no information.
+  // Below ~0.26 value both hue and saturation collapse into codec noise,
+  // so nothing about such a pixel can be decided from its own colour --
+  // and any threshold applied there flips neighbours differently, which
+  // IS the speckle. No geometric test is used: where the value comes
+  // from is settled by the Poisson solve's boundary conditions, which
+  // pull a fabric-enclosed crevice to garment weight and a dark patch
+  // open to the scene to zero, with no jump in between.
+  const crevice = new Uint8Array(N);
+  const unrel = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    // Measured for EVERY pixel, core included. Information content is a
+    // property of the pixel, not of the label the segmentation gave it — a
+    // dark pixel just inside the core is as information-free as one just
+    // outside, and skipping core left those falling back to the blurred
+    // coverage ramp as their own-value blend, which still subtracted half the
+    // modelled violet from a near-neutral hem shadow and rendered it green.
+    // Bright core pixels are unaffected: high value drives u to 0.
+    //
+    // A warm or green cast IS information: it identifies hair, skin or
+    // foliage, none of which are violet fabric. Only a dark pixel that is
+    // also chromatically neutral tells us nothing at all.
+    const o2 = i * 4;
+    // Three directions, one per thing that is not the garment: warm (skin,
+    // hair, wood), green-dominant (foliage), and RED LOWEST — the blue-cyan
+    // family, which is black denim and dark waistbands. Without that third
+    // term a near-black pair of jeans under the hem read as information-free,
+    // the harmonic completion averaged the shirt's weight down into it and
+    // the waistband recoloured with the shirt. Violet can never satisfy it:
+    // violet's lowest channel is green.
+    const chroma = Math.max(
+      src[o2] - src[o2 + 2],
+      src[o2 + 1] - Math.max(src[o2], src[o2 + 2]),
+      Math.min(src[o2 + 1], src[o2 + 2]) - src[o2]);
+    const u = (1 - smooth(vA[i], 0.12, 0.36)) * (1 - smooth(chroma, 4, 14));
+    unrel[i] = u;
+    if (u > 0.5 && !core[i]) crevice[i] = 1;
+  }
+
+  const alphaA = new Float32Array(N), confA = new Float32Array(N);
+  const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
+  let wedgePx = 0;
+  for (let i = 0; i < N; i++) if (ring[i]) {
+    const o = i * 4;
+    const fr = fgC[i * 3] - bgC[i * 3], fg2 = fgC[i * 3 + 1] - bgC[i * 3 + 1], fb = fgC[i * 3 + 2] - bgC[i * 3 + 2];
+    const den = fr * fr + fg2 * fg2 + fb * fb;
+    if (den < 100) continue;
+    const dr = src[o] - bgC[i * 3], dg = src[o + 1] - bgC[i * 3 + 1], db = src[o + 2] - bgC[i * 3 + 2];
+    let a2 = (dr * fr + dg * fg2 + db * fb) / den;
+    a2 = Math.max(0, Math.min(1, a2));
+    const er = dr - a2 * fr, eg = dg - a2 * fg2, eb = db - a2 * fb;
+    const err = Math.sqrt((er * er + eg * eg + eb * eb) / 3);
+    // In a narrow wedge (underarm gap, under hair) no clean background is
+    // reachable — the diffused estimate is a guess from far away, and matting
+    // against a wrong endpoint paints skin green or leaves speckle. Distance
+    // the estimate had to travel is measured directly, and confidence dies
+    // with it: wedge pixels stay uniformly photographic, a natural shadow.
+    // Alpha is a projection onto the line fg->bg, and two things can make it
+    // meaningless while `err` still reports a good fit — because `err` measures
+    // FIT, and when the two endpoints are close together EVERY alpha fits.
+    //
+    // Separation: the error in alpha scales as (image noise)/(endpoint
+    // separation), so a few levels of codec noise swing it across its whole
+    // range once fg and bg are within ~20 levels. The `den < 100` bail-out above
+    // is this same idea with a hard edge at 10 levels, far below where the
+    // estimate actually goes bad; this continues it smoothly.
+    //
+    // Identifiability: darkening slides a pixel along very nearly the same line
+    // as mixing does. Shadowed denim sits between "dark thing" and "lit denim"
+    // exactly where a half-covered pixel would, so alpha cannot separate
+    // coverage from shading unless the fabric endpoint still shows what makes it
+    // fabric — violet's green deficit, which dimming preserves because it scales
+    // all three channels together. Where the fabric endpoint has itself gone
+    // neutral, as it does in the shadow a hem casts on what it rests against,
+    // "part fabric" and "shaded background" are the same measurement and alpha
+    // is not a coverage fraction any more.
+    //
+    // Ungated, that read ~50% coverage on plain denim under a hem at confidence
+    // 1, varying pixel by pixel with the denim's own weave: a comb of vertical
+    // teeth along the whole hem, surviving into every colour.
+    const sep = Math.sqrt(den);
+    const fgGap = Math.min(fgC[i * 3] - fgC[i * 3 + 1], fgC[i * 3 + 2] - fgC[i * 3 + 1]);
+    let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGap, 3, 14);
+    conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING + 1, RING + 4);
+    if (fgF.fd[i] < 0) conf = 0;
+    if (vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING + 1)) wedgePx++;
+    // The matte's answer is recorded for EVERY ring pixel, before the crevice
+    // veto below decides whether to act on it. Those are two different
+    // questions. Acting on it means assigning the weight AND baking the pixel
+    // to a*V(shade) + (1-a)*bg, which at alpha ~0 rewrites a crevice to pure
+    // background and is what the veto exists to prevent. Merely reading it
+    // costs nothing, and at the other end of the range it is the only stage
+    // that knows the answer: the shadow band under a hem is dark and
+    // achromatic, so the veto catches it, but the background there IS
+    // reachable and the matte solves it confidently at alpha ~0.95. Vetoed,
+    // that band fell through to the completion, which interpolated across it
+    // to mid weight — and mid weight over a dark shade is the broken dark line
+    // that follows a hem in every colour.
+    mAlpha[i] = a2; mConf[i] = conf;
+    if (crevice[i]) continue;
+    alphaA[i] = a2; confA[i] = conf;
+    wMap[i] = conf * a2 + (1 - conf) * wMap[i];
+    evAny[i] = Math.max(evAny[i], wMap[i]);
+  }
+
+  // ---- morphological closing: an image-independent guarantee ----
+  // The harmonic solve fixes weights that are unreliable; this removes
+  // any that are simply inconsistent. Grayscale closing (dilate then
+  // erode) provably eliminates every low-weight island narrower than the
+  // structuring element while leaving larger structures and their edges
+  // untouched - so no speck can survive inside fabric, whatever the
+  // scene, palette or resolution. It is confined to information-free
+  // pixels, where no real structure can be resolved anyway, so genuine
+  // narrow gaps that carry colour information are preserved.
+  {
+    const CR = Math.max(3, Math.round(W / 90));
+    const dil = new Float32Array(wMap), tmp = new Float32Array(N);
+    const sweep = (src2, dst, pick) => {
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        let v = src2[y * W + x];
+        for (let t = -CR; t <= CR; t++) {
+          const nx = x + t; if (nx < 0 || nx >= W) continue;
+          v = pick(v, src2[y * W + nx]);
+        }
+        dst[y * W + x] = v;
+      }
+      const cp = new Float32Array(dst);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        let v = cp[y * W + x];
+        for (let t = -CR; t <= CR; t++) {
+          const ny = y + t; if (ny < 0 || ny >= H) continue;
+          v = pick(v, cp[ny * W + x]);
+        }
+        dst[y * W + x] = v;
+      }
+    };
+    sweep(wMap, tmp, Math.max);
+    sweep(tmp, dil, Math.min);
+    for (let i = 0; i < N; i++) if (unrel[i] > 0.01 && dil[i] > wMap[i])
+      wMap[i] += (dil[i] - wMap[i]) * unrel[i];
+  }
+
+  // ---- harmonic weight completion: the structural cure for speckle ----
+  // Where a pixel's own reading is unreliable, its weight is not decided -
+  // it is INTERPOLATED from confident neighbours by relaxing toward the
+  // average, with confident pixels pinned as boundary conditions. This is a
+  // screened Poisson solve; its solution is harmonic in the unreliable
+  // region, and harmonic functions obey the maximum principle: an interior
+  // point cannot exceed the values around it. An isolated speck differing
+  // from its neighbourhood is therefore impossible BY CONSTRUCTION, at any
+  // resolution, geometry or scene - not merely absent for tuned thresholds.
+  // A crevice enclosed by fabric relaxes to full garment weight; a dark
+  // patch open to the background relaxes to zero; the transition between
+  // them is smooth because a harmonic function has no jumps.
+  {
+    const idx = [];
+    for (let i = 0; i < N; i++) if (unrel[i] > 0.01) idx.push(i);
+    if (idx.length) {
+      const base = new Float32Array(wMap);
+      for (let pass = 0; pass < 700; pass++) {
+        for (let k = 0; k < idx.length; k++) {
+          const i = idx[k], x = i % W;
+          if (x < 1 || x >= W - 1 || i < W || i >= N - W) continue;
+          const avg = (wMap[i - 1] + wMap[i + 1] + wMap[i - W] + wMap[i + W]) * 0.25;
+          wMap[i] = (1 - unrel[i]) * base[i] + unrel[i] * avg;
+        }
+      }
+    }
+  }
+
+  // photo with baked crease + background-violet neutralisation (same as builder)
+  const photoData = new Uint8ClampedArray(src);
+  for (let i = 0; i < N; i++) {
+    const o = i * 4;
+    if (gate[i]) {
+      // Only where there is violet to neutralise. `gate` is a geometric mask — a
+      // dilation around the garment — so it takes in the model's own arm where it
+      // rests against the sleeve, and this rule desaturated any dark pixel inside it
+      // in proportion to its darkness. Skin in shadow is dark, so a warm brown arm
+      // (81,51,40) was rewritten to a flat grey (69,55,50) and stayed that way under
+      // every colour: a charcoal slab in the underarm gap, with the gate's own
+      // boundary as its hard edge. On the violet original that reads as ordinary
+      // shadow, which is how it survived; against a pale shirt it does not.
+      //
+      // A pixel is spared only when it carries REAL chroma pointing somewhere other
+      // than violet — skin, hair and wood sit ~110 degrees away. A pixel with little
+      // chroma is neutralised as before and nothing is lost by it: there is no
+      // saturation there for the operation to move, so the crease residue this rule
+      // exists to remove is still removed in full.
+      const offHue = smooth(ad(hA[i], shirtHue), 45, 90);
+      const dark = (1 - smooth(vA[i], 0.22, 0.42))
+        * (1 - offHue * smooth(sA[i], 0.06, 0.16));
+      const kk = Math.min(1, (1 - wMap[i]) * dark);
+      if (kk > 0) {
+        const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
+        photoData[o] += (L - photoData[o]) * kk;
+        photoData[o + 1] += (L - photoData[o + 1]) * kk;
+        photoData[o + 2] += (L - photoData[o + 2]) * kk;
+      }
+    }
+    if (neut[i] > 0) {
+      const kk = Math.min(1, neut[i] * (1 - wMap[i]));
+      const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
+      photoData[o] += (L - photoData[o]) * kk;
+      photoData[o + 1] += (L - photoData[o + 1]) * kk;
+      photoData[o + 2] += (L - photoData[o + 2]) * kk;
+    }
+    // matting bake: the model's own mix, so the runtime cancels exactly
+    if (ring[i] && confA[i] > 0) {
+      const sbB = shade[i] * 3;
+      const a2 = alphaA[i], cf = confA[i];
+      const br2 = a2 * lutVm[sbB] + (1 - a2) * bgC[i * 3];
+      const bg2 = a2 * lutVm[sbB + 1] + (1 - a2) * bgC[i * 3 + 1];
+      const bb2 = a2 * lutVm[sbB + 2] + (1 - a2) * bgC[i * 3 + 2];
+      photoData[o] += (br2 - photoData[o]) * cf;
+      photoData[o + 1] += (bg2 - photoData[o + 1]) * cf;
+      photoData[o + 2] += (bb2 - photoData[o + 2]) * cf;
+    }
+  }
+
+  // metrics
+  let missed = 0, skin = 0, gN = 0, deepN = 0, blownN = 0, coreN = 0, bgPaint = 0;
+  for (let i = 0; i < N; i++) {
+    if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
+    if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
+    if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
+    if (core[i]) { coreN++; if (vA[i] > 0.92 && sA[i] < 0.14) blownN++; }
+    if (outside[i] && !crevice[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
+  }
+  // pre-existing halo in the SOURCE (upscaler sharpening ring): compare the
+  // brightness of background hugging the silhouette to background a little
+  // further out — a bright ring shows as a positive difference no recolour
+  // can remove, because it is baked into the photograph itself
+  let haloDelta = 0;
+  {
+    let d3 = core;
+    for (let k = 0; k < 3; k++) d3 = dil(d3);
+    let d6 = d3;
+    for (let k = 0; k < 3; k++) d6 = dil(d6);
+    let d12 = d6;
+    for (let k = 0; k < 6; k++) d12 = dil(d12);
+    let nearV = 0, nearN = 0, farV = 0, farN = 0;
+    for (let i = 0; i < N; i++) {
+      if (!outside[i] || sA[i] > 0.25) continue;
+      if (d3[i] && !core[i]) { nearV += vA[i]; nearN++; }
+      else if (d12[i] && !d6[i]) { farV += vA[i]; farN++; }
+    }
+    if (nearN > 200 && farN > 200) haloDelta = nearV / nearN - farV / farN;
+  }
+  const tLumV = (violetBase[0] + violetBase[1] + violetBase[2]) / 765;
+  const GAV = 1 - 0.55 * tLumV, TIV = 0.35 * tLumV, SPV = 0.28;
+  let fitSum = 0, fitCnt = 0;
+  for (let i = 0; i < N; i += 3) {
+    if (wMap[i] < 0.9) continue;
+    const rel = Math.min(REL_MAX, vA[i] / Math.max(1e-6, vRef));
+    const diff = Math.pow(Math.min(rel, 1), GAV);
+    const wgt = (1 - diff) * TIV;
+    let vr = violetBase[0] * diff * (1 - wgt + wgt * ambientTint[0]);
+    let vg = violetBase[1] * diff * (1 - wgt + wgt * ambientTint[1]);
+    let vb2 = violetBase[2] * diff * (1 - wgt + wgt * ambientTint[2]);
+    if (rel > 1) { const sp = Math.min(1, (rel - 1) / (REL_MAX - 1)) * SPV; vr += (255 - vr) * sp; vg += (255 - vg) * sp; vb2 += (255 - vb2) * sp; }
+    const o = i * 4;
+    fitSum += (Math.abs(src[o] - vr) + Math.abs(src[o + 1] - vg) + Math.abs(src[o + 2] - vb2)) / 3;
+    fitCnt++;
+  }
+
+  // The ordering evidence again, as a FLOOR, applied after every stage that
+  // can lower a weight — the min filter, the matte, the closing, the harmonic
+  // completion all disbelieve a hair-shadowed band and drag it back to zero.
+  // A floor is monotone, so it undoes none of their work. It yields to a
+  // confident matte, except where the background behind the pixel is dark:
+  // shading takes fabric toward black, so only a near-black background can
+  // imitate it, and there the matte cannot tell fabric-in-shadow from
+  // fabric-mixed-with-hair while the ordering can. Against a bright
+  // background the two are not confusable and overriding lights a rim.
+  for (let i = 0; i < N; i++) {
+    const cf = Math.max(0, Math.min(1, confA[i]));
+    const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+    const ambig = 1 - smooth(bgL, 60, 110);
+    const fl = orderEv[i] * (1 - cf * (1 - orderEv[i] * ambig));
+    if (fl > wMap[i]) wMap[i] = fl;
+  }
+
+  // The matte's own answer, as a floor, in the same monotone form as the
+  // ordering floor above and for the same reason. The completion exists to
+  // invent a weight where the pixel cannot supply one, and along a hem it
+  // does that by interpolating across a band with fabric on one side and
+  // background on the other, landing near the middle. Mid weight over a
+  // dark shade renders neither the fabric nor the background but something
+  // between and below both: the broken dark line that follows a hem in
+  // every colour. Where the matte is confident it has already measured that
+  // band from the fabric and background either side and scored the answer
+  // by how well it reproduces the pixel, which beats an interpolation.
+  //
+  // Read from mAlpha/mConf, so it sees crevice pixels the veto held back —
+  // raising a weight is safe there, where baking is not. And a floor, never
+  // an assignment: alpha near zero floors nothing, so a crevice the matte
+  // calls background keeps whatever the completion gave it, and the
+  // completion stays free to RAISE a pixel the matte under-called, which is
+  // what the speckle guarantee rests on.
+  //
+  // Gated on a BRIGHT background, by the same `ambig` the ordering floor
+  // uses and for the mirror-image reason. That comment explains where the
+  // matte cannot see: shading takes fabric toward black, so against a
+  // near-black background fabric-in-shadow and background-in-shadow lie on
+  // top of each other and alpha is guesswork. The ordering floor overrides
+  // the matte exactly there; this one defers to it exactly there. Ungated,
+  // a hem over black denim picks up a ragged bright fringe where the matte
+  // guessed fabric — the same guesswork, read the other way round. Against
+  // a bright background mixing brightens and shading darkens, the two are
+  // not confusable, and the matte's answer is the best one available.
+  for (let i = 0; i < N; i++) {
+    if (!ring[i]) continue;
+    const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+    const fl = mAlpha[i] * Math.max(0, Math.min(1, mConf[i])) * smooth(bgL, 60, 110);
+    if (fl > wMap[i]) wMap[i] = fl;
+  }
+
+  let keyMiss = 0;
+  for (let i = 0; i < N; i++) if (orderEv[i] > 0.5 && wMap[i] < 0.5) keyMiss++;
+  // The mirror: something that is not the garment carrying garment weight.
+  // `skin` asks this of warm objects only, so dark denim under the hem went
+  // unmeasured. Red lowest by a clear margin is the blue-cyan family and
+  // never violet. Dark only — that is where weight arrives by diffusion.
+  let coolPaint = 0;
+  for (let i = 0; i < N; i++) {
+    if (wMap[i] <= 0.5 || vA[i] >= 0.30) continue;
+    const o = i * 4;
+    if (Math.min(src[o + 1], src[o + 2]) - src[o] > 6) coolPaint++;
+  }
+
+  const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
+  const ownArr = new Uint8ClampedArray(N);
+  // clipArr is design coverage and nothing else. ownArr is the separate
+  // question of which violet the runtime subtracts: the MODEL's (0) or THIS
+  // PIXEL's own value (1). It goes to 1 wherever the pixel carries no colour
+  // information, because lutV at a dark shade is still saturated violet while
+  // an information-free crease pixel is near-neutral black — subtracting the
+  // former from the latter over-subtracts green and blotches the crease.
+  // Decided by information content alone, never by topology, so a crease that
+  // happens to reach the image border behaves identically to one that doesn't.
+  for (let i = 0; i < N; i++) {
+    const cf = Math.max(0, Math.min(1, confA[i]));
+    wArr[i] = Math.round(Math.max(0, Math.min(1, wMap[i])) * 255);
+    clipArr[i] = Math.round(Math.max(0, Math.min(1, clip[i])) * 255);
+    ownArr[i] = Math.round(255 * Math.max(0, Math.min(1, Math.max(
+      clip[i],
+      unrel[i],
+      outside[i] ? 1 - cf : 0,
+    ))));
+  }
+
+  // edge audit: recolour the silhouette to WHITE through the runtime formula and
+  // count pixels landing outside the convex hull of their two endpoints — the
+  // "dark outline / halo on light colours" defect class.
+  //
+  // EVERY boundary pixel is audited. It used to skip everything the matte was
+  // not confident about, which inverted the audit's purpose: the pixels the
+  // matte gives up on are precisely the ones nothing downstream can guarantee,
+  // so the one defect class that could reach a shipped template unseen was the
+  // one hiding in them. A hem against trousers put its whole broken dark line
+  // there and the audit reported single digits.
+  //
+  // What made the confidence filter tempting is that a real shadow — a crease,
+  // a fold, the shade a hem casts on what is under it — also sits below the
+  // hull of background and fabric, and counting those would drown the number in
+  // photographic truth. So the source is audited too, against the violet IT
+  // shows, and only the EXCESS is counted: darkness already in the photograph
+  // cancels, and what remains is darkness the recolour introduced. That is the
+  // defect either way, whether the matte understood the pixel or not.
+  //
+  // The runtime formula is used entire, `own` included. Modelling it as if own
+  // were 0 understates exactly the pixels where own matters most.
+
+  let edgeDark = 0, edgeBright = 0;
+  {
+    const lutW = relightLut([255, 255, 255], { ambientTint, relMax: REL_MAX });
+    const lum = (r2, g2, b2) => 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+    const below = (v, lo) => Math.max(0, lo - v);
+    const above = (v, hi) => Math.max(0, v - hi);
+    for (let i = 0; i < N; i++) {
+      if (!ring[i]) continue;
+      const o = i * 4, ww = wMap[i], cl2 = ownArr[i] / 255;
+      const sbB = shade[i] * 3;
+      const px = c2 => photoData[o + c2] +
+        ww * (lutW[sbB + c2] - cl2 * photoData[o + c2] - (1 - cl2) * lutVm[sbB + c2]);
+      const outL = lum(px(0), px(1), px(2));
+      // The endpoint the runtime actually blends FROM. With own=0 that is the
+      // background, and the result is the convex blend (1-a)*bg + a*T(shade). With
+      // own=1 it is the PHOTOGRAPH: out = (1-w)*photo + w*T(shade). Judging the
+      // second case against the background's luminance flags every hem shadow the
+      // pipeline is deliberately keeping — truth in the picture, not a broken edge.
+      const rL = cl2 * lum(photoData[o], photoData[o + 1], photoData[o + 2])
+        + (1 - cl2) * lum(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]);
+      const tL = lum(lutW[sbB], lutW[sbB + 1], lutW[sbB + 2]);
+      // the same question asked of the photograph, whose fabric endpoint is the
+      // violet it was shot in — this is the shadow that is genuinely there
+      const sL = lum(src[o], src[o + 1], src[o + 2]);
+      const vL = lum(lutVm[sbB], lutVm[sbB + 1], lutVm[sbB + 2]);
+      if (below(outL, Math.min(rL, tL)) - below(sL, Math.min(rL, vL)) > 18) edgeDark++;
+      if (above(outL, Math.max(rL, tL)) - above(sL, Math.max(rL, vL)) > 18) edgeBright++;
+    }
+  }
+
+  return {
+    W, H, shirtHue, fragments,
+    coverage: 100 * coreN / N,
+    strayVioletPct: 100 * strayViolet / N,
+    missed, skin,
+    deepShadowPct: 100 * deepN / Math.max(1, gN),
+    blownPct: 100 * blownN / Math.max(1, coreN),
+    bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss, coolPaint,
+    modelFit: fitSum / Math.max(1, fitCnt),
+    srcW: img.width, srcH: img.height,
+    ambientTint, relMax: REL_MAX, violetBase,
+    photoData, wArr, clipArr, ownArr, shade,
+  };
+}
+
+function relightLut(rgb, meta) {
+  const [ar, ag, ab] = meta.ambientTint;
+  const rm = meta.relMax;
+  const tL = (rgb[0] + rgb[1] + rgb[2]) / 765;
+  const GA = 1 - 0.55 * tL, TI = 0.35 * tL, SP = 0.28;
+  const L = new Float32Array(768);
+  for (let s = 0; s < 256; s++) {
+    const rel = (s / 255) * rm;
+    const diff = Math.pow(Math.min(rel, 1), GA);
+    const w = (1 - diff) * TI;
+    let r = rgb[0] * diff * (1 - w + w * ar);
+    let g = rgb[1] * diff * (1 - w + w * ag);
+    let b = rgb[2] * diff * (1 - w + w * ab);
+    if (rel > 1) { const sp = Math.min(1, (rel - 1) / (rm - 1)) * SP; r += (255 - r) * sp; g += (255 - g) * sp; b += (255 - b) * sp; }
+    L[s * 3] = r; L[s * 3 + 1] = g; L[s * 3 + 2] = b;
+  }
+  return L;
+}
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // The editor's twelve fabric presets, in the editor's order.
+  var PRESETS = [
+    { hex: '#ffffff', name: 'Classic White' },
+    { hex: '#212121', name: 'Vintage Black' },
+    { hex: '#afb0b1', name: 'Athletic Heather' },
+    { hex: '#373a3c', name: 'Charcoal Grey' },
+    { hex: '#1b2230', name: 'Classic Navy' },
+    { hex: '#1e3b8a', name: 'Royal Blue' },
+    { hex: '#4b533f', name: 'Olive Green' },
+    { hex: '#1e3328', name: 'Forest Green' },
+    { hex: '#521c22', name: 'Maroon Burgundy' },
+    { hex: '#d2c6af', name: 'Sand Beige' },
+    { hex: '#f5d5db', name: 'Baby Pink' },
+    { hex: '#6b7c85', name: 'Dusty Blue' },
+  ];
+
+  var analysis = null;   // full-resolution analysis
+  var small = null;      // sampled copy, for the twelve-up sheet
+  var colour = '#ffffff';
+  var showingOriginal = false;
+
+  var statusEl = document.getElementById('status');
+
+  // --- loading ------------------------------------------------------------
+
+  var drop = document.getElementById('drop');
+  var fileInput = document.getElementById('file');
+
+  drop.addEventListener('click', function () { fileInput.click(); });
+  drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+  drop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    drop.classList.remove('over');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function (e) {
+    if (e.target.files && e.target.files[0]) load(e.target.files[0]);
+  });
+  window.addEventListener('paste', function (e) {
+    var items = (e.clipboardData || {}).items || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') === 0) { load(items[i].getAsFile()); return; }
+    }
+  });
+
+  function load(file) {
+    if (!file) return;
+    statusEl.textContent = 'Reading the image…';
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      statusEl.textContent = 'Analysing — separating shirt from background…';
+      // Yielded to the browser first: analyse() is a second or two of straight
+      // maths, and without the frame in between the status line never paints.
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          try {
+            run(img);
+          } catch (err) {
+            statusEl.textContent = 'That image could not be analysed: ' + err.message;
+          }
+          URL.revokeObjectURL(url);
+        }, 16);
+      });
+    };
+    img.onerror = function () {
+      statusEl.textContent = 'That file could not be read as an image.';
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  function run(img) {
+    analysis = analyze(img);
+    if (analysis.noGarment) {
+      statusEl.textContent =
+        'No violet garment found. This view needs a photo of a model in the vivid-violet ' +
+        'crewneck the pipeline is built around.';
+      document.getElementById('viewStep').classList.add('hidden');
+      document.getElementById('gridStep').classList.add('hidden');
+      return;
+    }
+    small = sample(analysis, 300);
+    statusEl.textContent = analysis.srcW + '×' + analysis.srcH + ' analysed at ' +
+      analysis.W + '×' + analysis.H + '.';
+    document.getElementById('viewStep').classList.remove('hidden');
+    document.getElementById('gridStep').classList.remove('hidden');
+    buildSwatches();
+    drawMaps();
+    renderStats();
+    renderMain();
+    buildGrid();
+  }
+
+  // --- recolour -----------------------------------------------------------
+
+  // The runtime formula, unchanged: out = photo + w * (T(shade) - own·photo -
+  // (1-own)·V(shade)). Both LUTs come from the same relight, so whatever the
+  // model gets wrong cancels between them.
+  function recolour(target, a, hex) {
+    var tr = parseInt(hex.slice(1, 3), 16);
+    var tg = parseInt(hex.slice(3, 5), 16);
+    var tb = parseInt(hex.slice(5, 7), 16);
+    var lutT = relightLut([tr, tg, tb], a);
+    var lutV = a._lutV || (a._lutV = relightLut(a.violetBase, a));
+    target.width = a.W; target.height = a.H;
+    var x = target.getContext('2d');
+    var out = x.createImageData(a.W, a.H);
+    var d = out.data;
+    d.set(a.photoData);
+    var n = a.W * a.H;
+    for (var i = 0; i < n; i++) {
+      var wv = a.wArr[i];
+      if (!wv) continue;
+      var ww = wv / 255, cl = a.ownArr[i] / 255;
+      var sb = a.shade[i] * 3, o = i * 4;
+      d[o] = d[o] + ww * (lutT[sb] - cl * d[o] - (1 - cl) * lutV[sb]);
+      d[o + 1] = d[o + 1] + ww * (lutT[sb + 1] - cl * d[o + 1] - (1 - cl) * lutV[sb + 1]);
+      d[o + 2] = d[o + 2] + ww * (lutT[sb + 2] - cl * d[o + 2] - (1 - cl) * lutV[sb + 2]);
+    }
+    x.putImageData(out, 0, 0);
+    return target;
+  }
+
+  function drawOriginal(target, a) {
+    target.width = a.W; target.height = a.H;
+    var x = target.getContext('2d');
+    var img = x.createImageData(a.W, a.H);
+    img.data.set(a.photoData);
+    x.putImageData(img, 0, 0);
+  }
+
+  // Nearest-neighbour copy of everything the recolour reads. Twelve frames at
+  // full resolution is twenty million pixels of arithmetic for thumbnails
+  // nobody views at full size; at 300px on the long edge the sheet is instant
+  // and shows the same failures.
+  function sample(a, maxEdge) {
+    var k = Math.min(1, maxEdge / Math.max(a.W, a.H));
+    var W = Math.max(1, Math.round(a.W * k));
+    var H = Math.max(1, Math.round(a.H * k));
+    var photoData = new Uint8ClampedArray(W * H * 4);
+    var wArr = new Uint8ClampedArray(W * H);
+    var ownArr = new Uint8ClampedArray(W * H);
+    var shade = new Uint8ClampedArray(W * H);
+    for (var y = 0; y < H; y++) {
+      var sy = Math.min(a.H - 1, Math.round(y / k));
+      for (var x = 0; x < W; x++) {
+        var sx = Math.min(a.W - 1, Math.round(x / k));
+        var si = sy * a.W + sx, di = y * W + x;
+        photoData[di * 4] = a.photoData[si * 4];
+        photoData[di * 4 + 1] = a.photoData[si * 4 + 1];
+        photoData[di * 4 + 2] = a.photoData[si * 4 + 2];
+        photoData[di * 4 + 3] = 255;
+        wArr[di] = a.wArr[si];
+        ownArr[di] = a.ownArr[si];
+        shade[di] = a.shade[si];
+      }
+    }
+    return {
+      W: W, H: H, photoData: photoData, wArr: wArr, ownArr: ownArr, shade: shade,
+      violetBase: a.violetBase, ambientTint: a.ambientTint, relMax: a.relMax,
+    };
+  }
+
+  // --- rendering ----------------------------------------------------------
+
+  function renderMain() {
+    var cnv = document.getElementById('mainCanvas');
+    if (showingOriginal) drawOriginal(cnv, analysis);
+    else recolour(cnv, analysis, colour);
+  }
+
+  function buildSwatches() {
+    var host = document.getElementById('swatches');
+    host.innerHTML = '';
+    PRESETS.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sw';
+      b.style.background = p.hex;
+      b.title = p.name + ' · ' + p.hex;
+      b.setAttribute('aria-label', p.name);
+      b.setAttribute('aria-pressed', String(p.hex === colour));
+      b.addEventListener('click', function () { setColour(p.hex); });
+      host.appendChild(b);
+    });
+  }
+
+  function syncSwatches() {
+    var host = document.getElementById('swatches');
+    Array.prototype.forEach.call(host.children, function (b, i) {
+      b.setAttribute('aria-pressed', String(PRESETS[i].hex === colour));
+    });
+    Array.prototype.forEach.call(document.getElementById('gridSheet').children, function (cell) {
+      if (cell.getAttribute('data-hex') === colour) cell.setAttribute('data-current', '');
+      else cell.removeAttribute('data-current');
+    });
+  }
+
+  function setColour(hex) {
+    colour = hex;
+    showingOriginal = false;
+    var t = document.getElementById('toggleOriginal');
+    t.setAttribute('aria-pressed', 'false');
+    t.textContent = 'Show the violet original';
+    document.getElementById('custom').value = hex;
+    document.getElementById('customVal').textContent = hex.toUpperCase();
+    syncSwatches();
+    renderMain();
+  }
+
+  function buildGrid() {
+    var host = document.getElementById('gridSheet');
+    host.innerHTML = '';
+    PRESETS.forEach(function (p) {
+      var cell = document.createElement('figure');
+      cell.className = 'grid-cell';
+      cell.setAttribute('data-hex', p.hex);
+      if (p.hex === colour) cell.setAttribute('data-current', '');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Show ' + p.name + ' above');
+      var cnv = document.createElement('canvas');
+      recolour(cnv, small, p.hex);
+      btn.appendChild(cnv);
+      btn.addEventListener('click', function () {
+        setColour(p.hex);
+        document.getElementById('mainCanvas').scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+      var cap = document.createElement('figcaption');
+      cap.textContent = p.name;
+      cap.title = p.name + ' · ' + p.hex;
+      cell.appendChild(btn);
+      cell.appendChild(cap);
+      host.appendChild(cell);
+    });
+  }
+
+  // The three maps the recolour reads, at the size they are actually judged:
+  // a weight map with speckle in it, or a print area that has crept onto skin,
+  // is visible here and nowhere in the finished frame.
+  function drawMaps() {
+    var a = analysis;
+    var paint = function (id, src, alphaOnly) {
+      var c = document.getElementById(id);
+      c.width = a.W; c.height = a.H;
+      var x = c.getContext('2d');
+      var img = x.createImageData(a.W, a.H);
+      for (var i = 0; i < a.W * a.H; i++) {
+        var v = src[i];
+        img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v;
+        img.data[i * 4 + 3] = 255;
+      }
+      x.putImageData(img, 0, 0);
+    };
+    paint('mapWeight', a.wArr);
+    paint('mapClip', a.clipArr);
+    paint('mapShade', a.shade);
+  }
+
+  function renderStats() {
+    var a = analysis;
+    var rows = [
+      ['source', a.srcW + '×' + a.srcH],
+      ['analysed', a.W + '×' + a.H],
+      ['shirt hue', a.shirtHue + '°'],
+      ['coverage', a.coverage.toFixed(1) + '%'],
+      ['stray violet', a.strayVioletPct.toFixed(2) + '%'],
+      ['deep shadow', a.deepShadowPct.toFixed(2) + '%'],
+      ['fragments', String(a.fragments)],
+      ['violet base', a.violetBase.map(Math.round).join(' · ')],
+      ['ambient tint', a.ambientTint.map(function (v) { return v.toFixed(3); }).join(' · ')],
+    ];
+    var host = document.getElementById('stats');
+    host.innerHTML = '';
+    rows.forEach(function (r) {
+      var dt = document.createElement('dt');
+      dt.textContent = r[0];
+      var dd = document.createElement('dd');
+      dd.textContent = r[1];
+      host.appendChild(dt);
+      host.appendChild(dd);
+    });
+  }
+
+  // --- controls -----------------------------------------------------------
+
+  document.getElementById('custom').addEventListener('input', function (e) {
+    setColour(e.target.value);
+  });
+
+  document.getElementById('toggleOriginal').addEventListener('click', function () {
+    if (!analysis) return;
+    showingOriginal = !showingOriginal;
+    this.setAttribute('aria-pressed', String(showingOriginal));
+    this.textContent = showingOriginal ? 'Back to the recolour' : 'Show the violet original';
+    renderMain();
+  });
+
+  document.getElementById('download').addEventListener('click', function () {
+    if (!analysis) return;
+    var cnv = document.createElement('canvas');
+    if (showingOriginal) drawOriginal(cnv, analysis);
+    else recolour(cnv, analysis, colour);
+    cnv.toBlob(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'colour-view-' + (showingOriginal ? 'original' : colour.replace('#', '')) + '.png';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    }, 'image/png');
+  });
+})();
+</script>
+
+</body>
+</html>

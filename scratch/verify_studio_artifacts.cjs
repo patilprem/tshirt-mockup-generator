@@ -15,6 +15,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const DIST = process.argv[2] ? path.resolve(process.argv[2]) : path.join(__dirname, 'artifacts', 'dist');
@@ -204,7 +205,38 @@ async function checkHemPaint(browser) {
   await page.close();
 }
 
+// The standalone copies are committed so they can be opened by double-clicking,
+// without running anything first. That convenience is also how they go stale:
+// edit template-studio.html, forget the build, and the file on disk is a page
+// from two changes ago that still looks perfectly plausible. Rebuilding into a
+// temporary directory and comparing bytes makes that impossible to miss.
+function checkStandaloneFresh() {
+  console.log('\nstandalone copies');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-fresh-'));
+  try {
+    execFileSync(process.execPath,
+      [path.join(__dirname, 'build_studio_artifacts.cjs'), path.join(tmp, 'dist')],
+      { stdio: 'pipe' });
+  } catch (e) {
+    check('the build runs', false, String(e.stderr || e.message).trim().split('\n')[0]);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return;
+  }
+  for (const name of ['template-studio.html', 'try-colors.html']) {
+    const committed = path.join(__dirname, 'artifacts', 'standalone', name);
+    const fresh = path.join(tmp, 'standalone', name);
+    const have = fs.existsSync(committed) ? fs.readFileSync(committed, 'utf8') : null;
+    const want = fs.readFileSync(fresh, 'utf8');
+    check(`standalone/${name} is up to date`, have === want,
+      have === null ? 'missing — run scratch/build_studio_artifacts.cjs'
+        : have === want ? `${Math.round(want.length / 1024)} KB`
+        : 'stale — run scratch/build_studio_artifacts.cjs');
+  }
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
 (async () => {
+  checkStandaloneFresh();
   for (const f of [SAMPLE, HEM_SAMPLE]) {
     if (!fs.existsSync(f)) {
       console.error('missing sample photograph: ' + f);

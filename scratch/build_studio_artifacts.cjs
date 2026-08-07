@@ -1,6 +1,9 @@
 /**
  * Packages the two internal review pages for publishing as artifacts.
  *
+ * Each page is written twice: as a fragment in dist/ for publishing, and as a
+ * whole document in standalone/ that opens by double-clicking it.
+ *
  *   template-studio.html  the full add-a-template workflow — build the prompt,
  *                         paste the generated image, validate it against the
  *                         gates the build runs, try recolours, hand it over
@@ -25,8 +28,34 @@ const ROOT = path.join(__dirname, '..');
 const SRC = path.join(__dirname, 'artifacts');
 const STUDIO = path.join(__dirname, 'template-studio.html');
 const OUT = process.argv[2] ? path.resolve(process.argv[2]) : path.join(SRC, 'dist');
+// Alongside the fragments, a copy of each page that opens on its own by
+// double-clicking it — no build, no server, no network. The artifact host
+// supplies <!doctype>, <head> and <body>, so what it wants is a FRAGMENT; a
+// browser opening a file off disk wants a whole document. Both are written from
+// the same source, so the local copy can never drift from the published one.
+// Sibling of the fragment directory, so building into a temp target puts its
+// standalone copies there too rather than overwriting the committed ones.
+const LOCAL = path.join(path.dirname(OUT), 'standalone');
 
 const kb = (n) => `${Math.round(n / 1024)} KB`;
+
+// The skeleton the artifact host would otherwise provide. The <title> is lifted
+// out of the fragment so the browser tab reads the same as the published page.
+function standalone(fragment) {
+  const title = (fragment.match(/<title>([^<]*)<\/title>/) || [null, 'Template Studio'])[1];
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title>
+</head>
+<body>
+${fragment}
+</body>
+</html>
+`;
+}
 
 // Slices between two literal markers, both kept out of the result. Throws
 // rather than returning something plausible: these markers are section banners
@@ -77,19 +106,25 @@ function main() {
   }
 
   fs.mkdirSync(OUT, { recursive: true });
+  fs.mkdirSync(LOCAL, { recursive: true });
 
-  const studioOut = path.join(OUT, 'template-studio.html');
-  fs.writeFileSync(studioOut, studioFragment(studioSrc));
-  console.log(`wrote ${path.relative(ROOT, studioOut)} (${kb(fs.statSync(studioOut).size)})`);
+  const write = (name, fragment) => {
+    const a = path.join(OUT, name);
+    fs.writeFileSync(a, fragment);
+    console.log(`wrote ${path.relative(ROOT, a)} (${kb(fs.statSync(a).size)})`);
+    const b = path.join(LOCAL, name);
+    fs.writeFileSync(b, standalone(fragment));
+    console.log(`wrote ${path.relative(ROOT, b)} (${kb(fs.statSync(b).size)}) — opens on its own`);
+  };
+
+  write('template-studio.html', studioFragment(studioSrc));
 
   let tryHtml = fs.readFileSync(path.join(SRC, 'try-colors.html'), 'utf8');
   for (const [marker, body] of [['/*__STYLE__*/', style], ['/*__ANALYSIS__*/', `${analysis}\n\n${relight}`]]) {
     if (!tryHtml.includes(marker)) throw new Error(`try-colors.html is missing ${marker}`);
     tryHtml = tryHtml.replace(marker, () => body);
   }
-  const tryOut = path.join(OUT, 'try-colors.html');
-  fs.writeFileSync(tryOut, tryHtml);
-  console.log(`wrote ${path.relative(ROOT, tryOut)} (${kb(fs.statSync(tryOut).size)})`);
+  write('try-colors.html', tryHtml);
 }
 
 main();
