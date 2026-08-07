@@ -943,6 +943,20 @@
     let customBgColor = '#121318';
     let userHasManuallyScaled = false; // tracks if user manually adjusted design scale
 
+    // The two modes do not share a size range. On-model places the design on a
+    // photograph of a garment that may be any size in frame, so it goes up to
+    // 250%; the flat lay draws into a fixed artboard where past 90% the design
+    // runs off the print area. designScale is one variable across both, and
+    // switching used to carry the number over unchanged: a design sized to 229%
+    // on a model, brought back to the flat lay, drew entirely outside the print
+    // area and vanished — taking its corner handles with it, so there was
+    // nothing on the canvas left to grab, while the Size slider sat pinned at
+    // its maximum so dragging it up did nothing either. It read as the control
+    // being dead. Clamped on the way in, with the sliders' own bounds moved to
+    // match, so the control can always express the state it is showing.
+    const SCALE_LIMITS = { flatlay: [0.10, 0.90], onmodel: [0.05, 2.50] };
+    const scaleLimits = () => SCALE_LIMITS[mockupStyle] || SCALE_LIMITS.flatlay;
+
     // Canvas aspect ratio — the garment/design/prop composition always lives in a
     // fixed 1000x1000 "artboard"; changing aspect only changes how much extra
     // background canvas surrounds that centered square (letterbox-style), so none
@@ -1919,7 +1933,7 @@
         onModelSetCentre(b, nx, ny);
       } else if (onModelDrag.mode === 'scale') {
         const k = Math.max(0.06, Math.hypot(pt.x - onModelDrag.anchor.x, pt.y - onModelDrag.anchor.y) / onModelDrag.grab0);
-        designScale = Math.max(0.05, Math.min(2.5, onModelDrag.scale0 * k));
+        designScale = Math.max(SCALE_LIMITS.onmodel[0], Math.min(SCALE_LIMITS.onmodel[1], onModelDrag.scale0 * k));
         // Keep the opposite corner pinned: the anchor sits at its own local
         // offset from the centre, so the centre is the anchor MINUS that offset
         // at the new size, through the current rotation.
@@ -1953,6 +1967,48 @@
       mockupStyle = style;
       onModelSelected = false;
       onModelDrag = null;
+      // Move the Size control to this mode's range and bring the design inside
+      // it. Both halves matter: without the clamp the flat lay draws a design
+      // it cannot show, and without moving the bounds the on-model slider is
+      // pinned at 90 while a drag has taken the design to 229, so the number
+      // beside it and the handle under it disagree.
+      {
+        const [lo, hi] = SCALE_LIMITS[style] || SCALE_LIMITS.flatlay;
+        const manual = document.getElementById('scale-manual');
+        for (const el of [scaleSlider, manual]) {
+          if (!el) continue;
+          el.min = Math.round(lo * 100);
+          el.max = Math.round(hi * 100);
+        }
+        designScale = Math.max(lo, Math.min(hi, designScale));
+        const pct = Math.round(designScale * 100);
+        if (scaleSlider) scaleSlider.value = pct;
+        if (manual) manual.value = pct;
+      }
+      // Position needs the same treatment, and for the same reason. Both modes
+      // write designPos, but they mean different things by it: the flat lay
+      // holds the design inside a 1000x1000 artboard, 100..900 on each axis,
+      // while on-model maps it through the template's print quad and lets it go
+      // wherever the model's chest is — which is regularly outside that box.
+      // Carried over unclamped, the design draws off the artboard and is
+      // invisible even once the size is back in range.
+      // Returned to the garment's own chest default rather than clamped to the
+      // nearest edge. Clamping keeps the number legal and the result useless:
+      // a design that was over a model's chest lands pinned to a corner of the
+      // artboard, mostly off the shirt, which is not a placement anyone asked
+      // for. A placement that cannot be carried across is better replaced by
+      // the sensible one than by the nearest legal one. Placements that ARE
+      // representable are left exactly as they were, so nudging a design and
+      // toggling modes to compare still works.
+      if (style === 'flatlay') {
+        const inBox = designPos.x >= 100 && designPos.x <= 900
+                   && designPos.y >= 100 && designPos.y <= 900;
+        if (!inBox) {
+          const cfg = garmentConfigs[activeGarmentType];
+          designPos.x = 500;
+          designPos.y = cfg && Number.isFinite(cfg.chestY) ? cfg.chestY : 420;
+        }
+      }
       document.querySelectorAll('#mockup-style-toggle .style-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.style === style);
       });
@@ -2226,7 +2282,8 @@
       // moved with it, or the sidebar reports a size the canvas is not drawing.
       if (h.pos && Number.isFinite(h.pos.x) && Number.isFinite(h.pos.y)) designPos = { x: h.pos.x, y: h.pos.y };
       if (Number.isFinite(h.scale)) {
-        designScale = Math.max(0.1, Math.min(0.9, h.scale));
+        const [slo, shi] = SCALE_LIMITS[h.style] || SCALE_LIMITS.flatlay;
+        designScale = Math.max(slo, Math.min(shi, h.scale));
         userHasManuallyScaled = true;
         const pct = Math.round(designScale * 100);
         if (scaleSlider) scaleSlider.value = pct;
@@ -2340,6 +2397,17 @@
       ], { x: 0, y: rotY }, u);
       ctx.restore();
     }
+
+    // The corner diagonally across from each handle. Resizing pins that corner
+    // in world space so the box grows away from the hand rather than around its
+    // centre, which is what every design tool does and what the surrounding code
+    // was written for — cornerLocalPoint, rotateVec and anchorWorld all assume
+    // it. It was referenced at four sites and defined at none, so every attempt
+    // to resize by a corner handle threw a ReferenceError on the first pointer
+    // move. designScale had already been assigned by then, so the value changed
+    // while the throw skipped the anchor correction, the slider sync and the
+    // repaint below it: the canvas sat still and the control looked dead.
+    const OPPOSITE_CORNER = { tl: 'br', tr: 'bl', br: 'tl', bl: 'tr' };
 
     function cornerLocalPoint(w, h, corner) {
       switch (corner) {
@@ -2718,7 +2786,7 @@
       if (isScaling) {
         const currentDist = Math.hypot(coords.x - anchorWorld.x, coords.y - anchorWorld.y);
         let ratio = currentDist / startDistFromAnchor;
-        let newScale = Math.max(0.1, Math.min(0.9, startScale * ratio));
+        let newScale = Math.max(SCALE_LIMITS.flatlay[0], Math.min(SCALE_LIMITS.flatlay[1], startScale * ratio));
         designScale = newScale;
 
         const { w: newDW, h: newDH } = getDesignBoxSize(newScale);
@@ -3019,7 +3087,14 @@
     });
 
     // Helper function for bidirectional binding between sliders and manual inputs
+    // minVal/maxVal are the initial bounds; the live ones are read off the
+    // element each time, so a mode that widens or narrows a slider's range takes
+    // effect without rebinding. Every slider here is authored with min/max
+    // attributes equal to the arguments passed, so this changes nothing for the
+    // four that never move.
     function setupSliderBinding(slider, manualInput, minVal, maxVal, divisor, onUpdate) {
+      const lo = () => (slider.min === '' ? minVal : +slider.min);
+      const hi = () => (slider.max === '' ? maxVal : +slider.max);
       slider.addEventListener('input', (e) => {
         const val = parseInt(e.target.value);
         manualInput.value = val;
@@ -3029,7 +3104,7 @@
       manualInput.addEventListener('input', (e) => {
         let val = parseInt(e.target.value);
         if (isNaN(val)) return;
-        if (val >= minVal && val <= maxVal) {
+        if (val >= lo() && val <= hi()) {
           slider.value = val;
         }
         onUpdate(val / divisor);
@@ -3037,9 +3112,9 @@
 
       manualInput.addEventListener('blur', () => {
         let val = parseInt(manualInput.value);
-        if (isNaN(val)) val = minVal;
-        if (val < minVal) val = minVal;
-        if (val > maxVal) val = maxVal;
+        if (isNaN(val)) val = lo();
+        if (val < lo()) val = lo();
+        if (val > hi()) val = hi();
         manualInput.value = val;
         slider.value = val;
         onUpdate(val / divisor);
