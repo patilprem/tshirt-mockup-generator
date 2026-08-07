@@ -1108,7 +1108,32 @@ function analyze(img) {
     // against a wrong endpoint paints skin green or leaves speckle. Distance
     // the estimate had to travel is measured directly, and confidence dies
     // with it: wedge pixels stay uniformly photographic, a natural shadow.
-    let conf = 1 - smooth(err, 14, 42);
+    // Alpha is a projection onto the line fg->bg, and two things can make it
+    // meaningless while `err` still reports a good fit — because `err` measures
+    // FIT, and when the two endpoints are close together EVERY alpha fits.
+    //
+    // Separation: the error in alpha scales as (image noise)/(endpoint
+    // separation), so a few levels of codec noise swing it across its whole
+    // range once fg and bg are within ~20 levels. The `den < 100` bail-out above
+    // is this same idea with a hard edge at 10 levels, far below where the
+    // estimate actually goes bad; this continues it smoothly.
+    //
+    // Identifiability: darkening slides a pixel along very nearly the same line
+    // as mixing does. Shadowed denim sits between "dark thing" and "lit denim"
+    // exactly where a half-covered pixel would, so alpha cannot separate
+    // coverage from shading unless the fabric endpoint still shows what makes it
+    // fabric — violet's green deficit, which dimming preserves because it scales
+    // all three channels together. Where the fabric endpoint has itself gone
+    // neutral, as it does in the shadow a hem casts on what it rests against,
+    // "part fabric" and "shaded background" are the same measurement and alpha
+    // is not a coverage fraction any more.
+    //
+    // Ungated, that read ~50% coverage on plain denim under a hem at confidence
+    // 1, varying pixel by pixel with the denim's own weave: a comb of vertical
+    // teeth along the whole hem, surviving into every colour.
+    const sep = Math.sqrt(den);
+    const fgGap = Math.min(fgC[i * 3] - fgC[i * 3 + 1], fgC[i * 3 + 2] - fgC[i * 3 + 1]);
+    let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGap, 3, 14);
     conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING + 1, RING + 4);
     if (fgF.fd[i] < 0) conf = 0;
     if (vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING + 1)) wedgePx++;
@@ -1383,6 +1408,7 @@ function analyze(img) {
   //
   // The runtime formula is used entire, `own` included. Modelling it as if own
   // were 0 understates exactly the pixels where own matters most.
+
   let edgeDark = 0, edgeBright = 0;
   {
     const lutW = relightLut([255, 255, 255], { ambientTint, relMax: REL_MAX });
@@ -1396,14 +1422,20 @@ function analyze(img) {
       const px = c2 => photoData[o + c2] +
         ww * (lutW[sbB + c2] - cl2 * photoData[o + c2] - (1 - cl2) * lutVm[sbB + c2]);
       const outL = lum(px(0), px(1), px(2));
-      const bL = lum(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]);
+      // The endpoint the runtime actually blends FROM. With own=0 that is the
+      // background, and the result is the convex blend (1-a)*bg + a*T(shade). With
+      // own=1 it is the PHOTOGRAPH: out = (1-w)*photo + w*T(shade). Judging the
+      // second case against the background's luminance flags every hem shadow the
+      // pipeline is deliberately keeping — truth in the picture, not a broken edge.
+      const rL = cl2 * lum(photoData[o], photoData[o + 1], photoData[o + 2])
+        + (1 - cl2) * lum(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]);
       const tL = lum(lutW[sbB], lutW[sbB + 1], lutW[sbB + 2]);
       // the same question asked of the photograph, whose fabric endpoint is the
       // violet it was shot in — this is the shadow that is genuinely there
       const sL = lum(src[o], src[o + 1], src[o + 2]);
       const vL = lum(lutVm[sbB], lutVm[sbB + 1], lutVm[sbB + 2]);
-      if (below(outL, Math.min(bL, tL)) - below(sL, Math.min(bL, vL)) > 18) edgeDark++;
-      if (above(outL, Math.max(bL, tL)) - above(sL, Math.max(bL, vL)) > 18) edgeBright++;
+      if (below(outL, Math.min(rL, tL)) - below(sL, Math.min(rL, vL)) > 18) edgeDark++;
+      if (above(outL, Math.max(rL, tL)) - above(sL, Math.max(rL, vL)) > 18) edgeBright++;
     }
   }
 
