@@ -859,7 +859,23 @@ const TEMPLATES = [
         const o = i * 4;
         let r = src[o], g = src[o + 1], b = src[o + 2];
         if (gate[i]) {
-          const dark = 1 - smooth(vA[i], 0.22, 0.42);
+          // Only where there is violet to neutralise. `gate` is a geometric mask — a
+          // dilation around the garment — so it takes in the model's own arm where it
+          // rests against the sleeve, and this rule desaturated any dark pixel inside it
+          // in proportion to its darkness. Skin in shadow is dark, so a warm brown arm
+          // (81,51,40) was rewritten to a flat grey (69,55,50) and stayed that way under
+          // every colour: a charcoal slab in the underarm gap, with the gate's own
+          // boundary as its hard edge. On the violet original that reads as ordinary
+          // shadow, which is how it survived; against a pale shirt it does not.
+          //
+          // A pixel is spared only when it carries REAL chroma pointing somewhere other
+          // than violet — skin, hair and wood sit ~110 degrees away. A pixel with little
+          // chroma is neutralised as before and nothing is lost by it: there is no
+          // saturation there for the operation to move, so the crease residue this rule
+          // exists to remove is still removed in full.
+          const offHue = smooth(ad(hA[i], shirtHue), 45, 90);
+          const dark = (1 - smooth(vA[i], 0.22, 0.42))
+            * (1 - offHue * smooth(sA[i], 0.06, 0.16));
           const kk = Math.min(1, (1 - wMap[i]) * dark);
           if (kk > 0) {
             const L = 0.299 * r + 0.587 * g + 0.114 * b;
