@@ -44,6 +44,16 @@
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+
+// Everything under public/ is copied to the site verbatim, so an asset keeps
+// its filename forever and only its bytes change between builds. A browser or
+// CDN holding the old copy has nothing to tell it otherwise, and serves it —
+// which is how a fix that is merged, deployed and correct still shows the old
+// picture on someone's phone. Tagging each URL with a hash of its content makes
+// the URL change whenever the bytes do, so a stale copy can never be selected.
+const version = (file) =>
+  crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
 const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
@@ -1308,15 +1318,21 @@ const TEMPLATES = [
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-thumb-weight.png`), Buffer.from(r.thumbWeight.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-thumb-shade.jpg`), Buffer.from(r.thumbShade.split(',')[1], 'base64'));
 
+    // ?v= a hash of the file's own bytes: same content, same URL, so nothing is
+    // re-downloaded needlessly; changed content, changed URL, so nothing stale
+    // can be served.
+    const asset = (name) =>
+      `/assets/on-model/${name}?v=${version(path.join(OUT_DIR, name))}`;
+
     manifest.push({
       id: tpl.id, label: tpl.label, model: tpl.model, scene: tpl.scene,
       width: r.W, height: r.H,
-      photo: `/assets/on-model/${tpl.id}-photo.jpg`,
-      weight: `/assets/on-model/${tpl.id}-weight.png`,
-      shade: `/assets/on-model/${tpl.id}-shade.jpg`,
-      thumbPhoto: `/assets/on-model/${tpl.id}-thumb-photo.jpg`,
-      thumbWeight: `/assets/on-model/${tpl.id}-thumb-weight.png`,
-      thumbShade: `/assets/on-model/${tpl.id}-thumb-shade.jpg`,
+      photo: asset(`${tpl.id}-photo.jpg`),
+      weight: asset(`${tpl.id}-weight.png`),
+      shade: asset(`${tpl.id}-shade.jpg`),
+      thumbPhoto: asset(`${tpl.id}-thumb-photo.jpg`),
+      thumbWeight: asset(`${tpl.id}-thumb-weight.png`),
+      thumbShade: asset(`${tpl.id}-thumb-shade.jpg`),
       thumbWidth: 112, thumbHeight: 168,
       ambientTint: r.ambientTint, relMax: r.relMax, violetBase: r.violetBase,
       quad: r.quad, bbox: r.bbox,
