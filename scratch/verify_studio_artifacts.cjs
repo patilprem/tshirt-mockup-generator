@@ -1,11 +1,12 @@
 /**
- * Drives the two built review pages in a real browser: no console errors, the
- * frames actually paint pixels, and the controls that matter (layer picker,
- * wipe, drag, sheet axis) do what they claim.
+ * Drives both built review pages in a real browser: the prompt builds, a real
+ * violet-shirt photograph runs the validator end to end, the recolours paint,
+ * the hand-over block fills in, and the Colour View shows twelve colourways of
+ * a pasted image.
  *
  * The pages are published as artifacts, where the host wraps the file in its
- * own document skeleton — so the check wraps them the same way rather than
- * loading the fragment bare, and tests what the viewer will actually get.
+ * own document skeleton — so this wraps them the same way rather than loading
+ * the fragment bare, and tests what a viewer will actually get.
  *
  *   node scratch/verify_studio_artifacts.cjs [distDir] [shotDir]
  */
@@ -20,6 +21,10 @@ const DIST = process.argv[2] ? path.resolve(process.argv[2]) : path.join(__dirna
 const SHOTS = process.argv[3] ? path.resolve(process.argv[3]) : fs.mkdtempSync(path.join(os.tmpdir(), 'studio-shots-'));
 fs.mkdirSync(SHOTS, { recursive: true });
 
+// A shipped template's own photograph: a model in the vivid-violet crewneck,
+// which is exactly what both pages expect to be handed.
+const SAMPLE = path.join(ROOT, 'public/assets/on-model/gallery-f-photo.jpg');
+
 function chromePath() {
   if (process.env.PW_CHROMIUM) return process.env.PW_CHROMIUM;
   const base = '/opt/pw-browsers';
@@ -32,8 +37,6 @@ function chromePath() {
   return undefined;
 }
 
-// The artifact host supplies <!doctype>, <head> and <body>; the source files
-// are fragments. Wrap identically so the check exercises the shipped shape.
 function wrap(file) {
   const body = fs.readFileSync(file, 'utf8');
   const out = path.join(SHOTS, path.basename(file));
@@ -54,8 +57,7 @@ async function watch(page, label) {
   page.on('pageerror', (e) => problems.push(`${label} page error: ${e.message}`));
 }
 
-// A frame that decoded is a frame with more than one colour in it — a blank or
-// single-fill canvas is the failure mode worth catching here.
+// A canvas that rendered is a canvas with more than one colour in it.
 const DISTINCT = (sel) => `(() => {
   const c = document.querySelector(${JSON.stringify(sel)});
   if (!c || !c.width) return 0;
@@ -65,131 +67,110 @@ const DISTINCT = (sel) => `(() => {
   return seen.size;
 })()`;
 
+const MEAN = (sel) => `(() => {
+  const c = document.querySelector(${JSON.stringify(sel)});
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let sum = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4 * 37) { sum += d[i] + d[i+1] + d[i+2]; n++; }
+  return sum / n / 3;
+})()`;
+
 async function checkStudio(browser) {
-  console.log('\nmodel-studio.html');
-  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
-  await watch(page, 'model-studio');
-  await page.goto(wrap(path.join(DIST, 'model-studio.html')));
+  console.log('\ntemplate-studio.html');
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1100 } });
+  await watch(page, 'template-studio');
+  await page.goto(wrap(path.join(DIST, 'template-studio.html')));
 
-  await page.waitForSelector('#frame[data-ready]', { timeout: 60000 });
-  await page.waitForTimeout(400);
-  check('first frame paints', await page.evaluate(DISTINCT('#stage')) > 50);
-  await page.screenshot({ path: path.join(SHOTS, 'studio-1-default.png') });
+  // Step 1 — the prompt.
+  await page.click('#pBuild');
+  const prompt = await page.inputValue('#pOut');
+  check('prompt builds', prompt.length > 400, prompt.length + ' chars');
+  check('prompt keeps the violet rule', /violet/i.test(prompt));
+  await page.screenshot({ path: path.join(SHOTS, 'studio-1-prompt.png') });
 
-  // A colour swatch has to change the pixels, not just the readout. Sampled as
-  // a mean over the frame rather than at a point: the print sits over the
-  // middle of the shirt, so any single sample risks measuring the artwork.
-  const MEAN = `(() => {
-    const c = document.querySelector('#stage');
-    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    let sum = 0, n = 0;
-    for (let i = 0; i < d.length; i += 4 * 37) { sum += d[i] + d[i+1] + d[i+2]; n++; }
-    return sum / n / 3;
-  })()`;
-  const before = await page.evaluate(DISTINCT('#stage'));
-  const darkMean = await page.evaluate(MEAN);
-  await page.locator('#swatches button').nth(0).click();   // Classic White
-  await page.waitForTimeout(700);
-  const lightMean = await page.evaluate(MEAN);
-  check('recolour reaches the canvas', lightMean - darkMean > 8,
-    `mean luminance ${darkMean.toFixed(1)} -> ${lightMean.toFixed(1)}`);
-  check('frame still has depth after recolour', before > 50);
-
-  // The scene picker paints through the engine too, so it must not stay blank.
-  await page.waitForTimeout(900);
-  check('scene thumbnails render recoloured', await page.evaluate(`(() => {
-    const cs = [...document.querySelectorAll('#tiles canvas')];
-    return cs.length === 8 && cs.every(c => {
-      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-      const seen = new Set();
-      for (let i = 0; i < d.length; i += 4 * 53) seen.add(d[i] + ',' + d[i+1] + ',' + d[i+2]);
-      return seen.size > 20;
-    });
-  })()`));
-
-  // Scene swap: a different template must decode and repaint.
-  await page.locator('#tiles button').nth(2).click();
-  await page.waitForTimeout(1500);
-  check('scene swap repaints', await page.evaluate(DISTINCT('#stage')) > 50);
-  await page.screenshot({ path: path.join(SHOTS, 'studio-2-scene-white.png') });
-
-  // Drag the print and confirm the placement readout moved with it.
-  const box = await page.locator('#stage').boundingBox();
-  const posBefore = await page.textContent('#rd-place');
-  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.52);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.42, box.y + box.height * 0.45, { steps: 8 });
-  await page.mouse.up();
-  await page.waitForTimeout(300);
-  const posAfter = await page.textContent('#rd-place');
-  check('dragging the print moves it', posBefore !== posAfter, `${posBefore.trim()} -> ${posAfter.trim()}`);
-
-  // Layer picker and wipe: the two inspection tools.
-  await page.locator('#layers button', { hasText: 'Coverage' }).click();
+  // Step 2 — validate a real template photograph.
+  await page.setInputFiles('#file', SAMPLE);
+  await page.waitForSelector('#valResults:not(.hidden)', { timeout: 120000 });
   await page.waitForTimeout(500);
-  check('coverage map renders', await page.evaluate(DISTINCT('#stage')) > 2);
-  await page.screenshot({ path: path.join(SHOTS, 'studio-3-coverage.png') });
+  const rows = await page.locator('#checks .check').count();
+  check('validator runs every gate', rows > 8, rows + ' checks');
+  check('verdict is stated', (await page.textContent('#verdict')).trim().length > 3,
+    (await page.textContent('#verdict')).trim().split('\n')[0]);
+  check('weight map painted', await page.evaluate(DISTINCT('#mapWeight')) > 2);
+  check('shade map painted', await page.evaluate(DISTINCT('#mapShade')) > 2);
+  await page.screenshot({ path: path.join(SHOTS, 'studio-2-validate.png'), fullPage: true });
 
-  await page.locator('#layers button', { hasText: 'Mockup' }).click();
-  await page.fill('#wipe', '50');
-  await page.dispatchEvent('#wipe', 'input');
-  await page.check('#quad');
-  await page.waitForTimeout(700);
-  check('wipe + quad overlay render', await page.evaluate(DISTINCT('#stage')) > 50);
-  await page.screenshot({ path: path.join(SHOTS, 'studio-4-wipe.png') });
+  // Step 3 — recolours, which only appear once the image analysed.
+  await page.waitForSelector('#tryStep:not(.hidden)', { timeout: 30000 });
+  const beforeMean = await page.evaluate(MEAN('#tryCanvas'));
+  await page.locator('#trySwatches .sw').nth(1).click();   // near-black
+  await page.waitForTimeout(400);
+  const afterMean = await page.evaluate(MEAN('#tryCanvas'));
+  check('recolour reaches the canvas', beforeMean - afterMean > 8,
+    `mean luminance ${beforeMean.toFixed(1)} -> ${afterMean.toFixed(1)}`);
+
+  // Step 4 — the hand-over block.
+  await page.click('#mBuild');
+  await page.waitForTimeout(300);
+  const handover = (await page.textContent('#mOut')).trim();
+  check('hand-over instruction fills in', /Add this on-model template/.test(handover));
+  check('hand-over carries the measurements', /shirt hue/.test(handover) && /coverage/.test(handover));
+  check('hand-over carries the prompt', /photograph|violet/i.test(handover.split('Prompt used:')[1] || ''));
+  await page.screenshot({ path: path.join(SHOTS, 'studio-3-ship.png') });
 
   await page.close();
 }
 
-async function checkSheet(browser) {
-  console.log('\ncolor-view.html');
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
-  await watch(page, 'color-view');
-  await page.goto(wrap(path.join(DIST, 'color-view.html')));
+async function checkColourView(browser) {
+  console.log('\ntry-colors.html');
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1100 } });
+  await watch(page, 'try-colors');
+  await page.goto(wrap(path.join(DIST, 'try-colors.html')));
 
-  await page.waitForFunction('document.querySelectorAll(".cell").length === 12', null, { timeout: 60000 });
-  await page.waitForFunction('document.getElementById("sheet-status").textContent === ""', null, { timeout: 120000 });
-  check('twelve colourways painted', await page.evaluate(`(() => {
-    const cells = [...document.querySelectorAll('.cell-frame canvas')];
-    return cells.every(c => {
+  await page.setInputFiles('#file', SAMPLE);
+  await page.waitForSelector('#viewStep:not(.hidden)', { timeout: 120000 });
+  await page.waitForTimeout(600);
+  check('main frame paints', await page.evaluate(DISTINCT('#mainCanvas')) > 50);
+  check('maps paint', await page.evaluate(DISTINCT('#mapClip')) > 2);
+  check('measurements listed', (await page.locator('#stats dt').count()) >= 8);
+
+  const cells = await page.locator('.grid-cell').count();
+  check('twelve colourways on the sheet', cells === 12, cells + ' cells');
+  check('every sheet frame painted', await page.evaluate(`(() => {
+    const cs = [...document.querySelectorAll('.grid-cell canvas')];
+    return cs.length === 12 && cs.every(c => {
       const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       const seen = new Set();
-      for (let i = 0; i < d.length; i += 4 * 397) seen.add(d[i] + ',' + d[i+1] + ',' + d[i+2]);
-      return seen.size > 50;
+      for (let i = 0; i < d.length; i += 4 * 97) seen.add(d[i] + ',' + d[i+1] + ',' + d[i+2]);
+      return seen.size > 30;
     });
   })()`));
-  check('inspection frame painted', await page.evaluate(DISTINCT('#detail')) > 50);
-  await page.screenshot({ path: path.join(SHOTS, 'sheet-1-colours.png'), fullPage: true });
+  await page.screenshot({ path: path.join(SHOTS, 'colour-1-sheet.png'), fullPage: true });
 
-  // Flagging is the page's record of what failed review.
-  await page.locator('.cell').nth(4).locator('.fl').click();
-  await page.waitForTimeout(150);
-  check('flagging records the frame', (await page.textContent('#flagged-list')).length > 5,
-    (await page.textContent('#flagged-list')).trim());
+  const light = await page.evaluate(MEAN('#mainCanvas'));
+  await page.locator('#swatches .sw').nth(1).click();      // Vintage Black
+  await page.waitForTimeout(400);
+  const dark = await page.evaluate(MEAN('#mainCanvas'));
+  check('swatch changes the frame', light - dark > 8,
+    `mean luminance ${light.toFixed(1)} -> ${dark.toFixed(1)}`);
 
-  // The other axis: one colour across every scene.
-  await page.locator('#axis button[data-axis="scene"]').click();
-  await page.waitForFunction('document.getElementById("sheet-status").textContent === ""', null, { timeout: 120000 });
-  const sceneCells = await page.locator('.cell').count();
-  check('scene axis renders every scene', sceneCells === 8, sceneCells + ' cells');
-  await page.screenshot({ path: path.join(SHOTS, 'sheet-2-scenes.png'), fullPage: true });
-
-  // Detail wipe against the untouched photograph.
-  await page.locator('.cell').nth(3).locator('.cell-frame').click();
-  await page.fill('#d-wipe', '50');
-  await page.dispatchEvent('#d-wipe', 'input');
-  await page.waitForTimeout(900);
-  check('detail wipe renders', await page.evaluate(DISTINCT('#detail')) > 50);
-  await page.screenshot({ path: path.join(SHOTS, 'sheet-3-wipe.png') });
+  await page.click('#toggleOriginal');
+  await page.waitForTimeout(400);
+  check('original comparison renders', await page.evaluate(DISTINCT('#mainCanvas')) > 50);
+  await page.screenshot({ path: path.join(SHOTS, 'colour-2-original.png') });
 
   await page.close();
 }
 
 (async () => {
+  if (!fs.existsSync(SAMPLE)) {
+    console.error('missing sample photograph: ' + SAMPLE);
+    process.exit(1);
+  }
   const browser = await chromium.launch({ executablePath: chromePath() });
   try {
     await checkStudio(browser);
-    await checkSheet(browser);
+    await checkColourView(browser);
   } finally {
     await browser.close();
   }

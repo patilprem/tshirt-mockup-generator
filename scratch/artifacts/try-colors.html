@@ -1,0 +1,465 @@
+<title>Colour View</title>
+
+<style>
+/*__STYLE__*/
+
+/* Page-specific. Everything above comes from template-studio.html, so this
+   page and the Template Studio are visibly one tool. */
+
+.view-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 22px; align-items: start; }
+@media (max-width: 780px) { .view-layout { grid-template-columns: 1fr; } }
+
+#mainCanvas {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--sunk);
+  display: block;
+}
+
+.rail-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.rail-block > .label {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.hex-row { display: flex; align-items: center; gap: 8px; }
+.hex-row input[type="color"] {
+  width: 40px; height: 32px; padding: 2px; cursor: pointer;
+  background: var(--sunk); border: 1px solid var(--line); border-radius: 8px;
+}
+.hex-row .val { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* The sheet: the same photograph in every shipping colourway, side by side.
+   One colour at a time answers "does this work"; all twelve at once answers
+   "is anything about this template colour-dependent", which is the question
+   that actually decides whether it ships. */
+.grid-sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.grid-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.grid-cell button {
+  padding: 0; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+  background: var(--sunk); cursor: zoom-in; display: block;
+  transition: border-color .15s, box-shadow .15s;
+}
+.grid-cell button:hover { border-color: var(--accent); }
+.grid-cell[data-current] button { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.grid-cell canvas { width: 100%; display: block; }
+.grid-cell figcaption,
+.grid-cell .cap {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-family: var(--mono); font-size: 11.5px; }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+.busy { font-family: var(--mono); font-size: 12px; color: var(--muted); min-height: 18px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">FreeTeeMockup · internal</span>
+    <h1>Colour View</h1>
+    <p class="lede">
+      Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
+      every shipping colourway, recoloured by the same maths the site runs. No upload,
+      no build step: the analysis happens in this tab, on the image you paste.
+    </p>
+  </header>
+
+  <div class="steps">
+    <section class="step">
+      <div class="step-head"><h2>Paste the photo</h2></div>
+      <p class="sub">
+        Ctrl/Cmd-V anywhere on this page, drop a file onto the box, or click it to browse.
+        The photo never leaves the tab.
+      </p>
+      <div class="drop" id="drop">
+        <p><b>Paste, drop or click</b> to load a candidate template</p>
+        <p class="note">JPEG, PNG or WebP · analysed at up to 1600px on the long edge</p>
+        <input type="file" id="file" accept="image/*">
+      </div>
+      <p class="busy" id="status"></p>
+    </section>
+
+    <section class="step hidden" id="viewStep">
+      <div class="step-head"><h2>One colour at a time</h2></div>
+      <p class="sub">
+        The recolour runs the shipping formula: the photograph plus the shirt's own weight
+        times the relit target, with the violet it was photographed in subtracted back out.
+      </p>
+      <div class="view-layout">
+        <div>
+          <canvas id="mainCanvas" width="600" height="800" aria-label="Recoloured photograph"></canvas>
+          <div class="maps" id="mapsRow">
+            <figure><canvas id="mapWeight"></canvas><figcaption>weight</figcaption></figure>
+            <figure><canvas id="mapClip"></canvas><figcaption>print area</figcaption></figure>
+            <figure><canvas id="mapShade"></canvas><figcaption>shade</figcaption></figure>
+          </div>
+        </div>
+
+        <div>
+          <div class="rail-block">
+            <span class="label">Shipping palette</span>
+            <div class="swatches" id="swatches"></div>
+          </div>
+
+          <div class="rail-block">
+            <span class="label">Any colour</span>
+            <div class="hex-row">
+              <input type="color" id="custom" value="#ffffff" aria-label="Custom shirt colour">
+              <span class="val" id="customVal">#FFFFFF</span>
+            </div>
+          </div>
+
+          <div class="rail-block">
+            <span class="label">Compare</span>
+            <button class="btn" id="toggleOriginal" aria-pressed="false">Show the violet original</button>
+            <button class="btn" id="download">Download this colour</button>
+          </div>
+
+          <div class="rail-block">
+            <span class="label">What the analysis measured</span>
+            <dl class="stats" id="stats"></dl>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="step hidden" id="gridStep">
+      <div class="step-head"><h2>Every colour at once</h2></div>
+      <p class="sub">
+        Twelve frames from one analysis. A template that only fails in one colourway —
+        violet surviving in the shadows of a dark shirt, an edge that goes chalky on a pale
+        one — fails here and nowhere else. Click a frame to bring it up above.
+      </p>
+      <div class="grid-sheet" id="gridSheet"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+/*__ANALYSIS__*/
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // The editor's twelve fabric presets, in the editor's order.
+  var PRESETS = [
+    { hex: '#ffffff', name: 'Classic White' },
+    { hex: '#212121', name: 'Vintage Black' },
+    { hex: '#afb0b1', name: 'Athletic Heather' },
+    { hex: '#373a3c', name: 'Charcoal Grey' },
+    { hex: '#1b2230', name: 'Classic Navy' },
+    { hex: '#1e3b8a', name: 'Royal Blue' },
+    { hex: '#4b533f', name: 'Olive Green' },
+    { hex: '#1e3328', name: 'Forest Green' },
+    { hex: '#521c22', name: 'Maroon Burgundy' },
+    { hex: '#d2c6af', name: 'Sand Beige' },
+    { hex: '#f5d5db', name: 'Baby Pink' },
+    { hex: '#6b7c85', name: 'Dusty Blue' },
+  ];
+
+  var analysis = null;   // full-resolution analysis
+  var small = null;      // sampled copy, for the twelve-up sheet
+  var colour = '#ffffff';
+  var showingOriginal = false;
+
+  var statusEl = document.getElementById('status');
+
+  // --- loading ------------------------------------------------------------
+
+  var drop = document.getElementById('drop');
+  var fileInput = document.getElementById('file');
+
+  drop.addEventListener('click', function () { fileInput.click(); });
+  drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+  drop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    drop.classList.remove('over');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function (e) {
+    if (e.target.files && e.target.files[0]) load(e.target.files[0]);
+  });
+  window.addEventListener('paste', function (e) {
+    var items = (e.clipboardData || {}).items || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') === 0) { load(items[i].getAsFile()); return; }
+    }
+  });
+
+  function load(file) {
+    if (!file) return;
+    statusEl.textContent = 'Reading the image…';
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      statusEl.textContent = 'Analysing — separating shirt from background…';
+      // Yielded to the browser first: analyse() is a second or two of straight
+      // maths, and without the frame in between the status line never paints.
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          try {
+            run(img);
+          } catch (err) {
+            statusEl.textContent = 'That image could not be analysed: ' + err.message;
+          }
+          URL.revokeObjectURL(url);
+        }, 16);
+      });
+    };
+    img.onerror = function () {
+      statusEl.textContent = 'That file could not be read as an image.';
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  function run(img) {
+    analysis = analyze(img);
+    if (analysis.noGarment) {
+      statusEl.textContent =
+        'No violet garment found. This view needs a photo of a model in the vivid-violet ' +
+        'crewneck the pipeline is built around.';
+      document.getElementById('viewStep').classList.add('hidden');
+      document.getElementById('gridStep').classList.add('hidden');
+      return;
+    }
+    small = sample(analysis, 300);
+    statusEl.textContent = analysis.srcW + '×' + analysis.srcH + ' analysed at ' +
+      analysis.W + '×' + analysis.H + '.';
+    document.getElementById('viewStep').classList.remove('hidden');
+    document.getElementById('gridStep').classList.remove('hidden');
+    buildSwatches();
+    drawMaps();
+    renderStats();
+    renderMain();
+    buildGrid();
+  }
+
+  // --- recolour -----------------------------------------------------------
+
+  // The runtime formula, unchanged: out = photo + w * (T(shade) - own·photo -
+  // (1-own)·V(shade)). Both LUTs come from the same relight, so whatever the
+  // model gets wrong cancels between them.
+  function recolour(target, a, hex) {
+    var tr = parseInt(hex.slice(1, 3), 16);
+    var tg = parseInt(hex.slice(3, 5), 16);
+    var tb = parseInt(hex.slice(5, 7), 16);
+    var lutT = relightLut([tr, tg, tb], a);
+    var lutV = a._lutV || (a._lutV = relightLut(a.violetBase, a));
+    target.width = a.W; target.height = a.H;
+    var x = target.getContext('2d');
+    var out = x.createImageData(a.W, a.H);
+    var d = out.data;
+    d.set(a.photoData);
+    var n = a.W * a.H;
+    for (var i = 0; i < n; i++) {
+      var wv = a.wArr[i];
+      if (!wv) continue;
+      var ww = wv / 255, cl = a.ownArr[i] / 255;
+      var sb = a.shade[i] * 3, o = i * 4;
+      d[o] = d[o] + ww * (lutT[sb] - cl * d[o] - (1 - cl) * lutV[sb]);
+      d[o + 1] = d[o + 1] + ww * (lutT[sb + 1] - cl * d[o + 1] - (1 - cl) * lutV[sb + 1]);
+      d[o + 2] = d[o + 2] + ww * (lutT[sb + 2] - cl * d[o + 2] - (1 - cl) * lutV[sb + 2]);
+    }
+    x.putImageData(out, 0, 0);
+    return target;
+  }
+
+  function drawOriginal(target, a) {
+    target.width = a.W; target.height = a.H;
+    var x = target.getContext('2d');
+    var img = x.createImageData(a.W, a.H);
+    img.data.set(a.photoData);
+    x.putImageData(img, 0, 0);
+  }
+
+  // Nearest-neighbour copy of everything the recolour reads. Twelve frames at
+  // full resolution is twenty million pixels of arithmetic for thumbnails
+  // nobody views at full size; at 300px on the long edge the sheet is instant
+  // and shows the same failures.
+  function sample(a, maxEdge) {
+    var k = Math.min(1, maxEdge / Math.max(a.W, a.H));
+    var W = Math.max(1, Math.round(a.W * k));
+    var H = Math.max(1, Math.round(a.H * k));
+    var photoData = new Uint8ClampedArray(W * H * 4);
+    var wArr = new Uint8ClampedArray(W * H);
+    var ownArr = new Uint8ClampedArray(W * H);
+    var shade = new Uint8ClampedArray(W * H);
+    for (var y = 0; y < H; y++) {
+      var sy = Math.min(a.H - 1, Math.round(y / k));
+      for (var x = 0; x < W; x++) {
+        var sx = Math.min(a.W - 1, Math.round(x / k));
+        var si = sy * a.W + sx, di = y * W + x;
+        photoData[di * 4] = a.photoData[si * 4];
+        photoData[di * 4 + 1] = a.photoData[si * 4 + 1];
+        photoData[di * 4 + 2] = a.photoData[si * 4 + 2];
+        photoData[di * 4 + 3] = 255;
+        wArr[di] = a.wArr[si];
+        ownArr[di] = a.ownArr[si];
+        shade[di] = a.shade[si];
+      }
+    }
+    return {
+      W: W, H: H, photoData: photoData, wArr: wArr, ownArr: ownArr, shade: shade,
+      violetBase: a.violetBase, ambientTint: a.ambientTint, relMax: a.relMax,
+    };
+  }
+
+  // --- rendering ----------------------------------------------------------
+
+  function renderMain() {
+    var cnv = document.getElementById('mainCanvas');
+    if (showingOriginal) drawOriginal(cnv, analysis);
+    else recolour(cnv, analysis, colour);
+  }
+
+  function buildSwatches() {
+    var host = document.getElementById('swatches');
+    host.innerHTML = '';
+    PRESETS.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sw';
+      b.style.background = p.hex;
+      b.title = p.name + ' · ' + p.hex;
+      b.setAttribute('aria-label', p.name);
+      b.setAttribute('aria-pressed', String(p.hex === colour));
+      b.addEventListener('click', function () { setColour(p.hex); });
+      host.appendChild(b);
+    });
+  }
+
+  function syncSwatches() {
+    var host = document.getElementById('swatches');
+    Array.prototype.forEach.call(host.children, function (b, i) {
+      b.setAttribute('aria-pressed', String(PRESETS[i].hex === colour));
+    });
+    Array.prototype.forEach.call(document.getElementById('gridSheet').children, function (cell) {
+      if (cell.getAttribute('data-hex') === colour) cell.setAttribute('data-current', '');
+      else cell.removeAttribute('data-current');
+    });
+  }
+
+  function setColour(hex) {
+    colour = hex;
+    showingOriginal = false;
+    var t = document.getElementById('toggleOriginal');
+    t.setAttribute('aria-pressed', 'false');
+    t.textContent = 'Show the violet original';
+    document.getElementById('custom').value = hex;
+    document.getElementById('customVal').textContent = hex.toUpperCase();
+    syncSwatches();
+    renderMain();
+  }
+
+  function buildGrid() {
+    var host = document.getElementById('gridSheet');
+    host.innerHTML = '';
+    PRESETS.forEach(function (p) {
+      var cell = document.createElement('figure');
+      cell.className = 'grid-cell';
+      cell.setAttribute('data-hex', p.hex);
+      if (p.hex === colour) cell.setAttribute('data-current', '');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Show ' + p.name + ' above');
+      var cnv = document.createElement('canvas');
+      recolour(cnv, small, p.hex);
+      btn.appendChild(cnv);
+      btn.addEventListener('click', function () {
+        setColour(p.hex);
+        document.getElementById('mainCanvas').scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+      var cap = document.createElement('figcaption');
+      cap.textContent = p.name;
+      cap.title = p.name + ' · ' + p.hex;
+      cell.appendChild(btn);
+      cell.appendChild(cap);
+      host.appendChild(cell);
+    });
+  }
+
+  // The three maps the recolour reads, at the size they are actually judged:
+  // a weight map with speckle in it, or a print area that has crept onto skin,
+  // is visible here and nowhere in the finished frame.
+  function drawMaps() {
+    var a = analysis;
+    var paint = function (id, src, alphaOnly) {
+      var c = document.getElementById(id);
+      c.width = a.W; c.height = a.H;
+      var x = c.getContext('2d');
+      var img = x.createImageData(a.W, a.H);
+      for (var i = 0; i < a.W * a.H; i++) {
+        var v = src[i];
+        img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v;
+        img.data[i * 4 + 3] = 255;
+      }
+      x.putImageData(img, 0, 0);
+    };
+    paint('mapWeight', a.wArr);
+    paint('mapClip', a.clipArr);
+    paint('mapShade', a.shade);
+  }
+
+  function renderStats() {
+    var a = analysis;
+    var rows = [
+      ['source', a.srcW + '×' + a.srcH],
+      ['analysed', a.W + '×' + a.H],
+      ['shirt hue', a.shirtHue + '°'],
+      ['coverage', a.coverage.toFixed(1) + '%'],
+      ['stray violet', a.strayVioletPct.toFixed(2) + '%'],
+      ['deep shadow', a.deepShadowPct.toFixed(2) + '%'],
+      ['fragments', String(a.fragments)],
+      ['violet base', a.violetBase.map(Math.round).join(' · ')],
+      ['ambient tint', a.ambientTint.map(function (v) { return v.toFixed(3); }).join(' · ')],
+    ];
+    var host = document.getElementById('stats');
+    host.innerHTML = '';
+    rows.forEach(function (r) {
+      var dt = document.createElement('dt');
+      dt.textContent = r[0];
+      var dd = document.createElement('dd');
+      dd.textContent = r[1];
+      host.appendChild(dt);
+      host.appendChild(dd);
+    });
+  }
+
+  // --- controls -----------------------------------------------------------
+
+  document.getElementById('custom').addEventListener('input', function (e) {
+    setColour(e.target.value);
+  });
+
+  document.getElementById('toggleOriginal').addEventListener('click', function () {
+    if (!analysis) return;
+    showingOriginal = !showingOriginal;
+    this.setAttribute('aria-pressed', String(showingOriginal));
+    this.textContent = showingOriginal ? 'Back to the recolour' : 'Show the violet original';
+    renderMain();
+  });
+
+  document.getElementById('download').addEventListener('click', function () {
+    if (!analysis) return;
+    var cnv = document.createElement('canvas');
+    if (showingOriginal) drawOriginal(cnv, analysis);
+    else recolour(cnv, analysis, colour);
+    cnv.toBlob(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'colour-view-' + (showingOriginal ? 'original' : colour.replace('#', '')) + '.png';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    }, 'image/png');
+  });
+})();
+</script>
