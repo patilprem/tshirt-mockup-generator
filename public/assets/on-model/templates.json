@@ -406,5 +406,56 @@
       "w": 829,
       "h": 954
     }
+  },
+  {
+    "id": "cafe-f",
+    "label": "Cafe Counter",
+    "model": "female",
+    "scene": "Bright cafe, window light, barista counter behind",
+    "width": 1285,
+    "height": 1600,
+    "photo": "/assets/on-model/cafe-f-photo.jpg",
+    "weight": "/assets/on-model/cafe-f-weight.png",
+    "shade": "/assets/on-model/cafe-f-shade.jpg",
+    "thumbPhoto": "/assets/on-model/cafe-f-thumb-photo.jpg",
+    "thumbWeight": "/assets/on-model/cafe-f-thumb-weight.png",
+    "thumbShade": "/assets/on-model/cafe-f-thumb-shade.jpg",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9583,
+      0.9226
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      100.3,
+      60.2,
+      131
+    ],
+    "quad": {
+      "tl": [
+        527.4,
+        681
+      ],
+      "tr": [
+        756.6,
+        681
+      ],
+      "br": [
+        751.1,
+        968
+      ],
+      "bl": [
+        521.9,
+        968
+      ]
+    },
+    "bbox": {
+      "x": 241,
+      "y": 527,
+      "w": 793,
+      "h": 735
+    }
   }
 ]

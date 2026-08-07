@@ -60,6 +60,7 @@ const TEMPLATES = [
   { id: 'bright-airy-f', file: 'bright-airy-f.webp', label: 'Bright Airy', model: 'female', scene: 'Bright airy coffee shop, pale wood' },
   { id: 'miami-f', file: 'miami-f.webp', label: 'Miami Street', model: 'female', scene: 'palm-lined street' },
   { id: 'bright-minimal-m', file: 'bright-minimal-m.webp', label: 'Bright Minimal', model: 'male', scene: 'Bright minimal grey walls, soft daylight' },
+  { id: 'cafe-f', file: 'cafe-f.webp', label: 'Cafe Counter', model: 'female', scene: 'Bright cafe, window light, barista counter behind' },
 ];
 
 (async () => {
@@ -620,6 +621,7 @@ const TEMPLATES = [
       }
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
+      const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
       let wedgePx = 0;
       for (let i = 0; i < N; i++) if (ring[i]) {
         const o = i * 4;
@@ -636,10 +638,48 @@ const TEMPLATES = [
         // against a wrong endpoint paints skin green or leaves speckle. Distance
         // the estimate had to travel is measured directly, and confidence dies
         // with it: wedge pixels stay uniformly photographic, a natural shadow.
-        let conf = 1 - smooth(err, 14, 42);
+        // Alpha is a projection onto the line fg->bg, and two things can make it
+        // meaningless while `err` still reports a good fit — because `err` measures
+        // FIT, and when the two endpoints are close together EVERY alpha fits.
+        //
+        // Separation: the error in alpha scales as (image noise)/(endpoint
+        // separation), so a few levels of codec noise swing it across its whole
+        // range once fg and bg are within ~20 levels. The `den < 100` bail-out above
+        // is this same idea with a hard edge at 10 levels, far below where the
+        // estimate actually goes bad; this continues it smoothly.
+        //
+        // Identifiability: darkening slides a pixel along very nearly the same line
+        // as mixing does. Shadowed denim sits between "dark thing" and "lit denim"
+        // exactly where a half-covered pixel would, so alpha cannot separate
+        // coverage from shading unless the fabric endpoint still shows what makes it
+        // fabric — violet's green deficit, which dimming preserves because it scales
+        // all three channels together. Where the fabric endpoint has itself gone
+        // neutral, as it does in the shadow a hem casts on what it rests against,
+        // "part fabric" and "shaded background" are the same measurement and alpha
+        // is not a coverage fraction any more.
+        //
+        // Ungated, that read ~50% coverage on plain denim under a hem at confidence
+        // 1, varying pixel by pixel with the denim's own weave: a comb of vertical
+        // teeth along the whole hem, surviving into every colour.
+        const sep = Math.sqrt(den);
+        const fgGap = Math.min(fgC[i * 3] - fgC[i * 3 + 1], fgC[i * 3 + 2] - fgC[i * 3 + 1]);
+        let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGap, 3, 14);
         conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING + 1, RING + 4);
         if (fgF.fd[i] < 0) conf = 0;
         if (vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING + 1)) wedgePx++;
+        // The matte's answer is recorded for EVERY ring pixel, before the
+        // crevice veto below decides whether to act on it. Those are two
+        // different questions. Acting on it means assigning the weight AND
+        // baking the pixel to a*V(shade) + (1-a)*bg, which at alpha ~0 rewrites
+        // a crevice to pure background and is exactly what the veto exists to
+        // prevent. Merely reading it costs nothing, and at the other end of the
+        // range it is the only stage that knows the answer: the shadow band
+        // under a hem is dark and achromatic, so the veto catches it, but the
+        // background there IS reachable and the matte solves it confidently at
+        // alpha ~0.95. Vetoed, that band fell through to the completion, which
+        // interpolated across it to mid weight — and mid weight over a dark
+        // shade is the broken dark line that follows a hem in every colour.
+        mAlpha[i] = a2; mConf[i] = conf;
         if (crevice[i]) continue;
         alphaA[i] = a2; confA[i] = conf;
         wMap[i] = conf * a2 + (1 - conf) * wMap[i];
@@ -760,6 +800,41 @@ const TEMPLATES = [
         if (fl > wMap[i]) wMap[i] = fl;
       }
 
+      // The matte's own answer, as a floor, in the same monotone form as the
+      // ordering floor above and for the same reason. The completion exists to
+      // invent a weight where the pixel cannot supply one, and along a hem it
+      // does that by interpolating across a band with fabric on one side and
+      // background on the other, landing near the middle. Mid weight over a
+      // dark shade renders neither the fabric nor the background but something
+      // between and below both: the broken dark line that follows a hem in
+      // every colour. Where the matte is confident it has already measured that
+      // band from the fabric and background either side and scored the answer
+      // by how well it reproduces the pixel, which beats an interpolation.
+      //
+      // Read from mAlpha/mConf, so it sees crevice pixels the veto held back —
+      // raising a weight is safe there, where baking is not. And a floor, never
+      // an assignment: alpha near zero floors nothing, so a crevice the matte
+      // calls background keeps whatever the completion gave it, and the
+      // completion stays free to RAISE a pixel the matte under-called, which is
+      // what the speckle guarantee rests on.
+      //
+      // Gated on a BRIGHT background, by the same `ambig` the ordering floor
+      // uses and for the mirror-image reason. That comment explains where the
+      // matte cannot see: shading takes fabric toward black, so against a
+      // near-black background fabric-in-shadow and background-in-shadow lie on
+      // top of each other and alpha is guesswork. The ordering floor overrides
+      // the matte exactly there; this one defers to it exactly there. Ungated,
+      // a hem over black denim picks up a ragged bright fringe where the matte
+      // guessed fabric — the same guesswork, read the other way round. Against
+      // a bright background mixing brightens and shading darkens, the two are
+      // not confusable, and the matte's answer is the best one available.
+      for (let i = 0; i < N; i++) {
+        if (!ring[i]) continue;
+        const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+        const fl = mAlpha[i] * Math.max(0, Math.min(1, mConf[i])) * smooth(bgL, 60, 110);
+        if (fl > wMap[i]) wMap[i] = fl;
+      }
+
       // The own-value blend, computed once and shared by the weight map's B
       // channel and the chroma QA gate below. One array rather than the same
       // expression written twice: the gate exists to catch this value going
@@ -767,10 +842,11 @@ const TEMPLATES = [
       // the two drift apart.
       const ownBlend = new Float32Array(N);
       for (let i = 0; i < N; i++) {
+        const cf = Math.max(0, Math.min(1, confA[i]));
         ownBlend[i] = Math.max(0, Math.min(1, Math.max(
           clip[i],
           unrel[i],
-          outside[i] ? 1 - Math.max(0, Math.min(1, confA[i])) : 0,
+          outside[i] ? 1 - cf : 0,
         )));
       }
 
@@ -784,7 +860,23 @@ const TEMPLATES = [
         const o = i * 4;
         let r = src[o], g = src[o + 1], b = src[o + 2];
         if (gate[i]) {
-          const dark = 1 - smooth(vA[i], 0.22, 0.42);
+          // Only where there is violet to neutralise. `gate` is a geometric mask — a
+          // dilation around the garment — so it takes in the model's own arm where it
+          // rests against the sleeve, and this rule desaturated any dark pixel inside it
+          // in proportion to its darkness. Skin in shadow is dark, so a warm brown arm
+          // (81,51,40) was rewritten to a flat grey (69,55,50) and stayed that way under
+          // every colour: a charcoal slab in the underarm gap, with the gate's own
+          // boundary as its hard edge. On the violet original that reads as ordinary
+          // shadow, which is how it survived; against a pale shirt it does not.
+          //
+          // A pixel is spared only when it carries REAL chroma pointing somewhere other
+          // than violet — skin, hair and wood sit ~110 degrees away. A pixel with little
+          // chroma is neutralised as before and nothing is lost by it: there is no
+          // saturation there for the operation to move, so the crease residue this rule
+          // exists to remove is still removed in full.
+          const offHue = smooth(ad(hA[i], shirtHue), 45, 90);
+          const dark = (1 - smooth(vA[i], 0.22, 0.42))
+            * (1 - offHue * smooth(sA[i], 0.06, 0.16));
           const kk = Math.min(1, (1 - wMap[i]) * dark);
           if (kk > 0) {
             const L = 0.299 * r + 0.587 * g + 0.114 * b;
@@ -923,26 +1015,57 @@ const TEMPLATES = [
         fitSum += (Math.abs(src[o] - vr) + Math.abs(src[o + 1] - vg) + Math.abs(src[o + 2] - vb)) / 3;
         fitCnt++;
       }
-      // edge audit: recolour the ring to WHITE via the exact runtime formula
-      // and count matte-confident pixels landing outside the convex hull of
-      // their two endpoints — the "dark outline / halo on light colours"
-      // defect class. Non-zero here means the matting is broken.
+      // edge audit: recolour the silhouette to WHITE via the exact runtime
+      // formula and count pixels landing outside the convex hull of their two
+      // endpoints — the "dark outline / halo on light colours" defect class.
+      //
+      // EVERY boundary pixel is audited. It used to skip everything the matte
+      // was not confident about, which inverted the audit's purpose: the pixels
+      // the matte gives up on are exactly the ones no later stage can guarantee,
+      // so the one defect class able to reach a shipped template unseen was the
+      // one hiding in them. A hem against trousers put its entire broken dark
+      // line there and this counted single digits while it shipped.
+      //
+      // What made the confidence filter tempting is that a real shadow — a
+      // crease, a fold, the shade a hem casts on what is under it — also sits
+      // below the hull of background and fabric, and counting those would drown
+      // the number in photographic truth. So the SOURCE is audited too, against
+      // the violet it actually shows, and only the EXCESS counts: darkness
+      // already in the photograph cancels, and what is left is darkness the
+      // recolour introduced. That is the defect either way, whether or not the
+      // matte understood the pixel.
+      //
+      // The runtime formula is used entire, ownBlend included — modelling it as
+      // if own were 0 understates precisely the pixels where own decides the
+      // result.
+
       let edgeDark = 0, edgeBright = 0;
       {
         const lutW = mkRelight([255, 255, 255]);
+        const lum = (r2, g2, b2) => 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+        const below = (v, lo) => Math.max(0, lo - v);
+        const above = (v, hi) => Math.max(0, v - hi);
         for (let i = 0; i < N; i++) {
-          if (!ring[i] || confA[i] < 0.5) continue;
-          const o = i * 4, ww = wMap[i];
+          if (!ring[i]) continue;
+          const o = i * 4, ww = wMap[i], cl2 = ownBlend[i];
           const sbB = Math.round(shadeVal[i] * 255) * 3;
-          const lum = (r2, g2, b2) => 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
-          const outL = lum(
-            pd.data[o] + ww * (lutW[sbB] - lutVm[sbB]),
-            pd.data[o + 1] + ww * (lutW[sbB + 1] - lutVm[sbB + 1]),
-            pd.data[o + 2] + ww * (lutW[sbB + 2] - lutVm[sbB + 2]));
-          const bL = lum(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]);
+          const px = (c2) => pd.data[o + c2] +
+            ww * (lutW[sbB + c2] - cl2 * pd.data[o + c2] - (1 - cl2) * lutVm[sbB + c2]);
+          const outL = lum(px(0), px(1), px(2));
+          // The endpoint the runtime actually blends FROM. With own=0 that is the
+          // background, and the result is the convex blend (1-a)*bg + a*T(shade). With
+          // own=1 it is the PHOTOGRAPH: out = (1-w)*photo + w*T(shade). Judging the
+          // second case against the background's luminance flags every hem shadow the
+          // pipeline is deliberately keeping — truth in the picture, not a broken edge.
+          const rL = cl2 * lum(pd.data[o], pd.data[o + 1], pd.data[o + 2])
+            + (1 - cl2) * lum(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]);
           const tL = lum(lutW[sbB], lutW[sbB + 1], lutW[sbB + 2]);
-          if (outL < Math.min(bL, tL) - 18) edgeDark++;
-          if (outL > Math.max(bL, tL) + 18) edgeBright++;
+          // the same question asked of the photograph, whose fabric endpoint is
+          // the violet it was shot in — this is the shadow genuinely there
+          const sL = lum(src[o], src[o + 1], src[o + 2]);
+          const vL = lum(lutVm[sbB], lutVm[sbB + 1], lutVm[sbB + 2]);
+          if (below(outL, Math.min(rL, tL)) - below(sL, Math.min(rL, vL)) > 18) edgeDark++;
+          if (above(outL, Math.max(rL, tL)) - above(sL, Math.max(rL, vL)) > 18) edgeBright++;
         }
       }
       // chroma audit: recolour to WHITE via the exact runtime formula and count
@@ -1147,6 +1270,21 @@ const TEMPLATES = [
     if (r.qa.coolPaint > 250) {
       console.log(`  ! coolPaint=${r.qa.coolPaint} — above the warn line, inspect the hem and waistband on white`);
     }
+
+    // The edge audit stays INFORMATIONAL. It was briefly gated, on the reasoning
+    // that an unenforced number is how a broken hem reaches the manifest — but
+    // the number it gated was mis-specified: it judged every pixel against the
+    // background's luminance, including the ones the runtime blends from the
+    // photograph, where a kept hem shadow reads as an excursion. Corrected (see
+    // the audit itself), it is a true statement about a narrow class and reads
+    // ~0 on every template here, so gating it would assure rather than protect.
+    //
+    // The defect it was reached for — a comb of teeth along a hem, from the
+    // matte reading shaded trousers as coverage — has no global scalar that
+    // separates it from a legitimately busy silhouette: boundary roughness and
+    // phantom-coverage fraction were both tried and both rank clean templates
+    // above a visibly broken one. That class is prevented at source instead, in
+    // the matte's confidence, and checked by eye.
 
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-photo.jpg`), Buffer.from(r.photo.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT_DIR, `${tpl.id}-weight.png`), Buffer.from(r.weight.split(',')[1], 'base64'));
