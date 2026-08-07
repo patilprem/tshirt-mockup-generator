@@ -71,6 +71,7 @@ const TEMPLATES = [
   { id: 'miami-f', file: 'miami-f.webp', label: 'Miami Street', model: 'female', scene: 'palm-lined street' },
   { id: 'bright-minimal-m', file: 'bright-minimal-m.webp', label: 'Bright Minimal', model: 'male', scene: 'Bright minimal grey walls, soft daylight' },
   { id: 'cafe-f', file: 'cafe-f.webp', label: 'Cafe Counter', model: 'female', scene: 'Bright cafe, window light, barista counter behind' },
+  { id: 'beach-m', file: 'beach-m.webp', label: 'Beach', model: 'male', scene: 'Sandy beach, open sky, sea behind' },
 ];
 
 (async () => {
