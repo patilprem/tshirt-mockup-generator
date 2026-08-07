@@ -2130,7 +2130,12 @@
 
     async function initOnModel() {
       try {
-        const res = await fetch('/assets/on-model/templates.json');
+        // The manifest carries the ?v= hashes that let every other asset be cached
+        // forever, so it is the one file that must not be. no-cache revalidates
+        // rather than refetching: the server answers 304 for an unchanged
+        // manifest, which costs a round trip and no bytes, and the moment a
+        // rebuild changes it the new hashes arrive with it.
+        const res = await fetch('/assets/on-model/templates.json', { cache: 'no-cache' });
         if (!res.ok) return;
         onModelTemplates = await res.json();
         if (onModelTemplates.length) activeOnModelId = onModelTemplates[0].id;

@@ -123,7 +123,9 @@ async function boot(el) {
 
   let templates = [];
   try {
-    const res = await fetch('/assets/on-model/templates.json');
+    // Revalidated, not refetched — it carries the ?v= hashes for everything
+    // else, so it is the one file that must never be served stale.
+    const res = await fetch('/assets/on-model/templates.json', { cache: 'no-cache' });
     if (!res.ok) return;
     templates = await res.json();
   } catch { return; }
