@@ -91,7 +91,10 @@ function studioFragment(src) {
 // is how a fixed defect gets reported as still broken. Stamping the build makes
 // the two distinguishable at a glance, on the page itself.
 function stamp() {
-  const files = ['scratch/template-studio.html', 'scratch/build_on_model_templates.cjs'];
+  // The page's own sources, and only those. The builder's TEMPLATES list has no
+  // bearing on what this page does, so keying the stamp to that file would mark
+  // the pages stale every time a template is added and teach you to ignore it.
+  const files = ['scratch/template-studio.html', 'scratch/artifacts/try-colors.html'];
   try {
     const sha = execFileSync('git', ['log', '-1', '--format=%h', '--', ...files],
       { cwd: ROOT, encoding: 'utf8' }).trim();
