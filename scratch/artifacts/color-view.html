@@ -1,0 +1,701 @@
+<title>Colourway Sheet</title>
+
+<style>
+/*__STYLE__*/
+
+/* Page-specific: a contact sheet.
+   Every frame on it is rendered by the same code the product ships, so what
+   fails here fails in the editor. The sheet is the point of the page, so it
+   takes the wide column; the rail beside it holds the frame under inspection
+   and the controls that decide what the sheet is showing. */
+
+.app {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding: 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.rail { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 24px; }
+
+.detail-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  background: hsl(216 30% 8%);
+}
+.detail-frame canvas { display: block; width: 100%; height: 100%; }
+
+.detail-head { display: flex; align-items: center; gap: 10px; }
+.detail-head .chip {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid hsl(0 0% 100% / 0.28);
+  flex: 0 0 auto;
+}
+.detail-head .name { font-size: 14px; font-weight: 600; }
+.detail-head .hex { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: auto; }
+
+.axis { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.axis button {
+  padding: 9px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+  background: var(--rail);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.axis button:hover { color: var(--text); }
+.axis button[aria-checked="true"] {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+}
+
+.block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 8px;
+}
+.block-head .role {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.check { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+/* The sheet ------------------------------------------------------------- */
+
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.sheet-head h2 { font-size: 17px; font-weight: 650; }
+.sheet-head .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.sheet-head .spacer { flex: 1 1 auto; }
+
+.sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.cell { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+
+.cell-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: hsl(216 30% 9%);
+  cursor: zoom-in;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cell-frame canvas { display: block; width: 100%; height: 100%; }
+.cell-frame:hover { border-color: hsl(212 18% 34%); }
+.cell[data-selected] .cell-frame {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px hsl(186 100% 45% / 0.28);
+}
+.cell[data-flagged] .cell-frame { border-color: hsl(4 80% 58%); }
+
+/* The sheet's own annotation line: frame number, what it is, and its hex —
+   the three things you would write on a real contact sheet in grease pencil. */
+.cell-caption {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  min-width: 0;
+}
+.cell-caption .idx { color: var(--faint); font-variant-numeric: tabular-nums; }
+.cell-caption .nm {
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cell-caption .fl {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.cell-caption .fl:hover { color: var(--text); }
+.cell[data-flagged] .cell-caption .fl { color: hsl(4 80% 62%); }
+
+.flagged-box {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--slab);
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.flagged-box[data-open] { display: flex; }
+.flagged-box ul {
+  margin: 0; padding: 0; list-style: none;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.flagged-box .row { display: flex; gap: 8px; align-items: center; }
+
+.progress {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  min-height: 16px;
+}
+
+@media (max-width: 1000px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; }
+}
+</style>
+
+<div class="topbar">
+  <div class="wordmark">FreeTee<span>Mockup</span></div>
+  <h1>Colourway sheet</h1>
+  <div class="spacer"></div>
+  <p class="label">Rendered in this tab · nothing uploaded</p>
+</div>
+
+<main class="app">
+  <aside class="rail">
+    <section class="panel">
+      <h2 class="label">Frame under inspection</h2>
+      <div class="detail-frame">
+        <canvas id="detail" width="600" height="600" aria-label="Selected frame, enlarged"></canvas>
+      </div>
+      <div class="detail-head">
+        <span class="chip" id="d-chip"></span>
+        <span class="name" id="d-name">—</span>
+        <span class="hex" id="d-hex">—</span>
+      </div>
+      <div class="field">
+        <div class="field-head">
+          <label class="label" for="d-wipe">Reveal original</label>
+          <span class="val" id="d-wipe-val">0%</span>
+        </div>
+        <input type="range" id="d-wipe" min="0" max="100" step="1" value="0" />
+      </div>
+      <button type="button" class="btn btn-primary" id="d-download">Download this frame</button>
+      <p class="progress" id="d-status"></p>
+    </section>
+
+    <section class="panel">
+      <h2 class="label">Sheet</h2>
+      <div class="axis" id="axis" role="radiogroup" aria-label="What the sheet varies">
+        <button type="button" role="radio" aria-checked="true" data-axis="colour">Colours × 1 scene</button>
+        <button type="button" role="radio" aria-checked="false" data-axis="scene">1 colour × scenes</button>
+      </div>
+
+      <div id="scene-block">
+        <div class="block-head">
+          <h3 class="label">Scene</h3>
+          <span class="role" id="scene-role"></span>
+        </div>
+        <div class="tiles" id="tiles" role="listbox" aria-label="Choose a scene"></div>
+      </div>
+
+      <div id="colour-block">
+        <div class="block-head">
+          <h3 class="label">Fabric colour</h3>
+          <span class="role" id="colour-role"></span>
+        </div>
+        <div class="swatches" id="swatches" role="listbox" aria-label="Fabric colour"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="label">Print</h2>
+      <div class="designs" id="designs" role="listbox" aria-label="Choose a design"></div>
+      <label class="check">
+        <input type="checkbox" id="show-print" checked />
+        <span>Print the design</span>
+      </label>
+      <div class="field">
+        <div class="field-head">
+          <label class="label" for="size">Size</label>
+          <span class="val" id="size-val">52%</span>
+        </div>
+        <input type="range" id="size" min="12" max="100" step="1" value="52" />
+      </div>
+    </section>
+  </aside>
+
+  <section>
+    <div class="sheet-head">
+      <h2 id="sheet-title">Twelve colourways</h2>
+      <span class="count" id="sheet-sub"></span>
+      <span class="spacer"></span>
+      <span class="progress" id="sheet-status" aria-live="polite"></span>
+    </div>
+
+    <p class="note" style="margin: 0 0 16px;">
+      Every frame is the same photograph, recoloured by the shipping relight and
+      printed by the shipping compositor. Scan for violet left in the shadows,
+      a garment edge that has picked up colour it should not have, or a print
+      that has drifted off the chest — then flag the frame and move on.
+    </p>
+
+    <div class="sheet" id="sheet"></div>
+
+    <div class="flagged-box" id="flagged-box">
+      <div class="row">
+        <span class="label" style="flex: 1 1 auto;">Flagged frames</span>
+        <button type="button" class="btn" id="copy-flags" style="height: 30px; font-size: 12px;">Copy list</button>
+        <button type="button" class="btn" id="clear-flags" style="height: 30px; font-size: 12px;">Clear</button>
+      </div>
+      <ul id="flagged-list"></ul>
+    </div>
+  </section>
+</main>
+
+<script>
+/*__ENGINE__*/
+</script>
+
+<script>
+/*__ASSETS__*/
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  var A = window.STUDIO_ASSETS;
+  var OM = window.OM;
+
+  // Sheet frames are 190–240px on screen; a third of the template is more than
+  // that needs and keeps a twelve-frame repaint under a second. The frame under
+  // inspection gets three quarters, and a download re-renders at full size.
+  var SHEET = 0.34;
+  var DETAIL = 0.75;
+
+  var state = {
+    axis: 'colour',
+    tid: A.templates[0].id,
+    hex: '#212121',
+    designId: A.designs[0].id,
+    print: true,
+    scale: 0.52,
+    pos: { x: 500, y: 420 },
+    rot: 0,
+    selected: 0,
+    wipe: 0,
+  };
+
+  var design = null;
+  var designCache = {};
+  var flags = [];
+  var cells = [];
+  var renderToken = 0;
+
+  function templateById(id) {
+    for (var i = 0; i < A.templates.length; i++) if (A.templates[i].id === id) return A.templates[i];
+    return A.templates[0];
+  }
+  function colourName(hex) {
+    for (var i = 0; i < A.colours.length; i++) {
+      if (A.colours[i].hex.toLowerCase() === hex.toLowerCase()) return A.colours[i].name;
+    }
+    return 'Custom';
+  }
+
+  // What the sheet is a sheet OF: either one scene in every colourway, or one
+  // colourway in every scene. Both produce the same cell shape, so the grid
+  // and the frame under inspection do not care which is on screen.
+  function sheetItems() {
+    if (state.axis === 'colour') {
+      return A.colours.map(function (c) {
+        return { key: state.tid + '|' + c.hex, tid: state.tid, hex: c.hex, name: c.name };
+      });
+    }
+    return A.templates.map(function (t) {
+      return { key: t.id + '|' + state.hex, tid: t.id, hex: state.hex, name: t.label };
+    });
+  }
+
+  function renderOpts(extra) {
+    var o = {
+      hex: extra.hex,
+      design: state.print ? design : null,
+      state: { pos: state.pos, scale: state.scale, rot: state.rot },
+      size: extra.size,
+    };
+    if (extra.wipe) o.wipe = extra.wipe;
+    return o;
+  }
+
+  // --- the sheet ----------------------------------------------------------
+
+  function buildSheet() {
+    var host = document.getElementById('sheet');
+    var items = sheetItems();
+    host.textContent = '';
+    cells = [];
+
+    items.forEach(function (item, i) {
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      if (i === state.selected) cell.setAttribute('data-selected', '');
+      if (flags.indexOf(item.key) !== -1) cell.setAttribute('data-flagged', '');
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cell-frame';
+      btn.setAttribute('aria-label', 'Inspect ' + item.name);
+      var cnv = document.createElement('canvas');
+      cnv.width = 40; cnv.height = 40;
+      btn.appendChild(cnv);
+      btn.addEventListener('click', function () { select(i); });
+
+      var cap = document.createElement('div');
+      cap.className = 'cell-caption';
+      var idx = document.createElement('span');
+      idx.className = 'idx';
+      idx.textContent = String(i + 1).length < 2 ? '0' + (i + 1) : String(i + 1);
+      var nm = document.createElement('span');
+      nm.className = 'nm';
+      nm.textContent = item.name;
+      nm.title = item.name + ' — ' + item.hex;
+      var fl = document.createElement('button');
+      fl.type = 'button';
+      fl.className = 'fl';
+      fl.textContent = 'FLAG';
+      fl.setAttribute('aria-label', 'Flag ' + item.name);
+      fl.addEventListener('click', function (e) { e.stopPropagation(); toggleFlag(item, cell); });
+      cap.appendChild(idx); cap.appendChild(nm); cap.appendChild(fl);
+
+      cell.appendChild(btn);
+      cell.appendChild(cap);
+      host.appendChild(cell);
+      cells.push({ cell: cell, canvas: cnv, item: item });
+    });
+
+    document.getElementById('sheet-title').textContent = state.axis === 'colour'
+      ? 'Twelve colourways'
+      : A.templates.length + ' scenes';
+    document.getElementById('sheet-sub').textContent = state.axis === 'colour'
+      ? templateById(state.tid).label + ' · ' + templateById(state.tid).scene
+      : colourName(state.hex) + ' · ' + state.hex.toUpperCase();
+
+    paintSheet();
+  }
+
+  // Frames are painted one at a time with a yield between them: a twelve-frame
+  // repaint is a second of work, and doing it in one block would freeze the
+  // controls that started it.
+  async function paintSheet() {
+    var token = ++renderToken;
+    var status = document.getElementById('sheet-status');
+    for (var i = 0; i < cells.length; i++) {
+      if (token !== renderToken) return;
+      var c = cells[i];
+      status.textContent = 'Rendering ' + (i + 1) + '/' + cells.length + '…';
+      var entry = await OM.loadTemplate(templateById(c.item.tid), SHEET);
+      if (token !== renderToken) return;
+      var side = Math.round(OM.cropRect(entry).w);
+      OM.renderInto(c.canvas, entry, renderOpts({ hex: c.item.hex, size: side }));
+      await new Promise(function (r) { requestAnimationFrame(function () { r(); }); });
+    }
+    if (token === renderToken) status.textContent = '';
+  }
+
+  function select(i) {
+    state.selected = i;
+    cells.forEach(function (c, j) {
+      if (j === i) c.cell.setAttribute('data-selected', '');
+      else c.cell.removeAttribute('data-selected');
+    });
+    paintDetail();
+  }
+
+  // --- the frame under inspection ----------------------------------------
+
+  var detailToken = 0;
+  async function paintDetail() {
+    var item = cells[state.selected] && cells[state.selected].item;
+    if (!item) return;
+    var token = ++detailToken;
+    document.getElementById('d-chip').style.background = item.hex;
+    document.getElementById('d-name').textContent = item.name;
+    document.getElementById('d-hex').textContent = item.hex.toUpperCase();
+
+    var entry = await OM.loadTemplate(templateById(item.tid), DETAIL);
+    if (token !== detailToken) return;
+    var cnv = document.getElementById('detail');
+    var side = Math.min(700, Math.round(OM.cropRect(entry).w));
+    OM.renderInto(cnv, entry, renderOpts({ hex: item.hex, size: side, wipe: state.wipe }));
+  }
+
+  function toggleFlag(item, cell) {
+    var at = flags.indexOf(item.key);
+    if (at === -1) { flags.push(item.key); cell.setAttribute('data-flagged', ''); }
+    else { flags.splice(at, 1); cell.removeAttribute('data-flagged'); }
+    syncFlags();
+  }
+
+  function flagLabel(key) {
+    var parts = key.split('|');
+    return templateById(parts[0]).label + ' · ' + colourName(parts[1]) + ' · ' + parts[1].toUpperCase();
+  }
+
+  function syncFlags() {
+    var box = document.getElementById('flagged-box');
+    var list = document.getElementById('flagged-list');
+    list.textContent = '';
+    flags.forEach(function (k) {
+      var li = document.createElement('li');
+      li.textContent = flagLabel(k);
+      list.appendChild(li);
+    });
+    if (flags.length) box.setAttribute('data-open', '');
+    else box.removeAttribute('data-open');
+  }
+
+  // --- controls -----------------------------------------------------------
+
+  var tileCanvases = [];
+
+  // The scene list renders through the same engine as the sheet, from the
+  // shipped thumbnail maps — so it shows the colour under review rather than
+  // the violet the templates are photographed in, and a thumbnail that comes
+  // out wrong is itself a finding.
+  async function paintTiles() {
+    for (var i = 0; i < A.templates.length; i++) {
+      var entry = await OM.loadTemplate(A.templates[i].thumbTpl, 1);
+      tileCanvases[i].getContext('2d').drawImage(OM.composedFrame(entry, state.hex), 0, 0);
+    }
+  }
+
+  function buildTiles() {
+    var host = document.getElementById('tiles');
+    host.style.flexWrap = 'wrap';
+    A.templates.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tile';
+      b.style.flex = '1 1 60px';
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', String(t.id === state.tid));
+      b.title = t.label + ' — ' + t.scene;
+      b.setAttribute('aria-label', t.label + ' — ' + t.scene);
+      var cnv = document.createElement('canvas');
+      cnv.width = t.thumbTpl.width;
+      cnv.height = t.thumbTpl.height;
+      b.appendChild(cnv);
+      tileCanvases.push(cnv);
+      b.addEventListener('click', function () {
+        state.tid = t.id;
+        Array.prototype.forEach.call(host.children, function (c, i) {
+          c.setAttribute('aria-selected', String(A.templates[i].id === state.tid));
+        });
+        state.selected = 0;
+        buildSheet();
+        paintDetail();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function buildSwatches() {
+    var host = document.getElementById('swatches');
+    A.colours.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swatch';
+      b.style.background = c.hex;
+      b.title = c.name;
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-label', c.name);
+      b.setAttribute('aria-selected', String(c.hex === state.hex));
+      b.addEventListener('click', function () {
+        state.hex = c.hex;
+        Array.prototype.forEach.call(host.children, function (x, i) {
+          x.setAttribute('aria-selected', String(A.colours[i].hex === state.hex));
+        });
+        state.selected = 0;
+        buildSheet();
+        paintDetail();
+        paintTiles();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function buildDesigns() {
+    var host = document.getElementById('designs');
+    A.designs.forEach(function (d) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'design-chip';
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', String(d.id === state.designId));
+      b.title = d.label;
+      var img = document.createElement('img');
+      img.src = d.src;
+      img.alt = d.label;
+      b.appendChild(img);
+      b.addEventListener('click', async function () {
+        state.designId = d.id;
+        design = await loadDesign(d.id, d.src);
+        Array.prototype.forEach.call(host.children, function (c, i) {
+          c.setAttribute('aria-selected', String(A.designs[i].id === state.designId));
+        });
+        repaint();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  async function loadDesign(id, src) {
+    if (designCache[id]) return designCache[id];
+    var img = await OM.loadImage(src);
+    designCache[id] = OM.keyDesign(img);
+    return designCache[id];
+  }
+
+  function repaint() { paintSheet(); paintDetail(); }
+
+  function syncAxisBlocks() {
+    // Whichever axis the sheet varies, the OTHER control is what pins the
+    // sheet down. Both stay usable — picking a colour while the sheet is
+    // varying colour simply moves the frame under inspection — so they are
+    // labelled rather than disabled.
+    var varying = state.axis === 'colour';
+    document.getElementById('colour-role').textContent = varying ? 'Varied across the sheet' : 'Pins the sheet';
+    document.getElementById('scene-role').textContent = varying ? 'Pins the sheet' : 'Varied across the sheet';
+  }
+
+  Array.prototype.forEach.call(document.getElementById('axis').children, function (b) {
+    b.addEventListener('click', function () {
+      state.axis = b.getAttribute('data-axis');
+      Array.prototype.forEach.call(document.getElementById('axis').children, function (x) {
+        x.setAttribute('aria-checked', String(x === b));
+      });
+      state.selected = 0;
+      syncAxisBlocks();
+      buildSheet();
+      paintDetail();
+    });
+  });
+
+  document.getElementById('show-print').addEventListener('change', function (e) {
+    state.print = e.target.checked;
+    repaint();
+  });
+
+  document.getElementById('size').addEventListener('input', function (e) {
+    state.scale = Number(e.target.value) / 100;
+    document.getElementById('size-val').textContent = e.target.value + '%';
+    repaint();
+  });
+
+  document.getElementById('d-wipe').addEventListener('input', function (e) {
+    state.wipe = Number(e.target.value) / 100;
+    document.getElementById('d-wipe-val').textContent = e.target.value + '%';
+    paintDetail();
+  });
+
+  document.getElementById('d-download').addEventListener('click', async function () {
+    var item = cells[state.selected] && cells[state.selected].item;
+    if (!item) return;
+    var btn = this;
+    var status = document.getElementById('d-status');
+    btn.disabled = true;
+    status.textContent = 'Rendering at full size…';
+    try {
+      var full = await OM.loadTemplate(templateById(item.tid), 1);
+      var side = Math.round(OM.cropRect(full).w);
+      var out = OM.renderInto(null, full, renderOpts({ hex: item.hex, size: side }));
+      var name = 'freeteemockup-' + item.tid + '-' + item.hex.replace('#', '') + '.png';
+      out.toBlob(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        status.textContent = 'Saved ' + name + ' (' + side + '×' + side + ').';
+        btn.disabled = false;
+      }, 'image/png');
+    } catch (err) {
+      status.textContent = 'Export failed — reload the page and try again.';
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('copy-flags').addEventListener('click', function () {
+    var text = flags.map(flagLabel).join('\n');
+    var btn = this;
+    var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy list'; }, 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+    } else fallbackCopy(text, done);
+  });
+
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* nothing to do */ }
+    document.body.removeChild(ta);
+  }
+
+  document.getElementById('clear-flags').addEventListener('click', function () {
+    flags = [];
+    cells.forEach(function (c) { c.cell.removeAttribute('data-flagged'); });
+    syncFlags();
+  });
+
+  (async function boot() {
+    buildTiles();
+    buildSwatches();
+    buildDesigns();
+    syncAxisBlocks();
+    design = await loadDesign(A.designs[0].id, A.designs[0].src);
+    buildSheet();
+    paintDetail();
+    paintTiles();
+  })();
+})();
+</script>
