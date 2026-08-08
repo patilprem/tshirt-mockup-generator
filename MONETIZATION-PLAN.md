@@ -271,7 +271,9 @@ obviously real, then that it was obviously us. Both were assertions, not finding
 recorded here rather than tidied away: **do not characterise a channel without a source/city
 breakdown in front of you.**
 
-**Neither tracking fix is retroactive.** See the owner to-do list in section 6.
+**Both tracking fixes went in on 2026-08-08**, which is therefore day zero. Neither is retroactive,
+so §1, §1b and §2 above all still contain our own traffic and must never be compared across that
+date. See the owner to-do list in section 6.
 
 ---
 
@@ -358,16 +360,13 @@ engine. But at 342 pageviews/month, waiting for consumer traffic is a multi-year
 
 Ordered. The first two gate everything else, because every number above is currently polluted.
 
-- [ ] **Set `?notrack=1` on every browser and profile used for testing** — visit
-      `https://freeteemockup.com/editor?notrack=1` once each. The console confirms the state.
-      Stops our exports counting in GA4 *and* `/stats`.
-- [ ] **Activate the GA4 internal traffic filter.** Admin → Data streams → the stream → Configure
-      tag settings → **Define internal traffic** (add your IP), then Admin → Data settings →
-      **Data filters** → switch "Internal Traffic" from *Testing* to **Active**. It is created
-      inactive by default, which is easy to miss. Stops our pageviews counting.
+- [x] **Set `?notrack=1` on every browser and profile used for testing** — done 2026-08-08.
+- [x] **Activate the GA4 internal traffic filter** — done 2026-08-08, rule defined and the filter
+      switched from *Testing* to **Active**.
 - [ ] Sign up for the three affiliate programs (section 4).
-- [ ] Re-pull GA4 + GSC three weeks after the two fixes above and replace sections 1–2 with clean
-      numbers.
+- [ ] **Re-pull GA4 + GSC on or after 2026-08-29** (three weeks past day zero) and replace §1–2 with
+      clean numbers. Keep the old tables in the changelog rather than overwriting them — the
+      difference between the two is the size of our own footprint, which is worth knowing once.
 - [x] **Run the source/city/hostname Explore check** — done 2026-08-08, results in §1b.
 - [ ] Compare GA4 `mockup_download` against `/stats` on the same window — the gap is the
       ad-blocker rate, which is itself an input to whether display ads could ever work.

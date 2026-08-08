@@ -10,17 +10,15 @@ GA4 + Search Console baseline that Phase 5 below is built on).
 
 Everything below requires account access or publishing under your identity, so Claude prepares but you execute. Roughly in priority order:
 
-- [ ] **Exclude your own devices from export stats** (now the highest priority — the first analytics
-  pull is polluted without it): on every browser you test with, visit
-  `https://freeteemockup.com/editor?notrack=1` once — that browser's exports then never count in
-  GA4 or /stats (undo with `?notrack=0`; the browser console confirms the state). Evidence it is
-  still outstanding: `/editor` shows 82 landing sessions from 21 users but only 8 new, and
-  `mockup_download` shows 300 events from 33 users. See [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §3.
-- [ ] **Activate the GA4 internal traffic filter** — `notrack` only suppresses *export events*;
-  `PageLayout.astro` fires `gtag('config', …)` on every page load with no guard, so your pageviews
-  are all counted. Admin → Data streams → the stream → Configure tag settings → **Define internal
-  traffic** (add your IP), then Admin → Data settings → **Data filters** → switch "Internal Traffic"
-  from *Testing* to **Active**. It is created inactive by default.
+- [x] **Exclude your own devices from export stats** — done 2026-08-08. `?notrack=1` set on the
+  testing browsers, so our exports no longer reach GA4 or `/stats`.
+- [x] **Activate the GA4 internal traffic filter** — done 2026-08-08. Internal-traffic rule defined
+  and the Data filter switched from *Testing* to **Active**, so our pageviews stop counting too.
+
+> **2026-08-08 is day zero for analytics.** Neither fix is retroactive, so every number recorded in
+> [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §1–2 still contains our own traffic. Compare against
+> data from this date forward, never across it. If the home IP is dynamic, re-check the filter after
+> a router reboot — a rule pointing at a stale address fails silently.
 - [ ] **Merge open `seo/*` PRs** as they appear — nothing goes live until merged and deployed.
 - [x] **Google Search Console**: verified as a domain property; sitemap submitted. First non-zero
   data day is **2026-06-21**, so treat that — not the site's launch — as the start of search history.
