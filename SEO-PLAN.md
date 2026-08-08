@@ -10,17 +10,15 @@ GA4 + Search Console baseline that Phase 5 below is built on).
 
 Everything below requires account access or publishing under your identity, so Claude prepares but you execute. Roughly in priority order:
 
-- [ ] **Exclude your own devices from export stats** (now the highest priority — the first analytics
-  pull is polluted without it): on every browser you test with, visit
-  `https://freeteemockup.com/editor?notrack=1` once — that browser's exports then never count in
-  GA4 or /stats (undo with `?notrack=0`; the browser console confirms the state). Evidence it is
-  still outstanding: `/editor` shows 82 landing sessions from 21 users but only 8 new, and
-  `mockup_download` shows 300 events from 33 users. See [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §3.
-- [ ] **Activate the GA4 internal traffic filter** — `notrack` only suppresses *export events*;
-  `PageLayout.astro` fires `gtag('config', …)` on every page load with no guard, so your pageviews
-  are all counted. Admin → Data streams → the stream → Configure tag settings → **Define internal
-  traffic** (add your IP), then Admin → Data settings → **Data filters** → switch "Internal Traffic"
-  from *Testing* to **Active**. It is created inactive by default.
+- [x] **Exclude your own devices from export stats** — done 2026-08-08. `?notrack=1` set on the
+  testing browsers, so our exports no longer reach GA4 or `/stats`.
+- [x] **Activate the GA4 internal traffic filter** — done 2026-08-08. Internal-traffic rule defined
+  and the Data filter switched from *Testing* to **Active**, so our pageviews stop counting too.
+
+> **2026-08-08 is day zero for analytics.** Neither fix is retroactive, so every number recorded in
+> [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §1–2 still contains our own traffic. Compare against
+> data from this date forward, never across it. If the home IP is dynamic, re-check the filter after
+> a router reboot — a rule pointing at a stale address fails silently.
 - [ ] **Merge open `seo/*` PRs** as they appear — nothing goes live until merged and deployed.
 - [x] **Google Search Console**: verified as a domain property; sitemap submitted. First non-zero
   data day is **2026-06-21**, so treat that — not the site's launch — as the start of search history.
@@ -31,7 +29,13 @@ Everything below requires account access or publishing under your identity, so C
 - [x] **Check GA4 is receiving data** (property `G-X8VXX3PN94`) — confirmed 2026-08-08: 90 days of
   data, and `mockup_download` + `batch_export` are both registering as key events (they reconcile
   exactly to 308 across the channel report).
-- [ ] **Product Hunt launch**: create/claim a maker account and schedule the launch (Tue–Thu mornings US time perform best). Ask Claude first — the tagline, description, gallery images, and first-comment draft should be prepared before you schedule.
+- [x] **Product Hunt launch** — done (before 2026-07-28; `?ref=producthunt` backlinks show up in the
+  GSC indexing report from that date). **Outcome as a traffic event: 6 sessions, 0 exports**, spread
+  across six different cities (MONETIZATION-PLAN.md §1b). Worth recording honestly rather than
+  leaving PH on the list as an untapped lever — it is neither untapped nor, on this evidence, a
+  lever. Its durable value is more likely the indexed listing than the launch-day spike, since
+  Product Hunt pages are heavily cited by AI assistants and ChatGPT is the site's largest channel.
+  That is a hypothesis, not a measured result.
 - [ ] **Directory submissions** (each ~5 min, backlink value adds up): AlternativeTo (list FreeTeeMockup as an alternative to Placeit/Smartmockups/Mockey), free-tool directories (e.g. toolify.ai, insanelycooltools.com, futurepedia if AI-angle fits). Claude drafts the copy; you create the listings.
 - [ ] **Community sharing**: once the first blog guides exist, share them where POD sellers hang out — r/printondemand, r/Etsy (mind self-promo rules — contribute, don't just drop links), Etsy seller Facebook groups, Printful/Printify community forums. Claude drafts per-channel posts on request.
 - [x] **After 4–6 weeks of GSC data**: done 2026-08-08. Full analysis in
@@ -82,8 +86,23 @@ Each post deep-links to the relevant garment and use-case pages.
 
 ## Phase 4 — Off-site (owner submits, content prepared here)
 
-- Free-tool directories, AlternativeTo listing, Product Hunt launch
-- Design / print-on-demand community posts (draft copy per channel first)
+**Now the highest-value phase left**, because it feeds the channel that is actually working. ChatGPT
+sent 186 sessions and 253 exports over 60 days against Google organic's 18 and 0
+(MONETIZATION-PLAN.md §1b), and directory and listing pages are what assistants read when
+recommending tools. Two referrers already prove those pages get crawled: `producthunt.com` and
+`system.toolify.ai`.
+
+- [x] **Product Hunt launch** — done. 6 sessions, 0 exports; see the owner list above.
+- [ ] **AlternativeTo** — list FreeTeeMockup against Placeit, Smartmockups and Mockey. The single
+  highest-value listing left: it is the canonical "what else is there" source and is quoted heavily
+  by assistants.
+- [ ] **Free-tool directories** — toolify.ai (already sending traffic, so the listing works),
+  insanelycooltools.com, futurepedia.
+- [ ] Design / print-on-demand community posts (draft copy per channel first).
+
+Write every listing as **quotable fact**, not marketing copy: free, no signup, no watermark, no
+upload — files never leave the browser — 8 garments, batch export, on-model templates. Those are the
+claims an assistant can repeat verbatim, and they are the reason this tool gets recommended.
 
 ## Phase 5 — Iterate on Search Console data
 
@@ -99,8 +118,12 @@ the data changed about this phase:
   will not move page 8 to page 1.
 - **Nothing to prune yet.** The 14 landing pages have barely been crawled into competition — most
   have 1–21 impressions. Give them time rather than merging them.
-- **The classic-SEO frame may be incomplete.** AI assistants *appear* to have sent ~6× more sessions than Organic Search
-  and are invisible in Search Console. Phase 4's directory/Product Hunt work feeds that channel too,
-  which makes it more valuable than it looked when this plan was written.
+- **ChatGPT is already the bigger channel, and this plan cannot see it.** Verified 2026-08-08
+  (MONETIZATION-PLAN.md §1b): `chatgpt.com` sent **186 sessions and 253 exports** over 60 days
+  against `google / organic`'s **18 sessions and 0 exports** — 10:1 on traffic, and every export
+  Google did not produce. None of it appears in Search Console. Phase 4's directory and Product Hunt
+  work feeds that channel as well as classic SEO, which makes it the highest-value item left in this
+  plan rather than an afterthought — `producthunt.com` and `system.toolify.ai` already show up as
+  referrers.
 - Original intent, still valid once there is more data: rewrite titles/descriptions on
   high-impression low-CTR pages, expand pages ranking on page 2, prune or merge dead pages.
