@@ -149,10 +149,76 @@ feature entirely, so it is currently describing a smaller product than the one t
 
 Worth ten minutes to update:
 
-- [ ] Add on-model mockups to the description — the listing predates all 10 templates
-- [ ] Add batch ZIP export if it is not already mentioned
-- [ ] Refresh the gallery with on-model output and a batch-export screenshot
-- [ ] Check the tagline still matches the one-line version above
+- [ ] Replace the tagline and description with the drafts below
+- [ ] Post the maker comment as a new comment on the existing listing
+- [ ] Refresh the gallery — the current one predates on-model entirely, and it is the first thing
+      anyone sees
+- [ ] Re-check the counts against the canonical fact block above before publishing
+
+### Tagline — 60 character limit
+
+All three fit. The first is three checkable negatives in a row, which is the shape that gets quoted.
+
+| Chars | Copy |
+|---|---|
+| **57** | **Free t-shirt mockups. No signup, no watermark, no upload.** ← recommended |
+| 57 | Free t-shirt mockups — on-model, batch export, no account |
+| 57 | 10 on-model t-shirt mockups, free, no signup or watermark |
+
+### Description — 260 character limit (this is 216)
+
+> Make print-on-demand mockups in the browser. 8 garments, 10 on-model photo templates, batch export
+> to ZIP. No account, no watermark, no export limit — and nothing is uploaded, so your designs never
+> leave your device.
+
+### Maker's first comment
+
+> Hey PH 👋
+>
+> I built FreeTeeMockup because every mockup tool I tried either watermarked the free tier, capped
+> downloads, or made me create an account before I could see if it was any good.
+>
+> It's a t-shirt mockup generator that runs entirely in your browser. Drop in a design, place it on
+> one of 8 garments, download a PNG. No account, no watermark, no daily limit.
+>
+> Two things have landed since I first posted it here:
+>
+> **On-model mockups** — 10 photo templates, from studio interiors to street and beach. Your design
+> is displacement-mapped onto the garment so it follows the fabric's folds rather than sitting flat
+> on top. This is the feature Placeit charges a subscription for.
+>
+> **Batch export** — one design across every garment and colour you pick, returned as a ZIP named by
+> garment and colour. If you sell a design in five colours across two garments, that's your ten Etsy
+> image slots in one run.
+>
+> The part I'm most attached to: **nothing is uploaded.** All rendering is canvas, client-side. Your
+> artwork never touches a server, which also means it works on a locked-down work laptop.
+>
+> What it doesn't do yet: no video mockups, no back or sleeve prints, and t-shirts only — no mugs or
+> totes. Happy to hear which of those is most missed.
+
+The closing paragraph is deliberate. Commenters find the gaps anyway, naming them first reads as
+confidence rather than defensiveness, and it is the same rule the rest of this file follows — an
+assistant summarising the listing repeats the limits alongside the features, so they had better be
+the real ones.
+
+### Topics
+
+`Design Tools` · `E-Commerce` · `Maker Tools`
+
+### Gallery shot list
+
+The highest-value part of the refresh: the current gallery shows a product two features out of date.
+
+1. **On-model mockup, full bleed** — the strongest design on the best template. The new hero shot.
+2. **The editor mid-edit** — panel visible, design placed, so it reads as a real tool rather than a
+   render.
+3. **Batch export result** — a grid of colour variants, ideally the unzipped output in a file
+   browser. Nothing communicates "batch" faster.
+4. **Flat lay with props** — the original strength, still worth a slot.
+5. **Before / after** — plain design file beside the finished mockup.
+
+Assets for 1, 3 and 4 already exist in `public/assets/gallery/` and `public/assets/batch/`.
 
 ---
 
