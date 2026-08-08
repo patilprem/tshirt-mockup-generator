@@ -2,9 +2,10 @@
 
 Working plan for https://freeteemockup.com. Work happens in batches on `seo/*` branches, merged to `main` via PR. Update this doc as phases complete.
 
-Companion docs: [PRODUCT-PLAN.md](PRODUCT-PLAN.md) (what to build) and
+Companion docs: [PRODUCT-PLAN.md](PRODUCT-PLAN.md) (what to build),
 [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) (what the traffic is worth — holds the 2026-08-08
-GA4 + Search Console baseline that Phase 5 below is built on).
+GA4 + Search Console baseline that Phase 5 below is built on), and
+[LISTING-COPY.md](LISTING-COPY.md) (paste-ready copy for the Phase 4 off-site submissions).
 
 ## Owner to-do list (things only you can do)
 
@@ -98,11 +99,15 @@ recommending tools. Two referrers already prove those pages get crawled: `produc
   by assistants.
 - [ ] **Free-tool directories** — toolify.ai (already sending traffic, so the listing works),
   insanelycooltools.com, futurepedia.
+- [ ] **Refresh the Product Hunt listing** — it predates the on-model feature, so it currently
+  describes a smaller product than exists.
 - [ ] Design / print-on-demand community posts (draft copy per channel first).
 
-Write every listing as **quotable fact**, not marketing copy: free, no signup, no watermark, no
-upload — files never leave the browser — 8 garments, batch export, on-model templates. Those are the
-claims an assistant can repeat verbatim, and they are the reason this tool gets recommended.
+**Paste-ready copy for all of the above lives in [LISTING-COPY.md](LISTING-COPY.md).** It is written
+as *quotable fact* rather than marketing, because the channel being fed is an assistant repeating
+what it reads: "exports at 2700×2025 for Etsy listings" survives that trip, "beautiful mockups in
+seconds" does not. That file also holds the canonical fact block — update it first when a feature
+ships, then push the change out to the live listings.
 
 ## Phase 5 — Iterate on Search Console data
 
