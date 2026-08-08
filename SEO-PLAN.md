@@ -99,8 +99,12 @@ the data changed about this phase:
   will not move page 8 to page 1.
 - **Nothing to prune yet.** The 14 landing pages have barely been crawled into competition — most
   have 1–21 impressions. Give them time rather than merging them.
-- **The classic-SEO frame may be incomplete.** AI assistants *appear* to have sent ~6× more sessions than Organic Search
-  and are invisible in Search Console. Phase 4's directory/Product Hunt work feeds that channel too,
-  which makes it more valuable than it looked when this plan was written.
+- **ChatGPT is already the bigger channel, and this plan cannot see it.** Verified 2026-08-08
+  (MONETIZATION-PLAN.md §1b): `chatgpt.com` sent **186 sessions and 253 exports** over 60 days
+  against `google / organic`'s **18 sessions and 0 exports** — 10:1 on traffic, and every export
+  Google did not produce. None of it appears in Search Console. Phase 4's directory and Product Hunt
+  work feeds that channel as well as classic SEO, which makes it the highest-value item left in this
+  plan rather than an afterthought — `producthunt.com` and `system.toolify.ai` already show up as
+  referrers.
 - Original intent, still valid once there is more data: rewrite titles/descriptions on
   high-impression low-CTR pages, expand pages ranking on page 2, prune or merge dead pages.

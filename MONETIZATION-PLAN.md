@@ -51,14 +51,9 @@ Property `G-X8VXX3PN94` ("TeeMockup"). **591 sessions · 1,025 pageviews · 387 
 Key events reconcile exactly to exports: 29 + 237 + 7 + 4 + 31 = **308** = `mockup_download` (300)
 + `batch_export` (8).
 
-On its face this says AI assistants are 29% of sessions and 77% of exports. **Do not act on that
-yet — the channel is very likely us.** Clicking a link to the site from inside a Claude or ChatGPT
-conversation sets the referrer to `claude.ai` / `chatgpt.com`, which GA4 files under *AI Assistant*
-rather than *Direct*. This repo has been worked on through Claude Code sessions across PRs #33–#39,
-and 169 sessions over 90 days is ~1.9/day — a working cadence, not a discovery curve. 80.6s
-engagement with 1.4 exports per session is what "open the editor and test an export" looks like.
-
-Treat the whole channel table as unresolved until the check in §3 is run.
+**Resolved 2026-08-08 — see §1b.** An earlier draft called this channel real without checking; a
+second draft called it our own link-clicking, also without checking. A source/city/hostname
+exploration settled it: the channel is genuine **ChatGPT** referral traffic, not us.
 
 ### Landing pages
 
@@ -95,6 +90,70 @@ noise in the set too.
 
 `batch_export` — the feature PRODUCT-PLAN.md picked to attack Mockey's #1 paid feature — has been
 used 8 times by 7 people.
+
+---
+
+## 1b. Who is actually sending the traffic (resolved 2026-08-08)
+
+GA4 Explore, dimensions *Session source/medium* × *Town/City* × *Hostname*, **9 Jun – 8 Aug 2026**
+(60 days — a different window from §1, and it holds **627 sessions / 346 exports**, i.e. more
+sessions in fewer days, so traffic is growing).
+
+### The AI channel is real, and it is ChatGPT
+
+| Source / medium | Sessions | Exports |
+|---|---|---|
+| `chatgpt.com / ai-assistant` | **184** | **239** |
+| `chatgpt.com / (none)` | 2 | 14 |
+| `copilot.com` (both mediums) | 10 | 17 |
+| **`claude.ai / ai-assistant`** | **3** | **0** |
+
+Claude sent three sessions and zero exports, from Palakkad. The ChatGPT traffic is spread across
+**~130 distinct cities** on every continent — Accra, Bucharest, Cape Town, Melbourne, Bakersfield,
+Ho Chi Minh City, Kigali, Buenos Aires — a footprint no single person produces.
+
+**ChatGPT is the single biggest acquisition channel: 186 sessions and 253 exports, against
+`google / organic`'s 18 sessions and 0 exports.** The SEO plan is aimed at the smaller one.
+
+### What *is* us — Mumbai metro
+
+| Source | Mumbai + Thane + Navi Mumbai + Mira Bhayandar |
+|---|---|
+| `(direct) / (none)` | 95 sessions, 9 exports |
+| `t.co / referral` | 44 sessions, 7 exports |
+| `youtube.com / referral` | 23 sessions, 0 exports |
+| `google / organic` | 11 sessions, 0 exports |
+| **Total** | **~173 sessions — 28% of all traffic** |
+
+Every `t.co` and `youtube.com` session is Mumbai metro, so those are our own promotion rather than
+distribution.
+
+### Bots and non-production hostnames
+
+Inside Direct: **Council Bluffs 35, Boardman 13, Ashburn 12, The Dalles 2** — Google and AWS
+datacentres, ~62 sessions and zero exports — plus `(not set)` 30.
+
+Hostnames: `tshirt-mockup-generator.pages.dev` 17, `www.freeteemockup.com` 11, **`localhost` 8**.
+The earlier worry that `npm run dev` was flooding the data was overstated: localhost is 1.3% of
+sessions.
+
+### Exports are concentrated in a handful of power users
+
+| City | Exports | Sessions |
+|---|---|---|
+| Mosta (Malta) | **131** | 4 |
+| Marrakesh | 48 | 2 |
+| Sialkot | 31 | 1 |
+| Benidorm | 32 | 8 |
+
+**Four locations produce 242 of 346 exports — 70%.** Mosta alone is 38%, at ~33 exports per
+session. Real users, but "308 exports" was never 308 people.
+
+### Tier-1 within the ChatGPT channel
+
+Roughly 34 of 184 sessions (~18%) come from US/UK/CA/AU cities, and they account for ~15 of 239
+exports (~6%). Better than the 12.5% in Search Console, still far short of the 50% the high-RPM ad
+networks require. **The §4 verdict on advertising does not move.**
 
 ---
 
@@ -201,22 +260,16 @@ Fingerprints in the data:
 | `/stats` appears as a landing page | Only the owner can open that page |
 | `/cmd_sco` | Not a page in this repo — scanner traffic |
 
-**Assessment.** Treat the entire GA4 baseline as unusable for decisions until it is re-measured.
-An earlier draft of this doc claimed the AI Assistant channel was "real, and not us" — that was an
-assumption, not a finding, and it was wrong to state it as one. Every large channel here has a
-plausible explanation that is us: Direct looks like localhost dev sessions, AI Assistant looks like
-links clicked out of Claude Code sessions, and Unassigned's 197.6s / 3.4-exports-per-session
-profile is not a stranger's behaviour.
+**Assessment (updated once §1b was run).** The contamination is real but smaller and more
+localised than two earlier drafts of this section claimed. It is **Mumbai metro, ~173 sessions,
+28% of traffic** — our own direct visits plus our own `t.co` and `youtube.com` promotion — together
+with ~62 sessions of datacentre bot traffic and 36 sessions on non-production hostnames. It is
+**not** the AI channel, which is genuine ChatGPT traffic across ~130 cities.
 
-**The one test that resolves it.** GA4 → Explore → blank exploration. Dimensions **Session
-source/medium**, **City** and **Hostname**; metric Sessions. That single view separates
-`claude.ai / referral` from `chatgpt.com` and `perplexity.ai`, shows whether the traffic comes from
-one city or many, and splits `localhost` from `freeteemockup.com` — answering all three questions
-at once.
-
-**What does not depend on any of this.** Search Console is immune — clicking a link in a chat does
-not create a Google Search impression. The 8 clicks, 166 impressions and 12.5% tier-1 mix in §2 are
-clean, and they are what rules out display advertising. The §5 plan stands on the GSC data alone.
+Two claims were made and withdrawn before the data settled it: first that the AI channel was
+obviously real, then that it was obviously us. Both were assertions, not findings. The lesson is
+recorded here rather than tidied away: **do not characterise a channel without a source/city
+breakdown in front of you.**
 
 **Neither tracking fix is retroactive.** See the owner to-do list in section 6.
 
@@ -270,10 +323,14 @@ Not because it earns today. Because it is cheap, compounds, and costs nothing to
 3. **Do Phase 4 of SEO-PLAN.md** — Product Hunt, AlternativeTo, directories. All still open, and
    these are exactly the sources AI assistants cite when recommending tools, so they feed Track B's
    best channel as well as classic SEO.
-4. **Resolve the AI channel before investing in it.** It *looks* like ~6× Organic Search and is
-   invisible in Search Console, but it is very likely our own link-clicking out of Claude Code
-   sessions (§3). Run the Explore check first. If a real slice survives, it is worth pursuing —
-   Phase 4's directory and Product Hunt work feeds it either way, so that work is safe to do now.
+4. **Treat ChatGPT as the primary acquisition channel, because it already is.** 186 sessions and
+   253 exports against Google organic's 18 and 0 (§1b). It is invisible in Search Console, so none
+   of the SEO instrumentation sees it. Practical work: keep the comparison tables and the
+   "free / no signup / no watermark" claims factual and easy to quote, and finish Phase 4 of
+   SEO-PLAN.md — directories and Product Hunt are what assistants cite. `producthunt.com` and
+   `system.toolify.ai` already appear as referrers, so those listings do get read.
+5. **Stop counting our own promotion as distribution.** Every `t.co` and `youtube.com` session is
+   Mumbai metro. Those channels are not reaching the POD audience.
 
 ### Track C — The API (evaluate seriously)
 
@@ -311,8 +368,7 @@ Ordered. The first two gate everything else, because every number above is curre
 - [ ] Sign up for the three affiliate programs (section 4).
 - [ ] Re-pull GA4 + GSC three weeks after the two fixes above and replace sections 1–2 with clean
       numbers.
-- [ ] **Run the source/city/hostname Explore check (§3)** to find out how much of Direct, AI
-      Assistant and Unassigned is us. Do this before any strategy is built on the channel mix.
+- [x] **Run the source/city/hostname Explore check** — done 2026-08-08, results in §1b.
 - [ ] Compare GA4 `mockup_download` against `/stats` on the same window — the gap is the
       ad-blocker rate, which is itself an input to whether display ads could ever work.
 - [ ] Product Hunt / AlternativeTo / directory submissions (SEO-PLAN.md Phase 4).
@@ -325,3 +381,9 @@ Ordered. The first two gate everything else, because every number above is curre
   genuine. Clicking our own links out of a Claude/ChatGPT session is filed under that channel, and
   local `npm run dev` browsing sends pageviews too. The whole GA4 channel mix is now marked
   unresolved pending one Explore check. The GSC baseline and the plan built on it are unaffected.
+- **2026-08-08 (same day, resolved)** — ran the Explore check; added §1b. The AI channel is real
+  and it is **ChatGPT** (184 sessions / 239 exports across ~130 cities); `claude.ai` sent 3 sessions
+  and 0 exports, so the correction above was itself wrong. What is ours is **Mumbai metro, ~28% of
+  traffic**, including all `t.co` and `youtube.com` referrals. Also found: ~62 sessions of
+  datacentre bots, 36 on non-production hostnames, and 70% of all exports coming from four cities.
+  ChatGPT now outranks Google organic 10:1 on sessions and produces every export Google does not.
