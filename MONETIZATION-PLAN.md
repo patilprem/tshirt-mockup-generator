@@ -51,9 +51,14 @@ Property `G-X8VXX3PN94` ("TeeMockup"). **591 sessions · 1,025 pageviews · 387 
 Key events reconcile exactly to exports: 29 + 237 + 7 + 4 + 31 = **308** = `mockup_download` (300)
 + `batch_export` (8).
 
-**AI assistants are 29% of sessions and 77% of exports** — roughly 6× Organic Search on volume and
-far ahead on engagement. This channel is invisible to Search Console, which only covers Google
-Search. See the contamination warning in section 3 before treating the export figure as solid.
+On its face this says AI assistants are 29% of sessions and 77% of exports. **Do not act on that
+yet — the channel is very likely us.** Clicking a link to the site from inside a Claude or ChatGPT
+conversation sets the referrer to `claude.ai` / `chatgpt.com`, which GA4 files under *AI Assistant*
+rather than *Direct*. This repo has been worked on through Claude Code sessions across PRs #33–#39,
+and 169 sessions over 90 days is ~1.9/day — a working cadence, not a discovery curve. 80.6s
+engagement with 1.4 exports per session is what "open the editor and test an export" looks like.
+
+Treat the whole channel table as unresolved until the check in §3 is run.
 
 ### Landing pages
 
@@ -176,6 +181,15 @@ Verified in code, not assumed:
 - **Exports are excluded only if `?notrack=1` was set.** `trackEvent()` in
   `src/components/Editor.astro` early-returns on `statsOptedOut`, which suppresses both the GA4
   event and the `/api/track` beacon. SEO-PLAN.md still lists that step as not done.
+- **Local dev traffic is counted too.** `gtag('config', …)` fires on `localhost` as well — the only
+  hostname guard in `PageLayout.astro` is the `.pages.dev` noindex check, which governs robots, not
+  analytics. So every `npm run dev` session with a browser open sent pageviews, and every locally
+  tested export fired `mockup_download`. This lands in **Direct**, whose 29% engagement rate and
+  29s average now look like dev sessions rather than visitors.
+- **Clicking our own links from an AI chat lands in "AI Assistant."** A link followed from a
+  claude.ai or chatgpt.com conversation carries that referrer, so GA4 classifies it as AI Assistant
+  rather than Direct. Given this repo is developed through Claude Code sessions, that channel is
+  suspect by default rather than by exception.
 
 Fingerprints in the data:
 
@@ -187,11 +201,24 @@ Fingerprints in the data:
 | `/stats` appears as a landing page | Only the owner can open that page |
 | `/cmd_sco` | Not a page in this repo — scanner traffic |
 
-**Assessment.** The AI Assistant *channel* is real — 169 sessions at 68.6% engagement is not us
-arriving via ChatGPT. The **237 exports attributed to it are not trustworthy** until exclusion is
-in place. Treat everything before 2026-08-08 as a contaminated baseline and re-measure.
+**Assessment.** Treat the entire GA4 baseline as unusable for decisions until it is re-measured.
+An earlier draft of this doc claimed the AI Assistant channel was "real, and not us" — that was an
+assumption, not a finding, and it was wrong to state it as one. Every large channel here has a
+plausible explanation that is us: Direct looks like localhost dev sessions, AI Assistant looks like
+links clicked out of Claude Code sessions, and Unassigned's 197.6s / 3.4-exports-per-session
+profile is not a stranger's behaviour.
 
-**Neither fix is retroactive.** See the owner to-do list in section 6.
+**The one test that resolves it.** GA4 → Explore → blank exploration. Dimensions **Session
+source/medium**, **City** and **Hostname**; metric Sessions. That single view separates
+`claude.ai / referral` from `chatgpt.com` and `perplexity.ai`, shows whether the traffic comes from
+one city or many, and splits `localhost` from `freeteemockup.com` — answering all three questions
+at once.
+
+**What does not depend on any of this.** Search Console is immune — clicking a link in a chat does
+not create a Google Search impression. The 8 clicks, 166 impressions and 12.5% tier-1 mix in §2 are
+clean, and they are what rules out display advertising. The §5 plan stands on the GSC data alone.
+
+**Neither tracking fix is retroactive.** See the owner to-do list in section 6.
 
 ---
 
@@ -243,8 +270,10 @@ Not because it earns today. Because it is cheap, compounds, and costs nothing to
 3. **Do Phase 4 of SEO-PLAN.md** — Product Hunt, AlternativeTo, directories. All still open, and
    these are exactly the sources AI assistants cite when recommending tools, so they feed Track B's
    best channel as well as classic SEO.
-4. **Instrument the AI channel.** It is ~6× Organic Search and completely invisible in Search
-   Console. We are winning somewhere we cannot see.
+4. **Resolve the AI channel before investing in it.** It *looks* like ~6× Organic Search and is
+   invisible in Search Console, but it is very likely our own link-clicking out of Claude Code
+   sessions (§3). Run the Explore check first. If a real slice survives, it is worth pursuing —
+   Phase 4's directory and Product Hunt work feeds it either way, so that work is safe to do now.
 
 ### Track C — The API (evaluate seriously)
 
@@ -282,6 +311,8 @@ Ordered. The first two gate everything else, because every number above is curre
 - [ ] Sign up for the three affiliate programs (section 4).
 - [ ] Re-pull GA4 + GSC three weeks after the two fixes above and replace sections 1–2 with clean
       numbers.
+- [ ] **Run the source/city/hostname Explore check (§3)** to find out how much of Direct, AI
+      Assistant and Unassigned is us. Do this before any strategy is built on the channel mix.
 - [ ] Compare GA4 `mockup_download` against `/stats` on the same window — the gap is the
       ad-blocker rate, which is itself an input to whether display ads could ever work.
 - [ ] Product Hunt / AlternativeTo / directory submissions (SEO-PLAN.md Phase 4).
@@ -290,3 +321,7 @@ Ordered. The first two gate everything else, because every number above is curre
 
 - **2026-08-08** — created. First analytics pull (GA4 90 days, GSC 7 weeks), tracking-contamination
   finding, three-track plan.
+- **2026-08-08 (same day, corrected)** — withdrew the claim that the AI Assistant channel was
+  genuine. Clicking our own links out of a Claude/ChatGPT session is filed under that channel, and
+  local `npm run dev` browsing sends pageviews too. The whole GA4 channel mix is now marked
+  unresolved pending one Explore check. The GSC baseline and the plan built on it are unaffected.

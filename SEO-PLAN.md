@@ -99,7 +99,7 @@ the data changed about this phase:
   will not move page 8 to page 1.
 - **Nothing to prune yet.** The 14 landing pages have barely been crawled into competition — most
   have 1–21 impressions. Give them time rather than merging them.
-- **The classic-SEO frame is incomplete.** AI assistants sent ~6× more sessions than Organic Search
+- **The classic-SEO frame may be incomplete.** AI assistants *appear* to have sent ~6× more sessions than Organic Search
   and are invisible in Search Console. Phase 4's directory/Product Hunt work feeds that channel too,
   which makes it more valuable than it looked when this plan was written.
 - Original intent, still valid once there is more data: rewrite titles/descriptions on
