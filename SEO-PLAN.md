@@ -94,9 +94,10 @@ recommending tools. Two referrers already prove those pages get crawled: `produc
 `system.toolify.ai`.
 
 - [x] **Product Hunt launch** — done. 6 sessions, 0 exports; see the owner list above.
-- [ ] **AlternativeTo** — list FreeTeeMockup against Placeit, Smartmockups and Mockey. The single
-  highest-value listing left: it is the canonical "what else is there" source and is quoted heavily
-  by assistants.
+- [x] **AlternativeTo** — submitted 2026-08-08 using the copy in [LISTING-COPY.md](LISTING-COPY.md).
+  Listings are moderated, so it may take a few days to appear; once live, watch for
+  `alternativeto.net` in the GA4 referrer report, and watch the ChatGPT channel too — the indexed
+  page is the point, not the referral clicks.
 - [ ] **Free-tool directories** — toolify.ai (already sending traffic, so the listing works),
   insanelycooltools.com, futurepedia.
 - [ ] **Refresh the Product Hunt listing** — it predates the on-model feature, so it currently
