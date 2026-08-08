@@ -218,6 +218,12 @@
             <option value="man">Man</option>
           </select>
         </label>
+        <label class="f">Ethnicity
+          <select id="pRace"></select>
+        </label>
+        <label class="f">Garment
+          <select id="pGarment"></select>
+        </label>
         <label class="f">Pose (all pipeline-safe)
           <select id="pPose"></select>
         </label>
@@ -244,6 +250,7 @@
           <select id="pLook"></select>
         </label>
       </div>
+      <p class="note" id="pFieldNote" style="margin:10px 0 0"></p>
       <div class="insp" id="inspZone" style="margin-top:12px">
         <div class="insp-drop" id="inspDrop">
           <b>Inspiration image (optional)</b> — click this box, then paste / drop a mockup you like.
@@ -396,21 +403,169 @@ const HAIR = {
   ],
 };
 
+// Ethnicity goes into the subject phrase and nowhere else — it must not touch
+// a pipeline clause. The value is the adjective the prompt uses; the empty one
+// leaves the subject as it was before this field existed, so an unspecified
+// model still produces the exact prompt the earlier templates came from.
+const RACES = [
+  ['Unspecified', ''],
+  ['Black', 'Black'],
+  ['White', 'white'],
+  ['East Asian', 'East Asian'],
+  ['South Asian', 'South Asian'],
+  ['Southeast Asian', 'Southeast Asian'],
+  ['Hispanic / Latino', 'Hispanic'],
+  ['Middle Eastern', 'Middle Eastern'],
+  ['Mixed race', 'mixed-race'],
+];
+
+// Every garment says the same things about itself — flat violet, matte, no
+// print, crisp edges — and differs only in silhouette, so the differences are
+// the fields and the shared clauses stay in buildPrompt(). `seams` and
+// `seamFix` are the same rule in two voices: the first states it in the brief,
+// the second restates it in a corrected prompt after the validator's
+// one-connected-piece check has flagged the image.
+//
+// `note` is the gate this garment strains. The validator's thresholds were set
+// on crew tees; a tank sits against bare shoulders and a hoodie folds far
+// deeper than jersey, so the check that fails first is predictable per garment
+// and worth saying up front rather than after a wasted generation.
+const GARMENTS = [
+  {
+    id: 'crew-tee', label: 'Crew-neck t-shirt', slug: '', metaWord: '',
+    worn: 'crew-neck t-shirt', noun: 't-shirt', short: 'shirt', blank: 'cotton tee',
+    fabric: 'a matte cotton jersey knit with no sheen, gloss or silky shine',
+    cut: 'a classic regular fit with a plain crew neckline, standard set-in short sleeves and a straight body, not oversized or boxy',
+    extra: '',
+    edges: 'collar, sleeve hems and body hem',
+    seams: 'Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve.',
+    seamFix: 'Both shoulders and both sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.',
+    note: '',
+  },
+  {
+    id: 'v-neck', label: 'V-neck t-shirt', slug: 'vneck', metaWord: 'V-Neck',
+    worn: 'v-neck t-shirt', noun: 't-shirt', short: 'shirt', blank: 'cotton tee',
+    fabric: 'a matte cotton jersey knit with no sheen, gloss or silky shine',
+    cut: 'a classic regular fit with a shallow plain V neckline, standard set-in short sleeves and a straight body, not oversized or boxy',
+    extra: 'The V stays shallow so the chest of the shirt reads as one broad unbroken panel of fabric.',
+    edges: 'collar, sleeve hems and body hem',
+    seams: 'Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve.',
+    seamFix: 'Both shoulders and both sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.',
+    note: 'A deeper V puts skin inside the chest area — keep it shallow or the skin gate in Step 2 runs hot.',
+  },
+  {
+    id: 'long-sleeve', label: 'Long-sleeve tee', slug: 'longsleeve', metaWord: 'Long Sleeve',
+    worn: 'long-sleeve t-shirt', noun: 'long-sleeve tee', short: 'shirt', blank: 'cotton long-sleeve tee',
+    fabric: 'a matte cotton jersey knit with no sheen, gloss or silky shine',
+    cut: 'a classic regular fit with a plain crew neckline, full-length set-in sleeves that reach the wrists and a straight body, not oversized or boxy',
+    extra: 'The sleeves reach the wrists with the cuffs staying clear of the hands.',
+    edges: 'collar, cuffs and body hem',
+    seams: 'Both shoulders and both full-length sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve.',
+    seamFix: 'Both shoulders and both full-length sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.',
+    note: 'Sleeve fabric runs all the way to the hands, so the cuffs are where the key spills onto skin — check the skin gate in Step 2.',
+  },
+  {
+    id: 'fitted-tee', label: 'Fitted tee (ladies)', slug: 'fitted', metaWord: 'Fitted', only: 'woman',
+    worn: 'fitted crew-neck t-shirt', noun: 't-shirt', short: 'shirt', blank: 'cotton tee',
+    fabric: 'a matte cotton jersey knit with no sheen, gloss or silky shine',
+    cut: 'a slim feminine fit that follows the body with a plain crew neckline, standard set-in short sleeves and a slightly shaped waist, still smooth over the chest and not stretched tight',
+    extra: 'The fabric stays smooth across the chest with no pull lines or stretched creases radiating across the print area.',
+    edges: 'collar, sleeve hems and body hem',
+    seams: 'Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve.',
+    seamFix: 'Both shoulders and both sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.',
+    note: 'A close fit creases across the chest, and every crease is shading the recolour has to carry — watch the deep-shadow gate.',
+  },
+  {
+    id: 'sweatshirt', label: 'Crew-neck sweatshirt', slug: 'sweatshirt', metaWord: 'Sweatshirt',
+    worn: 'crew-neck sweatshirt', noun: 'sweatshirt', short: 'sweatshirt', blank: 'cotton sweatshirt',
+    fabric: 'a matte brushed-fleece cotton knit with no sheen, gloss or silky shine',
+    cut: 'a classic regular fit with a plain ribbed crew neckline, ribbed cuffs and a ribbed waistband, set-in long sleeves and a straight body, not oversized or boxy',
+    extra: 'The ribbing at the collar, cuffs and waistband is the same flat violet as the body, with no contrast trim or panel of any kind.',
+    edges: 'collar, ribbed cuffs and ribbed hem',
+    seams: 'Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve.',
+    seamFix: 'Both shoulders and both sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.',
+    note: 'Fleece folds far deeper than jersey — the deep-shadow gate is the one that fails first. Ask for flatter light than a tee needs.',
+  },
+  {
+    id: 'hoodie', label: 'Pullover hoodie', slug: 'hoodie', metaWord: 'Hoodie',
+    worn: 'pullover hoodie', noun: 'hoodie', short: 'hoodie', blank: 'cotton hoodie',
+    fabric: 'a matte brushed-fleece cotton knit with no sheen, gloss or silky shine',
+    cut: 'a classic regular fit with the hood down, ribbed cuffs and a ribbed waistband, set-in long sleeves and a straight body, not oversized or boxy',
+    extra: 'The hood lies down flat behind the neck and shoulders, well clear of the collar and the chest, with no drawstring cords, no toggles, no contrast lining and no zip. The front pocket sits low on the body with its opening below the chest, and the whole hoodie including the hood and the ribbing is the same flat violet.',
+    edges: 'hood edge, ribbed cuffs and ribbed hem',
+    seams: 'Both shoulders, both sleeves and the hood read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve.',
+    seamFix: 'Both shoulders, both sleeves and the hood must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest, and the hood must stay down and behind the shoulders.',
+    note: 'Two things to watch: fleece folds strain the deep-shadow gate, and a hood pulled forward or a drawstring in a different shade breaks the key.',
+  },
+  {
+    id: 'polo', label: 'Polo shirt', slug: 'polo', metaWord: 'Polo',
+    worn: 'polo shirt', noun: 'polo shirt', short: 'polo', blank: 'cotton piqué polo shirt',
+    fabric: 'a matte cotton piqué knit with no sheen, gloss or silky shine',
+    cut: 'a classic regular fit with a flat ribbed collar, a short buttoned placket, standard set-in short sleeves and a straight body, not oversized or boxy',
+    extra: 'The placket is buttoned closed with buttons in exactly the same violet as the body, the collar lies flat with both points down, and there is no contrast trim, tipping or embroidery anywhere on it.',
+    edges: 'collar, sleeve hems and body hem',
+    seams: 'Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve.',
+    seamFix: 'Both shoulders and both sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.',
+    note: 'Buttons and collar tipping in any other shade punch holes in the key — they have to be the same violet as the body.',
+  },
+  {
+    id: 'tank', label: 'Tank top', slug: 'tank', metaWord: 'Tank',
+    worn: 'tank top', noun: 'tank top', short: 'tank', blank: 'cotton tank top',
+    fabric: 'a matte cotton jersey knit with no sheen, gloss or silky shine',
+    cut: 'a classic regular fit with a plain scoop neckline, wide shoulder straps that fully cover the shoulder line and a straight body, not oversized or boxy',
+    extra: 'The bare arms rest beside the tank and never in front of it, with no skin overlapping the fabric anywhere and a sharp clean edge where arm meets fabric.',
+    edges: 'neckline binding, armhole binding and body hem',
+    seams: 'Both shoulder straps and the whole front of the tank read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of a strap or the chest.',
+    seamFix: 'Both shoulder straps and the whole front of the tank must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of a strap or the chest, and no bare skin may overlap the fabric.',
+    note: 'Bare shoulders and arms sit straight against the fabric, so expect the skin gate in Step 2 to be the first thing to complain.',
+  },
+];
+
 const pModel = document.getElementById('pModel');
 const pPose = document.getElementById('pPose');
 const pHair = document.getElementById('pHair');
 const pLook = document.getElementById('pLook');
+const pRace = document.getElementById('pRace');
+const pGarment = document.getElementById('pGarment');
+function garmentsFor(model) { return GARMENTS.filter(gm => !gm.only || gm.only === model); }
+function currentGarment() {
+  return GARMENTS.find(gm => gm.id === pGarment.value) || GARMENTS[0];
+}
 function fillPoses() {
   pPose.innerHTML = POSES[pModel.value].map((p, i) => `<option value="${i}">${p[0]}</option>`).join('');
   pHair.innerHTML = HAIR[pModel.value].map((h, i) => `<option value="${i}">${h[0]}</option>`).join('');
+  // A garment can be model-specific, so the list is rebuilt when the model
+  // changes — keeping the current choice if it survives the switch.
+  const keep = pGarment.value;
+  const list = garmentsFor(pModel.value);
+  pGarment.innerHTML = list.map(gm => `<option value="${gm.id}">${gm.label}</option>`).join('');
+  if (list.some(gm => gm.id === keep)) pGarment.value = keep;
+  showFieldNote();
+}
+// The skin gate is a hue window around warm mid-tones, so it under-reports on
+// very deep and very pale skin: the number can come back clean while the key
+// is in fact biting into an arm. Say so next to the field that causes it —
+// Step 3 in white is where that shows up.
+function showFieldNote() {
+  const parts = [];
+  const gm = currentGarment();
+  if (gm.note) parts.push(gm.note);
+  if (pRace.value && pRace.value !== 'white') {
+    parts.push('The skin gate in Step 2 is tuned to mid-tone skin and under-reports on deeper tones — judge the arms in Step 3 with white selected.');
+  }
+  document.getElementById('pFieldNote').textContent = parts.join(' ');
 }
 pLook.innerHTML = LOOKS.map((l, i) => `<option value="${i}">${l[0]}</option>`).join('');
+pRace.innerHTML = RACES.map(r => `<option value="${r[1]}">${r[0]}</option>`).join('');
 pModel.addEventListener('change', fillPoses);
+pGarment.addEventListener('change', showFieldNote);
+pRace.addEventListener('change', showFieldNote);
 fillPoses();
 
 function buildPrompt(extra) {
   const g = pModel.value;
-  const subj = g === 'woman' ? 'a young woman' : 'a young man';
+  const race = pRace.value ? pRace.value + ' ' : '';
+  const subj = g === 'woman' ? `a young ${race}woman` : `a young ${race}man`;
   const pro = g === 'woman' ? ['She', 'her'] : ['He', 'his'];
   const bottoms = document.getElementById('pBottoms').value.trim() || 'jeans';
   const bShort = bottoms.split(' ').slice(-1)[0];
@@ -420,12 +575,14 @@ function buildPrompt(extra) {
   const eyewear = document.getElementById('pEyewear').value;
   const eyewearClause = eyewear === 'sunglasses' ? ' and dark sunglasses'
     : eyewear === 'clear' ? ' and clear-framed glasses' : '';
+  const gm = currentGarment();
   const framing = document.getElementById('pFraming').value === 'wide'
     ? 'Framed from mid-thigh up with clear margin around the figure on all sides.'
-    : 'Tightly framed from the hips up so the torso and the chest of the t-shirt fill most of the frame, head still fully in frame, with a small even margin at the left and right edges.';
+    : `Tightly framed from the hips up so the torso and the chest of the ${gm.noun} fill most of the frame, head still fully in frame, with a small even margin at the left and right edges.`;
   const hair = HAIR[g][+pHair.value][1];
+  const extraClause = gm.extra ? ' ' + gm.extra : '';
   const prompt =
-`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet crew-neck t-shirt with ${bottoms}${eyewearClause}. The t-shirt is a completely plain blank vivid violet cotton tee — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in a matte cotton jersey knit with no sheen, gloss or silky shine, a classic regular fit with a plain crew neckline, standard set-in short sleeves and a straight body, not oversized or boxy, with natural soft fabric folds. The chest of the shirt stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the shirt. Both shoulders and both sleeves read as one unbroken piece of fabric, with nothing — arm, hand or hair — crossing in front of the shoulder seam or the sleeve. Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the shirt — every part of the shirt stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — collar, sleeve hems and body hem — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
+`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet ${gm.worn} with ${bottoms}${eyewearClause}. The ${gm.noun} is a completely plain blank vivid violet ${gm.blank} — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in ${gm.fabric}, ${gm.cut}, with natural soft fabric folds.${extraClause} The chest of the ${gm.short} stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the ${gm.short}. ${gm.seams} Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the ${gm.short} — every part of the ${gm.short} stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — ${gm.edges} — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
   return extra ? prompt + extra : prompt;
 }
 document.getElementById('pBuild').addEventListener('click', () => {
@@ -1517,6 +1674,11 @@ function runValidation(img, url) {
     const checks = [];
     let fails = 0, warns = 0;
     const broke = [], rowSummary = [];
+    // The fix hints below are pasted verbatim into the corrected prompt, so
+    // they have to name the garment that was actually asked for — telling the
+    // model to fix "the t-shirt" in a hoodie brief is how a corrected prompt
+    // ends up generating a different garment than the one being validated.
+    const gm = currentGarment();
     const F = (cond, warnCond, label, num, fix) => {
       const st = cond ? 'fail' : (warnCond ? 'warn' : 'ok');
       if (st === 'fail') fails++; if (st === 'warn') warns++;
@@ -1537,16 +1699,16 @@ function runValidation(img, url) {
       F(short < 640, short < 1300,
         short < 1300 ? 'Resolution — fine for a raw generation, upscale to ≥1300px before hand-over' : 'Resolution (short side)',
         short + 'px', 'Render at the highest resolution available — the short side must be at least 1300 pixels.');
-      F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°', 'The t-shirt must be a VIVID VIOLET — a strong purple, clearly more blue than magenta. Not lilac, not lavender, not pink, not indigo, and not washed out.');
-      F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%', 'Frame so the t-shirt occupies roughly a third of the picture: the whole torso visible, with clear margin around the figure on every side.');
-      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)', 'Light the torso with SOFT EVEN DIFFUSED light from the front. No hard shadow line across the chest, no dark band down either side of the shirt. Every part of the shirt must stay clearly lit — shadow on it may only be a slightly darker violet, never near-black and never grey.');
-      F(false, a.fragments > 1, 'Garment is one connected piece', a.fragments + (a.fragments > 1 ? ' fragments (occlusion?)' : ' piece'), 'Both shoulders and both sleeves must read as one unbroken piece of fabric. Nothing — arm, hand, hair or prop — may cross in front of the shoulder seam, the sleeve or the chest.');
+      F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°', `The ${gm.noun} must be a VIVID VIOLET — a strong purple, clearly more blue than magenta. Not lilac, not lavender, not pink, not indigo, and not washed out.`);
+      F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%', `Frame so the ${gm.noun} occupies roughly a third of the picture: the whole torso visible, with clear margin around the figure on every side.`);
+      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)', `Light the torso with SOFT EVEN DIFFUSED light from the front. No hard shadow line across the chest, no dark band down either side of the ${gm.short}. Every part of the ${gm.short} must stay clearly lit — shadow on it may only be a slightly darker violet, never near-black and never grey.`);
+      F(false, a.fragments > 1, 'Garment is one connected piece', a.fragments + (a.fragments > 1 ? ' fragments (occlusion?)' : ' piece'), gm.seamFix);
       F(a.strayVioletPct > 0.5, a.strayVioletPct > 0.05, 'No other violet objects in scene', a.strayVioletPct.toFixed(2) + '%', 'NOTHING else anywhere in the frame may be violet, purple, lilac, mauve or magenta — not clothing, not props, not flowers, not background.');
-      F(false, a.missed > 500, 'Violet fully captured by the key', a.missed + ' px missed', 'The shirt must be a single flat uniformly saturated violet across the whole garment, with no gradient, ombre, heather, marl or two-tone effect and no sheen.');
-      F(a.skin > 2000, a.skin > 200, 'No skin captured as garment', a.skin + ' px', 'Keep bare skin away from the shirt: both upper arms rest against the torso, hands stay out of the chest area, and no skin overlaps the garment.');
-      F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%', 'No blown-out or burnt-out highlights on the fabric. Keep the shirt off pure white anywhere — no specular hotspot, no direct hard light source on it.');
+      F(false, a.missed > 500, 'Violet fully captured by the key', a.missed + ' px missed', `The ${gm.short} must be a single flat uniformly saturated violet across the whole garment, with no gradient, ombre, heather, marl or two-tone effect and no sheen.`);
+      F(a.skin > 2000, a.skin > 200, 'No skin captured as garment', a.skin + ' px', `Keep bare skin away from the ${gm.short}: both upper arms rest against the torso, hands stay out of the chest area, and no skin overlaps the garment.`);
+      F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%', `No blown-out or burnt-out highlights on the fabric. Keep the ${gm.short} off pure white anywhere — no specular hotspot, no direct hard light source on it.`);
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
-      F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', 'The garment edges — collar, sleeve hems and body hem — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.');
+      F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', `The garment edges — ${gm.edges} — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.`);
       F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
       F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
       F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm, and hair stays behind the shoulders so it casts no dark shadow onto the shirt.');
@@ -1555,11 +1717,11 @@ function runValidation(img, url) {
       // usually code — but the photo can cause it too, by laying dark hair
       // over the shoulder against a bright background, which is where the
       // recolour has to yield to the matte. The prompt advice targets that.
-      F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', 'Keep hair entirely behind both shoulders so none of it falls across the shirt, and keep the light on the shoulders soft enough that no dark band forms where hair meets fabric.');
+      F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', `Keep hair entirely behind both shoulders so none of it falls across the ${gm.short}, and keep the light on the shoulders soft enough that no dark band forms where hair meets fabric.`);
       // The mirror of the check above. Lines sit above a noise floor, not at
       // zero: near-black pixels carry a few levels of chroma noise, so a clean
       // template still scores in the low hundreds.
-      F(a.coolPaint > 600, a.coolPaint > 250, 'Nothing below the hem recoloured (jeans, waistband)', a.coolPaint + ' px', 'The shirt hem must sit clear of the trousers with a visible, sharply focused gap of separation — no near-black waistband pressed directly against the hem, and no fabric of the bottoms in deep shadow immediately below it.');
+      F(a.coolPaint > 600, a.coolPaint > 250, 'Nothing below the hem recoloured (jeans, waistband)', a.coolPaint + ' px', `The ${gm.short} hem must sit clear of the trousers with a visible, sharply focused gap of separation — no near-black waistband pressed directly against the hem, and no fabric of the bottoms in deep shadow immediately below it.`);
     }
     document.getElementById('checks').innerHTML = checks.join('');
     lastVerdict = { fails, warns, rows: rowSummary };
@@ -1709,24 +1871,35 @@ const STOP = ['a','an','the','with','and','in','on','of','at','soft','softly','o
 function deriveMeta() {
   const g = document.getElementById('pModel').value;
   const suffix = g === 'woman' ? '-f' : '-m';
+  const gm = currentGarment();
   const sceneText = document.getElementById('pScene').value.trim();
   const words = sceneText.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
     .filter(w => w.length > 2 && !STOP.includes(w));
   const key = words.slice(0, 2);
-  const id = (key.join('-') || 'new-scene') + suffix;
+  // Every template shipped so far is a crew tee, so the crew tee carries no
+  // token and its ids stay exactly as they are. Anything else earns one:
+  // scene and model alone no longer identify a template once the same cafe can
+  // be shot in a tee and in a hoodie.
+  const gTag = gm.slug ? '-' + gm.slug : '';
+  const id = (key.join('-') || 'new-scene') + gTag + suffix;
   const title = w => w.charAt(0).toUpperCase() + w.slice(1);
-  const label = key.map(title).join(' ') || 'New Scene';
+  const label = [key.map(title).join(' ') || 'New Scene', gm.metaWord].filter(Boolean).join(' ');
   // scene note: the first clause of the scene sentence, trimmed short
   let note = sceneText.split(',')[0].replace(/^(a|an|the)\s+/i, '');
   note = note.charAt(0).toUpperCase() + note.slice(1);
   if (note.length > 46) note = note.slice(0, 44).replace(/\s+\S*$/, '') + '…';
-  return { id, label, scene: note || label, model: g === 'woman' ? 'female' : 'male' };
+  return {
+    id, label, scene: note || label,
+    model: g === 'woman' ? 'female' : 'male',
+    garment: gm.label,
+  };
 }
 function renderMeta() {
   const m = deriveMeta();
   document.getElementById('mPreview').innerHTML =
     `<span>id <b>${m.id}</b></span><span>label <b>${m.label}</b></span>` +
-    `<span>model <b>${m.model}</b></span><span>scene <b>${m.scene}</b></span>`;
+    `<span>model <b>${m.model}</b></span><span>garment <b>${m.garment}</b></span>` +
+    `<span>scene <b>${m.scene}</b></span>`;
   return m;
 }
 document.getElementById('mBuild').addEventListener('click', async () => {
@@ -1765,6 +1938,7 @@ document.getElementById('mBuild').addEventListener('click', async () => {
 `Add this on-model template:
 { id: '${m.id}', file: '${m.id}.webp', label: '${m.label}', model: '${m.model}', scene: '${m.scene}' }
 
+Garment: ${m.garment}${m.garment === GARMENTS[0].label ? '' : ' — not a crew tee, so check the print area and the hem line before trusting the defaults'}
 Studio validation: ${verdictLine}
 ${qa}${warnLine}
 
