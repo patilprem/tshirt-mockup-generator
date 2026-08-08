@@ -271,9 +271,58 @@ obviously real, then that it was obviously us. Both were assertions, not finding
 recorded here rather than tidied away: **do not characterise a channel without a source/city
 breakdown in front of you.**
 
-**Both tracking fixes went in on 2026-08-08**, which is therefore day zero. Neither is retroactive,
-so §1, §1b and §2 above all still contain our own traffic and must never be compared across that
-date. See the owner to-do list in section 6.
+**Both tracking fixes went in on 2026-08-08**, which is therefore day zero for *collection*. But
+"polluted" is not binary and an earlier draft of this section treated it that way — including
+lumping §2 in, which was simply wrong. How to actually use the historical data is §3b.
+
+---
+
+## 3b. How to use the historical data anyway
+
+The pollution is **not evenly spread**, and it is **identifiable**, so the old data is filterable
+rather than lost. Measured over the 60-day window in §1b:
+
+| Metric | Ours + bots | Usable |
+|---|---|---|
+| Sessions (627) | ~40% | ~60% |
+| **Exports (346)** | **16 — 4.6%** | **~95%** |
+
+Mumbai metro is 28% of *sessions* but only 16 of 346 *key events*. Datacentre bots and
+non-production hostnames produced **zero** exports. That asymmetry is the whole point: session
+counts are materially wrong, export counts are close to right.
+
+### Search Console: nothing to do
+
+Following a link from a chat, browsing `localhost` or testing an export cannot create a Google
+Search impression. Everything in §2 — 8 clicks, 166 impressions, positions 73–97, the 12.5% tier-1
+mix, `/t-shirt-mockups-for-etsy` at 26.14 — is clean as recorded. The plan in §5 rests on it.
+
+### GA4: filter it, do not discard it
+
+Build one saved segment in Explore and every historical report becomes usable. Exclude sessions
+where any of these hold:
+
+- **Town/City** is Mumbai, Thane, Navi Mumbai or Mira Bhayandar — us
+- **Hostname** is not `freeteemockup.com` — `localhost`, `pages.dev`, `www.`
+- **Town/City** is Council Bluffs, Boardman, Ashburn or The Dalles — Google/AWS datacentres
+
+**Known bias: this under-counts.** Excluding Mumbai also excludes real Indian users, and India was
+the top country by clicks in §2, so it is a genuine market rather than only our own noise. City is
+the only handle historical data offers, so filtered figures are a **floor, not a measurement**. The
+IP filter does the job properly from day zero forward, without the collateral damage.
+
+### `/stats`: keep using it
+
+The D1 table records no city or hostname, so it cannot be filtered retrospectively — but per the
+table above it is ~95% clean already, so the garment, template and size breakdowns are trustworthy
+today. The one caveat is unrelated to us: four cities produce 70% of all exports, so read the
+totals as volume from a handful of power users, never as a headcount.
+
+### The 29 August re-pull: compare like with like
+
+Apply the clean segment to **both** windows. Comparing a filtered forward window against an
+unfiltered historical one would show a collapse that is entirely an artefact of the filter, and
+that mistake is much easier to make than to spot afterwards.
 
 ---
 
@@ -366,9 +415,11 @@ Ordered. The first two gate everything else, because every number above is curre
 - [x] **Activate the GA4 internal traffic filter** — done 2026-08-08, rule defined and the filter
       switched from *Testing* to **Active**.
 - [ ] Sign up for the three affiliate programs (section 4).
-- [ ] **Re-pull GA4 + GSC on or after 2026-08-29** (three weeks past day zero) and replace §1–2 with
-      clean numbers. Keep the old tables in the changelog rather than overwriting them — the
-      difference between the two is the size of our own footprint, which is worth knowing once.
+- [ ] **Build the clean segment in GA4 Explore** (§3b) and save it. It makes the historical data
+      usable and is required for a valid before/after at the end of the month.
+- [ ] **Re-pull GA4 + GSC on or after 2026-08-29**, with the clean segment applied to *both*
+      windows, and replace §1–2 with the results. Keep the old tables in the changelog rather than
+      overwriting them — the difference between them is the size of our own footprint.
 - [x] **Run the source/city/hostname Explore check** — done 2026-08-08, results in §1b.
 - [ ] Compare GA4 `mockup_download` against `/stats` on the same window — the gap is the
       ad-blocker rate, which is itself an input to whether display ads could ever work.
@@ -382,6 +433,11 @@ Ordered. The first two gate everything else, because every number above is curre
   genuine. Clicking our own links out of a Claude/ChatGPT session is filed under that channel, and
   local `npm run dev` browsing sends pageviews too. The whole GA4 channel mix is now marked
   unresolved pending one Explore check. The GSC baseline and the plan built on it are unaffected.
+- **2026-08-08 (same day, third pass)** — added §3b after the owner asked how "everything before
+  today is polluted" was actually being handled. It was not a handling strategy, it was a shrug: the
+  blanket warning would have discarded usable history, and it wrongly swept Search Console in as
+  well. Measured properly, sessions are ~40% ours and exports only 4.6%, so the two need different
+  treatment. GA4 is recoverable with a segment; `/stats` was ~95% clean all along.
 - **2026-08-08 (same day, resolved)** — ran the Explore check; added §1b. The AI channel is real
   and it is **ChatGPT** (184 sessions / 239 exports across ~130 cities); `claude.ai` sent 3 sessions
   and 0 exports, so the correction above was itself wrong. What is ours is **Mumbai metro, ~28% of
