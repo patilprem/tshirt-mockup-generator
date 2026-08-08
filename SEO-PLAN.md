@@ -119,6 +119,12 @@ the data changed about this phase:
   at position 26.14 with 0 clicks, and an audience that is overwhelmingly US-based. It is the only
   page within reach of page 1, and moving it there fixes both the traffic and the tier-1 geography
   problem (currently 12.5% of clicks) at once.
+  **Rewritten 2026-08-08** (~450 → ~880 words): the size advice now points at the Etsy Listing
+  preset (2700×2025) instead of a size the editor stopped producing, and the two features that
+  matter most to an Etsy seller — 10 on-model templates and batch colour variants — are covered for
+  the first time, along with a slot-by-slot plan for all ten listing images. FAQ grew from 3 to 6
+  entries, all schema-matched. Watch its position over the next few weeks: it is the single clearest
+  before/after test the site has.
 - **Stop chasing the "free … mockup generator" head terms.** They sit at positions 73–97 against
   Placeit, Canva and Mockey. That is a domain-authority gap, not a title-tag gap; rewriting metadata
   will not move page 8 to page 1.
