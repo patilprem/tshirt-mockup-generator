@@ -84,7 +84,9 @@ per-use cost needs a very good reason.
 - **AI text-to-design generation** — per-use API costs force monetization pressure; revisit only
   as bring-your-own-key or if a viable free path appears.
 - **Watermark/paid tiers of any kind** — the moment "free" gets an asterisk, the entire SEO and
-  brand position collapses.
+  brand position collapses. [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) works inside this
+  constraint: revenue comes from affiliate, or from a separate B2B product, never from the end
+  user of the editor.
 
 ## Sequencing & how it feeds SEO
 

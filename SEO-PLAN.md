@@ -2,20 +2,43 @@
 
 Working plan for https://freeteemockup.com. Work happens in batches on `seo/*` branches, merged to `main` via PR. Update this doc as phases complete.
 
+Companion docs: [PRODUCT-PLAN.md](PRODUCT-PLAN.md) (what to build) and
+[MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) (what the traffic is worth — holds the 2026-08-08
+GA4 + Search Console baseline that Phase 5 below is built on).
+
 ## Owner to-do list (things only you can do)
 
 Everything below requires account access or publishing under your identity, so Claude prepares but you execute. Roughly in priority order:
 
+- [ ] **Exclude your own devices from export stats** (now the highest priority — the first analytics
+  pull is polluted without it): on every browser you test with, visit
+  `https://freeteemockup.com/editor?notrack=1` once — that browser's exports then never count in
+  GA4 or /stats (undo with `?notrack=0`; the browser console confirms the state). Evidence it is
+  still outstanding: `/editor` shows 82 landing sessions from 21 users but only 8 new, and
+  `mockup_download` shows 300 events from 33 users. See [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §3.
+- [ ] **Activate the GA4 internal traffic filter** — `notrack` only suppresses *export events*;
+  `PageLayout.astro` fires `gtag('config', …)` on every page load with no guard, so your pageviews
+  are all counted. Admin → Data streams → the stream → Configure tag settings → **Define internal
+  traffic** (add your IP), then Admin → Data settings → **Data filters** → switch "Internal Traffic"
+  from *Testing* to **Active**. It is created inactive by default.
 - [ ] **Merge open `seo/*` PRs** as they appear — nothing goes live until merged and deployed.
-- [ ] **Google Search Console** (highest priority): verify `freeteemockup.com` as a *domain property* at https://search.google.com/search-console — add the TXT record it gives you to your DNS. Then Sitemaps → submit `sitemap-index.xml`. Takes ~10 minutes; unblocks all of Phase 5.
+- [x] **Google Search Console**: verified as a domain property; sitemap submitted. First non-zero
+  data day is **2026-06-21**, so treat that — not the site's launch — as the start of search history.
 - [ ] **Bing Webmaster Tools**: sign in at https://www.bing.com/webmasters and use "Import from Google Search Console" — fastest path once GSC is verified.
-- [ ] **Exclude your own devices from export stats**: on every browser you test with, visit `https://freeteemockup.com/editor?notrack=1` once — that browser's exports then never count in GA4 or /stats (undo with `?notrack=0`; the browser console confirms the state).
-- [ ] **Private stats page setup** (~5 min in the Cloudflare dashboard): create a D1 database (Workers & Pages → D1 → Create, name it e.g. `teemockup-stats`), bind it to the Pages project as `DB` (project → Settings → Bindings → D1), and add a secret env var `STATS_KEY` (any long random string). Then visit `https://freeteemockup.com/stats?key=<STATS_KEY>` — a cookie keeps you signed in afterwards. The schema self-creates on first tracked export; no migration to run.
-- [ ] **Check GA4 is receiving data** (property `G-X8VXX3PN94`): confirm real traffic shows up. The editor now fires `mockup_download` (params: garment, quality) and `batch_export` (params: mode, images, planned, quality, cancelled) — in GA4, mark both as key events (Admin → Events → toggle "Mark as key event"; they appear in the list ~24h after the first real firing), so we can tell which pages actually convert.
+- [x] **Private stats page setup** — D1 bound as `DB`, `STATS_KEY` set, `/stats` live and recording.
+  The dashboard was rebuilt on 2026-08-08 (PR #39) around one unit, exported images, with
+  period-over-period deltas; see the header comment in `functions/stats.js`.
+- [x] **Check GA4 is receiving data** (property `G-X8VXX3PN94`) — confirmed 2026-08-08: 90 days of
+  data, and `mockup_download` + `batch_export` are both registering as key events (they reconcile
+  exactly to 308 across the channel report).
 - [ ] **Product Hunt launch**: create/claim a maker account and schedule the launch (Tue–Thu mornings US time perform best). Ask Claude first — the tagline, description, gallery images, and first-comment draft should be prepared before you schedule.
 - [ ] **Directory submissions** (each ~5 min, backlink value adds up): AlternativeTo (list FreeTeeMockup as an alternative to Placeit/Smartmockups/Mockey), free-tool directories (e.g. toolify.ai, insanelycooltools.com, futurepedia if AI-angle fits). Claude drafts the copy; you create the listings.
 - [ ] **Community sharing**: once the first blog guides exist, share them where POD sellers hang out — r/printondemand, r/Etsy (mind self-promo rules — contribute, don't just drop links), Etsy seller Facebook groups, Printful/Printify community forums. Claude drafts per-channel posts on request.
-- [ ] **After 4–6 weeks of GSC data**: export the Search results report (queries + pages) and share it in a session so Phase 5 iteration can be data-driven rather than guesswork.
+- [x] **After 4–6 weeks of GSC data**: done 2026-08-08. Full analysis in
+  [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §2. Headline: 8 clicks / 166 impressions in ~7 weeks;
+  every commercial head term sits at position 73–97; `/t-shirt-mockups-for-etsy` holds 52% of all
+  impressions at position 26 and is the one page within reach of page 1. **Re-do this pull three
+  weeks after the two tracking fixes at the top of this list.**
 
 ## Shipped so far
 
@@ -62,8 +85,22 @@ Each post deep-links to the relevant garment and use-case pages.
 - Free-tool directories, AlternativeTo listing, Product Hunt launch
 - Design / print-on-demand community posts (draft copy per channel first)
 
-## Phase 5 — Iterate on Search Console data (4–6 weeks after Phase 1)
+## Phase 5 — Iterate on Search Console data
 
-- Rewrite titles/descriptions on high-impression, low-CTR pages
-- Expand pages ranking on page 2 for their target query
-- Prune or merge pages with zero impressions
+First pull done 2026-08-08 (full tables in [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §2). What
+the data changed about this phase:
+
+- **`/t-shirt-mockups-for-etsy` is the priority page.** 87 impressions — 52% of the site's total —
+  at position 26.14 with 0 clicks, and an audience that is overwhelmingly US-based. It is the only
+  page within reach of page 1, and moving it there fixes both the traffic and the tier-1 geography
+  problem (currently 12.5% of clicks) at once.
+- **Stop chasing the "free … mockup generator" head terms.** They sit at positions 73–97 against
+  Placeit, Canva and Mockey. That is a domain-authority gap, not a title-tag gap; rewriting metadata
+  will not move page 8 to page 1.
+- **Nothing to prune yet.** The 14 landing pages have barely been crawled into competition — most
+  have 1–21 impressions. Give them time rather than merging them.
+- **The classic-SEO frame is incomplete.** AI assistants sent ~6× more sessions than Organic Search
+  and are invisible in Search Console. Phase 4's directory/Product Hunt work feeds that channel too,
+  which makes it more valuable than it looked when this plan was written.
+- Original intent, still valid once there is more data: rewrite titles/descriptions on
+  high-impression low-CTR pages, expand pages ranking on page 2, prune or merge dead pages.
