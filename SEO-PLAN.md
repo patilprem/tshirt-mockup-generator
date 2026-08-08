@@ -2,9 +2,10 @@
 
 Working plan for https://freeteemockup.com. Work happens in batches on `seo/*` branches, merged to `main` via PR. Update this doc as phases complete.
 
-Companion docs: [PRODUCT-PLAN.md](PRODUCT-PLAN.md) (what to build) and
+Companion docs: [PRODUCT-PLAN.md](PRODUCT-PLAN.md) (what to build),
 [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) (what the traffic is worth — holds the 2026-08-08
-GA4 + Search Console baseline that Phase 5 below is built on).
+GA4 + Search Console baseline that Phase 5 below is built on), and
+[LISTING-COPY.md](LISTING-COPY.md) (paste-ready copy for the Phase 4 off-site submissions).
 
 ## Owner to-do list (things only you can do)
 
@@ -93,16 +94,21 @@ recommending tools. Two referrers already prove those pages get crawled: `produc
 `system.toolify.ai`.
 
 - [x] **Product Hunt launch** — done. 6 sessions, 0 exports; see the owner list above.
-- [ ] **AlternativeTo** — list FreeTeeMockup against Placeit, Smartmockups and Mockey. The single
-  highest-value listing left: it is the canonical "what else is there" source and is quoted heavily
-  by assistants.
+- [x] **AlternativeTo** — submitted 2026-08-08 using the copy in [LISTING-COPY.md](LISTING-COPY.md).
+  Listings are moderated, so it may take a few days to appear; once live, watch for
+  `alternativeto.net` in the GA4 referrer report, and watch the ChatGPT channel too — the indexed
+  page is the point, not the referral clicks.
 - [ ] **Free-tool directories** — toolify.ai (already sending traffic, so the listing works),
   insanelycooltools.com, futurepedia.
+- [ ] **Refresh the Product Hunt listing** — it predates the on-model feature, so it currently
+  describes a smaller product than exists.
 - [ ] Design / print-on-demand community posts (draft copy per channel first).
 
-Write every listing as **quotable fact**, not marketing copy: free, no signup, no watermark, no
-upload — files never leave the browser — 8 garments, batch export, on-model templates. Those are the
-claims an assistant can repeat verbatim, and they are the reason this tool gets recommended.
+**Paste-ready copy for all of the above lives in [LISTING-COPY.md](LISTING-COPY.md).** It is written
+as *quotable fact* rather than marketing, because the channel being fed is an assistant repeating
+what it reads: "exports at 2700×2025 for Etsy listings" survives that trip, "beautiful mockups in
+seconds" does not. That file also holds the canonical fact block — update it first when a feature
+ships, then push the change out to the live listings.
 
 ## Phase 5 — Iterate on Search Console data
 
@@ -113,6 +119,12 @@ the data changed about this phase:
   at position 26.14 with 0 clicks, and an audience that is overwhelmingly US-based. It is the only
   page within reach of page 1, and moving it there fixes both the traffic and the tier-1 geography
   problem (currently 12.5% of clicks) at once.
+  **Rewritten 2026-08-08** (~450 → ~880 words): the size advice now points at the Etsy Listing
+  preset (2700×2025) instead of a size the editor stopped producing, and the two features that
+  matter most to an Etsy seller — 10 on-model templates and batch colour variants — are covered for
+  the first time, along with a slot-by-slot plan for all ten listing images. FAQ grew from 3 to 6
+  entries, all schema-matched. Watch its position over the next few weeks: it is the single clearest
+  before/after test the site has.
 - **Stop chasing the "free … mockup generator" head terms.** They sit at positions 73–97 against
   Placeit, Canva and Mockey. That is a domain-authority gap, not a title-tag gap; rewriting metadata
   will not move page 8 to page 1.
