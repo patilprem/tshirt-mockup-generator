@@ -329,8 +329,10 @@ Not because it earns today. Because it is cheap, compounds, and costs nothing to
    253 exports against Google organic's 18 and 0 (§1b). It is invisible in Search Console, so none
    of the SEO instrumentation sees it. Practical work: keep the comparison tables and the
    "free / no signup / no watermark" claims factual and easy to quote, and finish Phase 4 of
-   SEO-PLAN.md — directories and Product Hunt are what assistants cite. `producthunt.com` and
-   `system.toolify.ai` already appear as referrers, so those listings do get read.
+   SEO-PLAN.md. Product Hunt is already done and delivered 6 sessions and 0 exports as a traffic
+   event — so the remaining value in Phase 4 is the *listings*, not launch-day spikes. AlternativeTo
+   is the biggest one left. `producthunt.com` and `system.toolify.ai` both appear as referrers,
+   which is the evidence that listing pages get crawled at all.
 5. **Stop counting our own promotion as distribution.** Every `t.co` and `youtube.com` session is
    Mumbai metro. Those channels are not reaching the POD audience.
 

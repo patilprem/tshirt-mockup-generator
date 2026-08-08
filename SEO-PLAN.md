@@ -29,7 +29,13 @@ Everything below requires account access or publishing under your identity, so C
 - [x] **Check GA4 is receiving data** (property `G-X8VXX3PN94`) — confirmed 2026-08-08: 90 days of
   data, and `mockup_download` + `batch_export` are both registering as key events (they reconcile
   exactly to 308 across the channel report).
-- [ ] **Product Hunt launch**: create/claim a maker account and schedule the launch (Tue–Thu mornings US time perform best). Ask Claude first — the tagline, description, gallery images, and first-comment draft should be prepared before you schedule.
+- [x] **Product Hunt launch** — done (before 2026-07-28; `?ref=producthunt` backlinks show up in the
+  GSC indexing report from that date). **Outcome as a traffic event: 6 sessions, 0 exports**, spread
+  across six different cities (MONETIZATION-PLAN.md §1b). Worth recording honestly rather than
+  leaving PH on the list as an untapped lever — it is neither untapped nor, on this evidence, a
+  lever. Its durable value is more likely the indexed listing than the launch-day spike, since
+  Product Hunt pages are heavily cited by AI assistants and ChatGPT is the site's largest channel.
+  That is a hypothesis, not a measured result.
 - [ ] **Directory submissions** (each ~5 min, backlink value adds up): AlternativeTo (list FreeTeeMockup as an alternative to Placeit/Smartmockups/Mockey), free-tool directories (e.g. toolify.ai, insanelycooltools.com, futurepedia if AI-angle fits). Claude drafts the copy; you create the listings.
 - [ ] **Community sharing**: once the first blog guides exist, share them where POD sellers hang out — r/printondemand, r/Etsy (mind self-promo rules — contribute, don't just drop links), Etsy seller Facebook groups, Printful/Printify community forums. Claude drafts per-channel posts on request.
 - [x] **After 4–6 weeks of GSC data**: done 2026-08-08. Full analysis in
@@ -80,8 +86,23 @@ Each post deep-links to the relevant garment and use-case pages.
 
 ## Phase 4 — Off-site (owner submits, content prepared here)
 
-- Free-tool directories, AlternativeTo listing, Product Hunt launch
-- Design / print-on-demand community posts (draft copy per channel first)
+**Now the highest-value phase left**, because it feeds the channel that is actually working. ChatGPT
+sent 186 sessions and 253 exports over 60 days against Google organic's 18 and 0
+(MONETIZATION-PLAN.md §1b), and directory and listing pages are what assistants read when
+recommending tools. Two referrers already prove those pages get crawled: `producthunt.com` and
+`system.toolify.ai`.
+
+- [x] **Product Hunt launch** — done. 6 sessions, 0 exports; see the owner list above.
+- [ ] **AlternativeTo** — list FreeTeeMockup against Placeit, Smartmockups and Mockey. The single
+  highest-value listing left: it is the canonical "what else is there" source and is quoted heavily
+  by assistants.
+- [ ] **Free-tool directories** — toolify.ai (already sending traffic, so the listing works),
+  insanelycooltools.com, futurepedia.
+- [ ] Design / print-on-demand community posts (draft copy per channel first).
+
+Write every listing as **quotable fact**, not marketing copy: free, no signup, no watermark, no
+upload — files never leave the browser — 8 garments, batch export, on-model templates. Those are the
+claims an assistant can repeat verbatim, and they are the reason this tool gets recommended.
 
 ## Phase 5 — Iterate on Search Console data
 
