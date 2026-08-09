@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-09 91f62d5</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-09 3d46211</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -391,12 +391,20 @@ const LOOKS = [
 // Hair is a pipeline concern as well as a look: anything crossing the front of
 // the collar sits on the garment and gets keyed as shirt. Every option below
 // keeps it clear of the collar; only the style differs.
+// Ordered loosest to most secured. The first three describe where hair should
+// END UP, which a generator will honour and then drape a ponytail forward over
+// one shoulder anyway — it has satisfied "behind her shoulders" for the rest of
+// the head. The last two describe hair that CANNOT reach the collar: a bun has
+// no length to fall, so there is nothing for the model to get wrong. When a
+// scene keeps failing on hair, that is the fix, not another regeneration.
 const HAIR = {
   woman: [
-    ['Loose, swept back', ', her hair loose and swept back over her shoulders, falling down her back with none of it crossing the front of her collar'],
+    ['Loose, swept back', ', her hair loose and swept back over her shoulders, hanging straight down her back with no strand or lock draped forward over either shoulder and none of it crossing the front of her collar'],
     ['Tied back', ', her hair tied back away from her face and kept clear of her shoulders and collar'],
-    ['High ponytail', ', her hair in a high ponytail that stays behind her shoulders and well clear of her collar'],
+    ['High ponytail', ', her hair in a high ponytail hanging straight down her back, never pulled forward over a shoulder, staying behind both shoulders and well clear of her collar'],
     ['Short bob', ', her hair in a short bob that sits above the shoulders and clear of her collar'],
+    ['Low bun (safest)', ', her hair gathered into a low bun at the nape of her neck with no loose length anywhere, nothing falling forward over her shoulders and nothing touching her collar'],
+    ['Slicked back, tight', ', her hair pulled straight back and tied tightly against her head with no loose strands, sitting entirely behind her shoulders and clear of her collar'],
   ],
   man: [
     ['Short', ''],
@@ -623,6 +631,10 @@ function showFieldNote() {
   const parts = [];
   const gm = currentGarment();
   if (gm.note) parts.push(gm.note);
+  const hairLabel = (HAIR[pModel.value][+pHair.value] || [''])[0];
+  if (/loose|ponytail/i.test(hairLabel)) {
+    parts.push('Long loose hair is what puts a ponytail on the collar and its shadow on the chest — if this scene keeps failing on hair, switch to Low bun rather than regenerating.');
+  }
   if (pRace.value && pRace.value !== 'white') {
     parts.push('The skin gate in Step 2 is tuned to mid-tone skin and under-reports on deeper tones — judge the arms in Step 3 with white selected.');
   }
@@ -653,6 +665,7 @@ pScenePreset.value = [...pScenePreset.options].some(o => o.value === pSceneField
   ? pSceneField.value : '';
 pModel.addEventListener('change', fillPoses);
 pGarment.addEventListener('change', showFieldNote);
+pHair.addEventListener('change', showFieldNote);
 pRace.addEventListener('change', showFieldNote);
 fillPoses();
 
@@ -674,9 +687,22 @@ function buildPrompt(extra) {
     ? 'Framed from mid-thigh up with clear margin around the figure on all sides.'
     : `Tightly framed from the hips up so the torso and the chest of the ${gm.noun} fill most of the frame, head still fully in frame, with a small even margin at the left and right edges.`;
   const hair = HAIR[g][+pHair.value][1];
+  // Hair that lands on the garment is two separate failures and the clauses
+  // above only prevent one. The hair itself is not violet, so the key cuts a
+  // hole where it lies and the silhouette stops being one connected piece. Its
+  // SHADOW is violet — dark violet — so it recolours, and on a white shirt it
+  // reappears as a grey band across the shoulder. Nothing in the brief forbade
+  // that shadow before, only a hard shadow across the chest, so a generator
+  // could satisfy every clause and still hand back an unusable shoulder.
+  //
+  // Emitted only where hair has the length to reach a collar. A man's cropped
+  // hair cannot, and the sentence would be noise.
+  const hairGuard = (g === 'woman')
+    ? ` No hair crosses in front of either shoulder, touches the collar or lies anywhere on the ${gm.short}, and no shadow cast by her hair falls on the shoulders or chest of the ${gm.short} — the fabric there is evenly lit and unbroken.`
+    : '';
   const extraClause = gm.extra ? ' ' + gm.extra : '';
   const prompt =
-`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet ${gm.worn} with ${bottoms}${eyewearClause}. The ${gm.noun} is a completely plain blank vivid violet ${gm.blank} — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in ${gm.fabric}, ${gm.cut}, with natural soft fabric folds.${extraClause} The chest of the ${gm.short} stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the ${gm.short}. ${gm.seams} Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the ${gm.short} — every part of the ${gm.short} stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — ${gm.edges} — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
+`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet ${gm.worn} with ${bottoms}${eyewearClause}. The ${gm.noun} is a completely plain blank vivid violet ${gm.blank} — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in ${gm.fabric}, ${gm.cut}, with natural soft fabric folds.${extraClause} The chest of the ${gm.short} stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the ${gm.short}. ${gm.seams}${hairGuard} Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the ${gm.short} — every part of the ${gm.short} stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — ${gm.edges} — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
   return extra ? prompt + extra : prompt;
 }
 document.getElementById('pBuild').addEventListener('click', () => {
