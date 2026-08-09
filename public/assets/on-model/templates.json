@@ -508,5 +508,107 @@
       "w": 851,
       "h": 1025
     }
+  },
+  {
+    "id": "marina-m",
+    "label": "Marina",
+    "model": "male",
+    "scene": "Marina railing, boats and open water",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/marina-m-photo.jpg?v=a08938e6",
+    "weight": "/assets/on-model/marina-m-weight.png?v=a101c434",
+    "shade": "/assets/on-model/marina-m-shade.jpg?v=ad56584c",
+    "thumbPhoto": "/assets/on-model/marina-m-thumb-photo.jpg?v=89a0c739",
+    "thumbWeight": "/assets/on-model/marina-m-thumb-weight.png?v=c6e45d8f",
+    "thumbShade": "/assets/on-model/marina-m-thumb-shade.jpg?v=64290197",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9608,
+      0.951
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      96.5,
+      62.4,
+      151
+    ],
+    "quad": {
+      "tl": [
+        392,
+        609
+      ],
+      "tr": [
+        668,
+        609
+      ],
+      "br": [
+        659,
+        965
+      ],
+      "bl": [
+        383,
+        965
+      ]
+    },
+    "bbox": {
+      "x": 122,
+      "y": 418,
+      "w": 776,
+      "h": 911
+    }
+  },
+  {
+    "id": "sky-f",
+    "label": "Open Sky",
+    "model": "female",
+    "scene": "Open pale sky, soft daylight",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/sky-f-photo.jpg?v=edfc957b",
+    "weight": "/assets/on-model/sky-f-weight.png?v=d562c30c",
+    "shade": "/assets/on-model/sky-f-shade.jpg?v=7e254b64",
+    "thumbPhoto": "/assets/on-model/sky-f-thumb-photo.jpg?v=0e944a23",
+    "thumbWeight": "/assets/on-model/sky-f-thumb-weight.png?v=3b5623d5",
+    "thumbShade": "/assets/on-model/sky-f-thumb-shade.jpg?v=d96d286a",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.8528,
+      0.9177,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      103.1,
+      61.9,
+      157
+    ],
+    "quad": {
+      "tl": [
+        402.70000000000005,
+        705
+      ],
+      "tr": [
+        682.3,
+        705
+      ],
+      "br": [
+        679.8,
+        972
+      ],
+      "bl": [
+        400.20000000000005,
+        972
+      ]
+    },
+    "bbox": {
+      "x": 175,
+      "y": 561,
+      "w": 725,
+      "h": 685
+    }
   }
 ]

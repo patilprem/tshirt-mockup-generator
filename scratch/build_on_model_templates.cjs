@@ -72,6 +72,8 @@ const TEMPLATES = [
   { id: 'bright-minimal-m', file: 'bright-minimal-m.webp', label: 'Bright Minimal', model: 'male', scene: 'Bright minimal grey walls, soft daylight' },
   { id: 'cafe-f', file: 'cafe-f.webp', label: 'Cafe Counter', model: 'female', scene: 'Bright cafe, window light, barista counter behind' },
   { id: 'beach-m', file: 'beach-m.webp', label: 'Beach', model: 'male', scene: 'Sandy beach, open sky, sea behind' },
+  { id: 'marina-m', file: 'marina-m.png', label: 'Marina', model: 'male', scene: 'Marina railing, boats and open water' },
+  { id: 'sky-f', file: 'sky-f.png', label: 'Open Sky', model: 'female', scene: 'Open pale sky, soft daylight' },
 ];
 
 (async () => {
@@ -84,14 +86,22 @@ const TEMPLATES = [
   for (const tpl of TEMPLATES) {
     const srcPath = path.join(SRC_DIR, tpl.file);
     if (!fs.existsSync(srcPath)) { console.error(`  ! missing ${srcPath}`); continue; }
+    // The data: URL carries the MIME the decoder is handed, so it has to match
+    // the bytes. Sources were all webp when this was written; a raw generation
+    // arrives as png or jpg, and re-encoding one to webp to satisfy a hardcoded
+    // string would resample the silhouette — the exact pixels the edge checks
+    // measure. Read the type off the extension and leave the file alone.
+    const MIME = { '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
+    const srcMime = MIME[path.extname(srcPath).toLowerCase()];
+    if (!srcMime) { console.error(`  ! ${tpl.file}: unsupported source type`); continue; }
     const b64 = fs.readFileSync(srcPath).toString('base64');
     process.stdout.write(`${tpl.id} ... `);
 
     const dbgPx = (tpl.id === process.env.DBG_ID && process.env.DBG_PX)
       ? process.env.DBG_PX.split(';').map(t => t.split(',').map(Number)) : [];
-    const r = await page.evaluate(async ({ b64, MAX_EDGE, dbgPx }) => {
+    const r = await page.evaluate(async ({ b64, srcMime, MAX_EDGE, dbgPx }) => {
       const load = s => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = s; });
-      const img = await load('data:image/webp;base64,' + b64);
+      const img = await load('data:' + srcMime + ';base64,' + b64);
       const k = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
       const W = Math.round(img.width * k), H = Math.round(img.height * k), N = W * H;
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -1225,7 +1235,7 @@ const TEMPLATES = [
           };
         })(),
       };
-    }, { b64, MAX_EDGE, dbgPx });
+    }, { b64, srcMime, MAX_EDGE, dbgPx });
     if (r.dbg && r.dbg.length) console.log('\nDBG', JSON.stringify(r.dbg, null, 1));
 
     // QA gate, mechanising the guide's "no hard shadow band" rule. A garment
