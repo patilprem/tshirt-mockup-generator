@@ -508,5 +508,56 @@
       "w": 851,
       "h": 1025
     }
+  },
+  {
+    "id": "marina-m",
+    "label": "Marina",
+    "model": "male",
+    "scene": "Marina railing, boats and open water",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/marina-m-photo.jpg?v=a08938e6",
+    "weight": "/assets/on-model/marina-m-weight.png?v=a101c434",
+    "shade": "/assets/on-model/marina-m-shade.jpg?v=ad56584c",
+    "thumbPhoto": "/assets/on-model/marina-m-thumb-photo.jpg?v=89a0c739",
+    "thumbWeight": "/assets/on-model/marina-m-thumb-weight.png?v=c6e45d8f",
+    "thumbShade": "/assets/on-model/marina-m-thumb-shade.jpg?v=64290197",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9608,
+      0.951
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      96.5,
+      62.4,
+      151
+    ],
+    "quad": {
+      "tl": [
+        392,
+        609
+      ],
+      "tr": [
+        668,
+        609
+      ],
+      "br": [
+        659,
+        965
+      ],
+      "bl": [
+        383,
+        965
+      ]
+    },
+    "bbox": {
+      "x": 122,
+      "y": 418,
+      "w": 776,
+      "h": 911
+    }
   }
 ]
