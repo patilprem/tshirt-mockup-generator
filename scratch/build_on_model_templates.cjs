@@ -73,6 +73,7 @@ const TEMPLATES = [
   { id: 'cafe-f', file: 'cafe-f.webp', label: 'Cafe Counter', model: 'female', scene: 'Bright cafe, window light, barista counter behind' },
   { id: 'beach-m', file: 'beach-m.webp', label: 'Beach', model: 'male', scene: 'Sandy beach, open sky, sea behind' },
   { id: 'marina-m', file: 'marina-m.png', label: 'Marina', model: 'male', scene: 'Marina railing, boats and open water' },
+  { id: 'sky-f', file: 'sky-f.png', label: 'Open Sky', model: 'female', scene: 'Open pale sky, soft daylight' },
 ];
 
 (async () => {

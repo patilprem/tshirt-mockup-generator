@@ -559,5 +559,56 @@
       "w": 776,
       "h": 911
     }
+  },
+  {
+    "id": "sky-f",
+    "label": "Open Sky",
+    "model": "female",
+    "scene": "Open pale sky, soft daylight",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/sky-f-photo.jpg?v=edfc957b",
+    "weight": "/assets/on-model/sky-f-weight.png?v=d562c30c",
+    "shade": "/assets/on-model/sky-f-shade.jpg?v=7e254b64",
+    "thumbPhoto": "/assets/on-model/sky-f-thumb-photo.jpg?v=0e944a23",
+    "thumbWeight": "/assets/on-model/sky-f-thumb-weight.png?v=3b5623d5",
+    "thumbShade": "/assets/on-model/sky-f-thumb-shade.jpg?v=d96d286a",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.8528,
+      0.9177,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      103.1,
+      61.9,
+      157
+    ],
+    "quad": {
+      "tl": [
+        402.70000000000005,
+        705
+      ],
+      "tr": [
+        682.3,
+        705
+      ],
+      "br": [
+        679.8,
+        972
+      ],
+      "bl": [
+        400.20000000000005,
+        972
+      ]
+    },
+    "bbox": {
+      "x": 175,
+      "y": 561,
+      "w": 725,
+      "h": 685
+    }
   }
 ]
