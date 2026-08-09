@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-08 a27b5ac</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-08 a27b5ac +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -1611,8 +1611,37 @@ function analyze(img) {
     }
   }
 
+  // ---- matte softness: the one property every other gate is blind to ----
+  //
+  // Every check above asks whether something is CONTAMINATED — background
+  // painted, skin keyed, a rim introduced. A cut-out matte contaminates
+  // nothing, so it scores better than a good one on all of them while looking
+  // worse than any of them in near-black. What separates the two is whether
+  // the boundary spends pixels on partial coverage at all: a photographed edge
+  // mixes fabric and background over two or three pixels, and an over-sharpened
+  // upscale steps from fully painted to untouched with nothing in between. The
+  // violet source hides it (violet against a bright background is low contrast
+  // either way); black exposes every step.
+  //
+  // Measured per unit of silhouette so framing and garment size cancel — a
+  // tight crop of a hoodie and a wide crop of a tee are judged the same way.
+  let perim = 0, softBand = 0, hardStep = 0;
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    const i = y * W + x, v = wMap[i];
+    if (v > 0.06 && v < 0.94) softBand++;
+    if (v <= 0.5) continue;
+    const nb = [wMap[i - 1], wMap[i + 1], wMap[i - W], wMap[i + W]];
+    if (nb.some(q => q <= 0.5)) {
+      perim++;
+      if (v > 0.94 && nb.some(q => q < 0.06)) hardStep++;
+    }
+  }
+  const softPerPerim = softBand / Math.max(1, perim);
+  const hardStepPct = 100 * hardStep / Math.max(1, perim);
+
   return {
     W, H, shirtHue, fragments,
+    softPerPerim, hardStepPct,
     coverage: 100 * coreN / N,
     strayVioletPct: 100 * strayViolet / N,
     missed, skin,
@@ -1710,6 +1739,15 @@ function runValidation(img, url) {
       F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', `The garment edges — ${gm.edges} — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.`);
       F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
       F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
+      // No fix string on purpose: nothing the image model can be told fixes
+      // this. A stepped edge comes from what happened to the file AFTER
+      // generation — heavy JPEG compression, or an upscaler sharpening the
+      // silhouette — so it belongs in the operator's hands, not in a reworded
+      // prompt. Warn-only until a confirmed failing sample sets the threshold;
+      // the numbers in the label are what a clean template measures.
+      F(false, a.softPerPerim < 2.0 || a.hardStepPct > 12,
+        'Matte keeps a soft photographic edge (shipped templates: 2.7–6.3 px, ≤5% steps)',
+        a.softPerPerim.toFixed(2) + ' px/edge · ' + a.hardStepPct.toFixed(1) + '% steps');
       F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm, and hair stays behind the shoulders so it casts no dark shadow onto the shirt.');
       // Same thresholds as the builder's gate. This one is about the pipeline
       // rather than the photo, so it is worth flagging even though the fix is
@@ -1922,6 +1960,7 @@ document.getElementById('mBuild').addEventListener('click', async () => {
     `model fit ${a.modelFit != null ? a.modelFit.toFixed(1) : '?'}`,
     `bg paint ${a.bgPaint != null ? a.bgPaint : '?'}`,
     `edge ${a.edgeDark != null ? a.edgeDark + '/' + a.edgeBright : '?'}`,
+    `matte softness ${a.softPerPerim != null ? a.softPerPerim.toFixed(2) + ' px/edge, ' + a.hardStepPct.toFixed(1) + '% steps' : '?'}`,
     `wedge ${a.wedgePx != null ? a.wedgePx : '?'}px`,
     `keyMiss ${a.keyMiss != null ? a.keyMiss : '?'}px`,
     `coolPaint ${a.coolPaint != null ? a.coolPaint : '?'}px`,

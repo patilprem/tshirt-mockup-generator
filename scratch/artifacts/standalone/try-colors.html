@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-08 a27b5ac</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-08 a27b5ac +local edits</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -1133,8 +1133,37 @@ function analyze(img) {
     }
   }
 
+  // ---- matte softness: the one property every other gate is blind to ----
+  //
+  // Every check above asks whether something is CONTAMINATED — background
+  // painted, skin keyed, a rim introduced. A cut-out matte contaminates
+  // nothing, so it scores better than a good one on all of them while looking
+  // worse than any of them in near-black. What separates the two is whether
+  // the boundary spends pixels on partial coverage at all: a photographed edge
+  // mixes fabric and background over two or three pixels, and an over-sharpened
+  // upscale steps from fully painted to untouched with nothing in between. The
+  // violet source hides it (violet against a bright background is low contrast
+  // either way); black exposes every step.
+  //
+  // Measured per unit of silhouette so framing and garment size cancel — a
+  // tight crop of a hoodie and a wide crop of a tee are judged the same way.
+  let perim = 0, softBand = 0, hardStep = 0;
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    const i = y * W + x, v = wMap[i];
+    if (v > 0.06 && v < 0.94) softBand++;
+    if (v <= 0.5) continue;
+    const nb = [wMap[i - 1], wMap[i + 1], wMap[i - W], wMap[i + W]];
+    if (nb.some(q => q <= 0.5)) {
+      perim++;
+      if (v > 0.94 && nb.some(q => q < 0.06)) hardStep++;
+    }
+  }
+  const softPerPerim = softBand / Math.max(1, perim);
+  const hardStepPct = 100 * hardStep / Math.max(1, perim);
+
   return {
     W, H, shirtHue, fragments,
+    softPerPerim, hardStepPct,
     coverage: 100 * coreN / N,
     strayVioletPct: 100 * strayViolet / N,
     missed, skin,
