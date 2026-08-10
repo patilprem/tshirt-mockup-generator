@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-10 939ee0e</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-10 78c5d40</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -1153,6 +1153,35 @@ function analyze(img) {
     wMap = w2;
   }
 
+  // ---- orphaned violet: reconcile the bake with the FINAL weights ----
+  //
+  // The matting bake writes a pixel as alpha-times-modelled-violet expecting
+  // the runtime to repaint it by the same alpha. Every weight pass that runs
+  // after the bake — the contour median above — can cut that alpha out from
+  // under a pixel, and then the baked violet ships bare: weight near zero,
+  // repaint never comes, and on any warm colourway it reads as a blue outline
+  // along the seam. Measured on the failing seam: bake-time weight 0.6-0.9,
+  // final weight 0.
+  //
+  // So the reconciliation runs here, after the last thing that touches wMap.
+  // A pixel near the garment whose final weight is too small to repaint it,
+  // and which is bluer than its own local background by a clear margin, holds
+  // colour nothing will correct and nothing legitimate produced — sky is not
+  // bluer than itself, denim is not bluer than the denim behind it — and it
+  // is pulled to its own luminance, partial weight earning a partial pull.
+  for (let i = 0; i < N; i++) {
+    if (!(distC[i] > 0) || core[i] || wMap[i] >= 0.5) continue;
+    const o = i * 4;
+    const exB = (photoData[o + 2] - photoData[o]) - (bgC[i * 3 + 2] - bgC[i * 3]);
+    if (exB <= 8) continue;
+    const kc = 0.9 * smooth(exB, 8, 22) * (1 - wMap[i] / 0.5);
+    if (kc <= 0) continue;
+    const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
+    photoData[o] += (L - photoData[o]) * kc;
+    photoData[o + 1] += (L - photoData[o + 1]) * kc;
+    photoData[o + 2] += (L - photoData[o + 2]) * kc;
+  }
+
   const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
   const ownArr = new Uint8ClampedArray(N);
   // clipArr is design coverage and nothing else. ownArr is the separate
@@ -1267,6 +1296,7 @@ function analyze(img) {
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
     photoData, wArr, clipArr, ownArr, shade,
+    _dbg: { core, outside, distC, gate, bgC, bgFd: bgF.fd, alphaA, confA, },
   };
 }
 
