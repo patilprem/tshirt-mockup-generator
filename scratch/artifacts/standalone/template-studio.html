@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-09 9b81bd6</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-10 fb318b6</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -269,7 +269,10 @@
           </div>
         </div>
       </div>
-      <label class="f" style="margin-top:12px">Scene (describe the background — nothing violet, purple or lilac in it)
+      <label class="f" style="margin-top:12px">Scene preset (or leave on Custom and write your own)
+        <select id="pScenePreset"></select>
+      </label>
+      <label class="f" style="margin-top:10px">Scene (describe the background — nothing violet, purple or lilac in it)
         <input type="text" id="pScene" value="a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus">
       </label>
       <div class="row">
@@ -388,12 +391,20 @@ const LOOKS = [
 // Hair is a pipeline concern as well as a look: anything crossing the front of
 // the collar sits on the garment and gets keyed as shirt. Every option below
 // keeps it clear of the collar; only the style differs.
+// Ordered loosest to most secured. The first three describe where hair should
+// END UP, which a generator will honour and then drape a ponytail forward over
+// one shoulder anyway — it has satisfied "behind her shoulders" for the rest of
+// the head. The last two describe hair that CANNOT reach the collar: a bun has
+// no length to fall, so there is nothing for the model to get wrong. When a
+// scene keeps failing on hair, that is the fix, not another regeneration.
 const HAIR = {
   woman: [
-    ['Loose, swept back', ', her hair loose and swept back over her shoulders, falling down her back with none of it crossing the front of her collar'],
+    ['Loose, swept back', ', her hair loose and swept back over her shoulders, hanging straight down her back with no strand or lock draped forward over either shoulder and none of it crossing the front of her collar'],
     ['Tied back', ', her hair tied back away from her face and kept clear of her shoulders and collar'],
-    ['High ponytail', ', her hair in a high ponytail that stays behind her shoulders and well clear of her collar'],
+    ['High ponytail', ', her hair in a high ponytail hanging straight down her back, never pulled forward over a shoulder, staying behind both shoulders and well clear of her collar'],
     ['Short bob', ', her hair in a short bob that sits above the shoulders and clear of her collar'],
+    ['Low bun (safest)', ', her hair gathered into a low bun at the nape of her neck with no loose length anywhere, nothing falling forward over her shoulders and nothing touching her collar'],
+    ['Slicked back, tight', ', her hair pulled straight back and tied tightly against her head with no loose strands, sitting entirely behind her shoulders and clear of her collar'],
   ],
   man: [
     ['Short', ''],
@@ -520,6 +531,77 @@ const GARMENTS = [
   },
 ];
 
+// Scenes that have been through the gates, grouped by setting. The text field
+// below stays the source of truth — this only writes into it — so a reference
+// image, a hand-typed scene and a preset all reach the prompt by one path, and
+// the id derived in Step 4 keeps reading the same field it always has.
+//
+// A few carry the gate they strain in their own wording rather than in a note:
+// "flat overcast light" on the autumn path is what keeps a low sun out of the
+// frame, and "no lit string lights" is the whole reason the festive interior is
+// usable at all. Editing those clauses out is how the scene starts failing.
+const SCENE_PRESETS = [
+  ['Neutral & studio', [
+    ['Off-white room', 'a bright minimal room with smooth off-white walls and soft daylight from a large window out of shot, background softly out of focus'],
+    ['Warm plaster', 'a warm cream plaster wall in soft natural daylight, background softly out of focus'],
+    ['Sage wall', 'a soft sage-green painted wall in gentle indirect daylight, background softly out of focus'],
+    ['Sand stucco', 'a warm sand-toned stucco wall in open shade, background softly out of focus'],
+    ['Soft grey seamless', 'a plain mid-grey studio backdrop lit evenly by a large diffused softbox, no visible seam, background completely smooth'],
+  ]],
+  ['Home & interior', [
+    ['Living room', 'a bright living room with a pale linen sofa and soft daylight, background softly out of focus'],
+    ['Home kitchen', 'a tidy home kitchen with pale wood cabinets and soft window light, background softly out of focus'],
+    ['Home office', 'a sunlit home office with a plain pale desk and neutral shelves far behind, background softly out of focus'],
+    ['Craft room', 'a quiet craft room with pale shelves of neutral supplies far behind, background softly out of focus'],
+  ]],
+  ['Cafe, shop & social', [
+    ['Coffee shop', 'a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus'],
+    ['Bookshop aisle', 'a quiet bookshop aisle with warm wooden shelves far behind in even indoor light, background softly out of focus'],
+    ['Plant shop', 'a bright plant shop with soft green foliage far behind, background softly out of focus'],
+    ['Bakery counter', 'a modern bakery counter with pale tiles and warm daylight, background softly out of focus'],
+    ['Farmers market', 'a farmers market walkway with pale canvas awnings and neutral produce crates far behind, background softly out of focus'],
+  ]],
+  ['Urban exterior', [
+    ['Stone street', 'a sunlit street with pale stone buildings far behind, the model standing in open shade, background softly out of focus'],
+    ['Residential street', 'a quiet residential street with soft green trees far behind, background softly out of focus'],
+    ['Concrete wall', 'a smooth concrete wall in even shaded light with nothing else in frame, background softly out of focus'],
+    ['Rooftop, overcast', 'a rooftop terrace under a soft overcast sky with the city far behind and low in frame, background softly out of focus'],
+  ]],
+  ['Nature & outdoors', [
+    ['Park path', 'a leafy park path with soft green foliage far behind, background softly out of focus'],
+    ['Forest trail', 'a forest trail in flat overcast light with soft green and brown foliage far behind, no dappled sunlight, background softly out of focus'],
+    ['Open meadow', 'an open grassy meadow under a soft overcast sky, background softly out of focus'],
+    ['Lakeside clearing', 'a lakeside clearing with calm flat water and soft green trees far behind, background softly out of focus'],
+    ['Wheat field', 'a wheat field in soft even morning light with no direct sun, background softly out of focus'],
+    ['Pasture fence', 'a weathered wooden fence with open pasture far behind in flat light, background softly out of focus'],
+    ['Desert trail', 'a desert trail with pale sand and distant hills under a soft overcast haze, background softly out of focus'],
+    ['Autumn path', 'an autumn park path in flat overcast light with soft amber and brown foliage far behind, background softly out of focus'],
+  ]],
+  ['Coastal & water', [
+    ['Sandy beach', 'a sandy beach with calm sea and pale open sky far behind, background softly out of focus'],
+    ['Open sky', 'open pale blue sky in soft daylight with nothing else in frame, background completely smooth'],
+    ['Boardwalk', 'a coastal boardwalk with pale weathered wood and open overcast sky, background softly out of focus'],
+    ['Harbour walkway', 'a harbour walkway with pale moored boats far behind, background softly out of focus'],
+  ]],
+  ['Active & sport', [
+    ['Bright gym', 'a bright modern gym with pale grey walls and large windows, equipment far behind and softly out of focus'],
+    ['Yoga studio', 'a yoga studio with a pale wooden floor and soft even daylight, background softly out of focus'],
+    ['Running track', 'a running track in flat overcast light with an empty field far behind, background softly out of focus'],
+    ['Golf fairway', 'a golf course fairway in soft overcast light with distant green far behind, background softly out of focus'],
+  ]],
+  ['Work & trade', [
+    ['Garage workshop', 'a clean garage workshop with pale walls and tools neatly hung far behind, even indoor light, background softly out of focus'],
+    ['Classroom', 'a bright classroom with a plain pale wall and soft daylight, desks far behind and softly out of focus'],
+    ['Clinic corridor', 'a bright clinic corridor with plain pale walls and soft even light, background softly out of focus'],
+    ['Barn interior', 'a barn interior with warm weathered wood and soft daylight from an open door out of shot, background softly out of focus'],
+  ]],
+  ['Seasonal', [
+    ['Snowy path', 'a snowy path in flat overcast winter light with pale bare trees far behind, background softly out of focus'],
+    ['Pumpkin porch', 'a porch with pale painted boards and orange pumpkins low in frame, soft overcast light, background softly out of focus'],
+    ['Evergreen interior', 'a bright living room with a plain evergreen tree far behind, soft daylight and no lit string lights, background softly out of focus'],
+  ]],
+];
+
 const pModel = document.getElementById('pModel');
 const pPose = document.getElementById('pPose');
 const pHair = document.getElementById('pHair');
@@ -549,6 +631,10 @@ function showFieldNote() {
   const parts = [];
   const gm = currentGarment();
   if (gm.note) parts.push(gm.note);
+  const hairLabel = (HAIR[pModel.value][+pHair.value] || [''])[0];
+  if (/loose|ponytail/i.test(hairLabel)) {
+    parts.push('Loose hair down the back is fine — several shipped templates have it. What fails is a MASS of hair pulled forward onto the fabric; the validator flags those as fragment or wedge failures, and the fix is one regeneration, not a different hairstyle.');
+  }
   if (pRace.value && pRace.value !== 'white') {
     parts.push('The skin gate in Step 2 is tuned to mid-tone skin and under-reports on deeper tones — judge the arms in Step 3 with white selected.');
   }
@@ -556,8 +642,30 @@ function showFieldNote() {
 }
 pLook.innerHTML = LOOKS.map((l, i) => `<option value="${i}">${l[0]}</option>`).join('');
 pRace.innerHTML = RACES.map(r => `<option value="${r[1]}">${r[0]}</option>`).join('');
+
+// The preset writes the scene text and nothing else. Whenever that text is set
+// by something other than the preset — typed by hand, or drafted from a
+// reference image — the picker drops back to Custom, so it never claims credit
+// for wording it did not produce.
+const pScenePreset = document.getElementById('pScenePreset');
+const pSceneField = document.getElementById('pScene');
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+pScenePreset.innerHTML = '<option value="">Custom — write it below</option>' +
+  SCENE_PRESETS.map(([group, items]) =>
+    `<optgroup label="${esc(group)}">` +
+    items.map(([label, text]) => `<option value="${esc(text)}">${esc(label)}</option>`).join('') +
+    '</optgroup>').join('');
+pScenePreset.addEventListener('change', () => {
+  if (pScenePreset.value) pSceneField.value = pScenePreset.value;
+});
+pSceneField.addEventListener('input', () => { pScenePreset.value = ''; });
+// The scene the page opens on is one of the presets, so show it as selected
+// rather than as Custom.
+pScenePreset.value = [...pScenePreset.options].some(o => o.value === pSceneField.value)
+  ? pSceneField.value : '';
 pModel.addEventListener('change', fillPoses);
 pGarment.addEventListener('change', showFieldNote);
+pHair.addEventListener('change', showFieldNote);
 pRace.addEventListener('change', showFieldNote);
 fillPoses();
 
@@ -579,9 +687,22 @@ function buildPrompt(extra) {
     ? 'Framed from mid-thigh up with clear margin around the figure on all sides.'
     : `Tightly framed from the hips up so the torso and the chest of the ${gm.noun} fill most of the frame, head still fully in frame, with a small even margin at the left and right edges.`;
   const hair = HAIR[g][+pHair.value][1];
+  // Hair that lands on the garment is two separate failures and the clauses
+  // above only prevent one. The hair itself is not violet, so the key cuts a
+  // hole where it lies and the silhouette stops being one connected piece. Its
+  // SHADOW is violet — dark violet — so it recolours, and on a white shirt it
+  // reappears as a grey band across the shoulder. Nothing in the brief forbade
+  // that shadow before, only a hard shadow across the chest, so a generator
+  // could satisfy every clause and still hand back an unusable shoulder.
+  //
+  // Emitted only where hair has the length to reach a collar. A man's cropped
+  // hair cannot, and the sentence would be noise.
+  const hairGuard = (g === 'woman')
+    ? ` No hair crosses in front of either shoulder, touches the collar or lies anywhere on the ${gm.short}, and no shadow cast by her hair falls on the shoulders or chest of the ${gm.short} — the fabric there is evenly lit and unbroken.`
+    : '';
   const extraClause = gm.extra ? ' ' + gm.extra : '';
   const prompt =
-`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet ${gm.worn} with ${bottoms}${eyewearClause}. The ${gm.noun} is a completely plain blank vivid violet ${gm.blank} — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in ${gm.fabric}, ${gm.cut}, with natural soft fabric folds.${extraClause} The chest of the ${gm.short} stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the ${gm.short}. ${gm.seams} Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the ${gm.short} — every part of the ${gm.short} stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — ${gm.edges} — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
+`Candid editorial lifestyle photograph, shot on 35mm film, of ${subj} in ${scene}. ${pro[0]} is ${pose}, ${look}${hair}. ${pro[0]} wears a violet ${gm.worn} with ${bottoms}${eyewearClause}. The ${gm.noun} is a completely plain blank vivid violet ${gm.blank} — a single flat, uniformly saturated shade with no gradient, ombre, heather or two-tone effect, no print, no logo and no text of any kind, in ${gm.fabric}, ${gm.cut}, with natural soft fabric folds.${extraClause} The chest of the ${gm.short} stays fully visible and unobstructed, and both upper arms rest against the torso with no visible gap between the arm and the side of the ${gm.short}. ${gm.seams}${hairGuard} Soft even diffused light falls on the whole torso with no hard shadow line crossing the chest and no broad dark shadow down either side of the ${gm.short} — every part of the ${gm.short} stays clearly lit, and any shadow that falls across it stays a visibly darker violet, never crushing to near-black or grey. Nothing else in the scene is violet, purple or lilac. The garment's edges — ${gm.edges} — stay crisp and in sharp focus with no motion blur. ${framing} Sharp focus throughout, natural muted colour grade like candid film photography, 4:5 portrait, highest available resolution.`;
   return extra ? prompt + extra : prompt;
 }
 document.getElementById('pBuild').addEventListener('click', () => {
@@ -728,6 +849,7 @@ function runInspiration(img, url) {
     darkBg: 'a softly lit interior with a deep neutral backdrop' + blurTail,
   };
   document.getElementById('pScene').value = SCENES[top] || SCENES.white;
+  pScenePreset.value = '';   // drafted from the image, not a preset
   document.getElementById('pBottoms').value = bottoms;
 
   // Framing, from how much of the frame the subject occupies. Measured against
@@ -789,7 +911,7 @@ function runInspiration(img, url) {
 // one the pipeline cannot handle. Copying it would defeat the point.
 function applyInspLock() {
   const on = document.getElementById('inspLock').checked;
-  for (const id of ['pScene', 'pBottoms', 'pFraming']) {
+  for (const id of ['pScene', 'pScenePreset', 'pBottoms', 'pFraming']) {
     const el = document.getElementById(id);
     el.disabled = on;
     const lbl = el.closest('label.f');
@@ -1053,6 +1175,44 @@ function analyze(img) {
     evAny[i] = Math.max(tap, fabricEv, orderEv[i], evChroma, evMix);
   }
 
+  // ---- enclosure test: a crevice is surrounded, hair is not ----
+  //
+  // The `dark` rescue claims dark violet-tinted pixels the strict key drops, so
+  // that folds and creases recolour instead of staying black holes. Dark hair
+  // beside a violet shoulder catches violet bounce and satisfies it exactly —
+  // measured on the failing template as 658 pixels with `dark` at full strength,
+  // which is the soft blob hanging off the shoulder in the weight map.
+  //
+  // Neither colour nor distance separates them: both are dark and violet-ish,
+  // both sit against the garment. Geometry does. A crevice is enclosed BY the
+  // garment, so rays cast from it hit fabric in most directions; hair beside a
+  // shoulder has open background on most of them. The comment on the crevice
+  // rule below has said so for a long time — this applies it to the rescue.
+  //
+  // Only background-side pixels are tested, so nothing inside the garment can
+  // lose weight, and support is measured against the STRICT key rather than the
+  // grown mask, so the test cannot feed on its own output.
+  {
+    const RAYS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    const REACH = Math.max(6, Math.round(W / 90));
+    for (let i = 0; i < N; i++) {
+      if (!outside[i] || wMap[i] <= 0.02) continue;
+      const x = i % W, y = (i / W) | 0;
+      let hit = 0;
+      for (const [dx, dy] of RAYS) {
+        for (let t = 1; t <= REACH; t++) {
+          const nx = x + dx * t, ny = y + dy * t;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) break;
+          if (wRaw[ny * W + nx] > 0.5) { hit++; break; }
+        }
+      }
+      // 6+ of 8 rays reaching fabric is enclosure; 3 or fewer is open ground.
+      // Between them the weight tapers rather than switching, so a pixel on the
+      // boundary of the test cannot flip a visible speck on or off.
+      wMap[i] *= smooth(hit, 3, 6);
+    }
+  }
+
   const cV = [], cR = [], cG = [], cB = [];
   for (let i = 0; i < N; i++) if (core[i]) { const o = i * 4; cV.push(vA[i]); cR.push(src[o]); cG.push(src[o + 1]); cB.push(src[o + 2]); }
   cV.sort((x, y) => x - y);
@@ -1087,6 +1247,50 @@ function analyze(img) {
       wm2[i] = mn;
     }
     wMap = wm2;
+  }
+
+  // ---- mottle: recolour weight that varies pixel-to-pixel is not an edge ----
+  //
+  // Along a clean silhouette the weight is a smooth ramp: each step away from
+  // the fabric carries a little less. In the tight channel between the torso
+  // and an arm, JPEG mush mixes fabric, skin and background three ways, and
+  // the key's per-pixel verdicts come out scattered — 30 here, 180 there, side
+  // by side. Under violet that scatter lands on violet and disappears. Under
+  // any other colour every pixel recolours by a different amount, which is the
+  // blue speckle on the seam. The photograph carries the same scatter, so
+  // sharpening or smoothing the mask alone cannot fix it — the pixels
+  // themselves need neutralising.
+  //
+  // The signature is local VARIANCE of weight, which a real edge — however
+  // soft — does not produce. Where a background-side pixel's 5x5 neighbourhood
+  // scatters, its weight is cut and its chroma handed to the neutraliser. The
+  // variance gate keeps this strictly off clean templates: a smooth ramp's
+  // deviation is a fraction of the threshold.
+  // Two passes: the first collapses the scattered mid-band, which lowers the
+  // neighbourhood mean and exposes the pixels hugging the solid edge on the
+  // second. Near-solid pixels are only exempt above 0.96 — a 0.93 pixel inside
+  // a scattered neighbourhood is part of the scatter, not of the garment.
+  for (let pass = 0; pass < 2; pass++) {
+    const w2 = new Float32Array(wMap);
+    for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+      const i = y * W + x;
+      if (!outside[i]) continue;
+      const v = wMap[i];
+      if (v <= 0.04 || v >= 0.96) continue;
+      let sum = 0, sum2 = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const q = wMap[(y + dy) * W + (x + dx)];
+        sum += q; sum2 += q * q;
+      }
+      const mean = sum / 25, sd = Math.sqrt(Math.max(0, sum2 / 25 - mean * mean));
+      if (sd > 0.22) {
+        const k = smooth(sd, 0.22, 0.36);
+        w2[i] = v * (1 - k);
+        neut[i] = Math.max(neut[i], 0.85 * k);
+        evAny[i] = Math.max(evAny[i], 0.85 * k);
+      }
+    }
+    wMap = w2;
   }
 
   const shadeVal = new Float32Array(N);
@@ -1538,6 +1742,84 @@ function analyze(img) {
     if (Math.min(src[o + 1], src[o + 2]) - src[o] > 6) coolPaint++;
   }
 
+  // ---- de-whisker: median ALONG the contour ----
+  //
+  // The core mask is CLOSED early on — dilate then erode — which fills holes and
+  // cannot remove a protrusion. Nothing did the opposite, so the sharpening
+  // serration in a source edge survives as teeth on the silhouette: invisible
+  // under violet, a hairy edge once recoloured, and untouchable by any amount of
+  // sharpening the mask because the teeth ARE the mask.
+  //
+  // Two attempts failed and are worth recording. A grayscale opening removes the
+  // teeth and also erodes the genuine partial coverage on every concave curve —
+  // gallery-f's dark edge pixels went from 6 to 144. A connectivity test that
+  // spares soft ramps keeps the metrics but leaves teeth that are attached along
+  // the edge rather than isolated, because a serration's tooth has as many
+  // neighbours as a smooth edge pixel does.
+  //
+  // What separates them is DIRECTION. Across the edge, a tooth and a smooth
+  // ramp look identical — both climb from background to fabric — and every
+  // isotropic filter therefore has to trade one for the other. Along the edge
+  // they are opposites: coverage varies smoothly around a real silhouette and
+  // alternates on a serrated one. So smooth along the contour only, taking the
+  // tangent from the weight gradient and the median of the three samples on it.
+  // The perpendicular profile is never touched, so no coverage is lost.
+  {
+    const w2 = new Float32Array(wMap);
+    const sample = (x, y) => {
+      x = Math.min(W - 1, Math.max(0, x)); y = Math.min(H - 1, Math.max(0, y));
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+      const fx = x - x0, fy = y - y0;
+      return wMap[y0 * W + x0] * (1 - fx) * (1 - fy) + wMap[y0 * W + x1] * fx * (1 - fy)
+           + wMap[y1 * W + x0] * (1 - fx) * fy + wMap[y1 * W + x1] * fx * fy;
+    };
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x, v = wMap[i];
+      if (v <= 0.02) continue;
+      const gx = wMap[i + 1] - wMap[i - 1], gy = wMap[i + W] - wMap[i - W];
+      const m = Math.hypot(gx, gy);
+      // Only a SHARP edge can carry pixel-level serration; a wide soft band
+      // cannot, and running the median on one only shifts coverage around —
+      // gallery-f, the softest edge in the set, went from 6 dark edge pixels to
+      // 73 before this floor was raised. The gradient tells the two apart.
+      if (m < 0.15) continue;
+      const tx = -gy / m, ty = gx / m;
+      const a = sample(x + tx, y + ty), b = sample(x - tx, y - ty);
+      w2[i] = Math.max(Math.min(a, b), Math.min(Math.max(a, b), v));   // median(a, b, v)
+    }
+    wMap = w2;
+  }
+
+  // ---- orphaned violet: reconcile the bake with the FINAL weights ----
+  //
+  // The matting bake writes a pixel as alpha-times-modelled-violet expecting
+  // the runtime to repaint it by the same alpha. Every weight pass that runs
+  // after the bake — the contour median above — can cut that alpha out from
+  // under a pixel, and then the baked violet ships bare: weight near zero,
+  // repaint never comes, and on any warm colourway it reads as a blue outline
+  // along the seam. Measured on the failing seam: bake-time weight 0.6-0.9,
+  // final weight 0.
+  //
+  // So the reconciliation runs here, after the last thing that touches wMap.
+  // A pixel near the garment whose final weight is too small to repaint it,
+  // and which is bluer than its own local background by a clear margin, holds
+  // colour nothing will correct and nothing legitimate produced — sky is not
+  // bluer than itself, denim is not bluer than the denim behind it — and it
+  // is pulled to its own luminance, partial weight earning a partial pull.
+  for (let i = 0; i < N; i++) {
+    if (!(distC[i] > 0) || core[i] || wMap[i] >= 0.5) continue;
+    const o = i * 4;
+    const exB = (photoData[o + 2] - photoData[o]) - (bgC[i * 3 + 2] - bgC[i * 3]);
+    if (exB <= 8) continue;
+    const kc = 0.9 * smooth(exB, 8, 22) * (1 - wMap[i] / 0.5);
+    if (kc <= 0) continue;
+    const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
+    photoData[o] += (L - photoData[o]) * kc;
+    photoData[o + 1] += (L - photoData[o + 1]) * kc;
+    photoData[o + 2] += (L - photoData[o + 2]) * kc;
+  }
+
   const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
   const ownArr = new Uint8ClampedArray(N);
   // clipArr is design coverage and nothing else. ownArr is the separate
@@ -1652,6 +1934,7 @@ function analyze(img) {
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
     photoData, wArr, clipArr, ownArr, shade,
+    _dbg: { core, outside, distC, gate, bgC, bgFd: bgF.fd, alphaA, confA, },
   };
 }
 
@@ -1737,7 +2020,21 @@ function runValidation(img, url) {
       F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%', `No blown-out or burnt-out highlights on the fabric. Keep the ${gm.short} off pure white anywhere — no specular hotspot, no direct hard light source on it.`);
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
       F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', `The garment edges — ${gm.edges} — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.`);
-      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
+      // Calibrated against the shipped set rather than guessed. A photograph's
+      // background DIMS as it approaches the figure — contact shadow, falloff,
+      // the body occluding its own light — so every clean template measures
+      // between -3.3% and -20.7%. Positive means the opposite: brighter right
+      // at the silhouette than further out, which nothing photographic does and
+      // an upscaler's sharpening does every time. The old +4.5% line was an
+      // absolute number written without knowing the population is entirely
+      // negative, and it let through the two templates whose rim is visible to
+      // the eye at +2.0% and +3.7%. Sign is the signal, not magnitude.
+      //
+      // The fix string still speaks to the generator, which can bake a rim in
+      // too — but when the raw generation is clean and the upscaled file is
+      // not, no rewording will help and the upscaler's sharpening is the thing
+      // to turn down.
+      F(a.haloDelta > 0.09, a.haloDelta > -0.015, 'No bright rim baked into the source (shipped templates: \u22123% to \u221221%)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
       F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
       // No fix string on purpose: nothing the image model can be told fixes
       // this. A stepped edge comes from what happened to the file AFTER

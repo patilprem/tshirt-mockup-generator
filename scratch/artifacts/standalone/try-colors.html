@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-09 9b81bd6</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-10 fb318b6</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -575,6 +575,44 @@ function analyze(img) {
     evAny[i] = Math.max(tap, fabricEv, orderEv[i], evChroma, evMix);
   }
 
+  // ---- enclosure test: a crevice is surrounded, hair is not ----
+  //
+  // The `dark` rescue claims dark violet-tinted pixels the strict key drops, so
+  // that folds and creases recolour instead of staying black holes. Dark hair
+  // beside a violet shoulder catches violet bounce and satisfies it exactly —
+  // measured on the failing template as 658 pixels with `dark` at full strength,
+  // which is the soft blob hanging off the shoulder in the weight map.
+  //
+  // Neither colour nor distance separates them: both are dark and violet-ish,
+  // both sit against the garment. Geometry does. A crevice is enclosed BY the
+  // garment, so rays cast from it hit fabric in most directions; hair beside a
+  // shoulder has open background on most of them. The comment on the crevice
+  // rule below has said so for a long time — this applies it to the rescue.
+  //
+  // Only background-side pixels are tested, so nothing inside the garment can
+  // lose weight, and support is measured against the STRICT key rather than the
+  // grown mask, so the test cannot feed on its own output.
+  {
+    const RAYS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    const REACH = Math.max(6, Math.round(W / 90));
+    for (let i = 0; i < N; i++) {
+      if (!outside[i] || wMap[i] <= 0.02) continue;
+      const x = i % W, y = (i / W) | 0;
+      let hit = 0;
+      for (const [dx, dy] of RAYS) {
+        for (let t = 1; t <= REACH; t++) {
+          const nx = x + dx * t, ny = y + dy * t;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) break;
+          if (wRaw[ny * W + nx] > 0.5) { hit++; break; }
+        }
+      }
+      // 6+ of 8 rays reaching fabric is enclosure; 3 or fewer is open ground.
+      // Between them the weight tapers rather than switching, so a pixel on the
+      // boundary of the test cannot flip a visible speck on or off.
+      wMap[i] *= smooth(hit, 3, 6);
+    }
+  }
+
   const cV = [], cR = [], cG = [], cB = [];
   for (let i = 0; i < N; i++) if (core[i]) { const o = i * 4; cV.push(vA[i]); cR.push(src[o]); cG.push(src[o + 1]); cB.push(src[o + 2]); }
   cV.sort((x, y) => x - y);
@@ -609,6 +647,50 @@ function analyze(img) {
       wm2[i] = mn;
     }
     wMap = wm2;
+  }
+
+  // ---- mottle: recolour weight that varies pixel-to-pixel is not an edge ----
+  //
+  // Along a clean silhouette the weight is a smooth ramp: each step away from
+  // the fabric carries a little less. In the tight channel between the torso
+  // and an arm, JPEG mush mixes fabric, skin and background three ways, and
+  // the key's per-pixel verdicts come out scattered — 30 here, 180 there, side
+  // by side. Under violet that scatter lands on violet and disappears. Under
+  // any other colour every pixel recolours by a different amount, which is the
+  // blue speckle on the seam. The photograph carries the same scatter, so
+  // sharpening or smoothing the mask alone cannot fix it — the pixels
+  // themselves need neutralising.
+  //
+  // The signature is local VARIANCE of weight, which a real edge — however
+  // soft — does not produce. Where a background-side pixel's 5x5 neighbourhood
+  // scatters, its weight is cut and its chroma handed to the neutraliser. The
+  // variance gate keeps this strictly off clean templates: a smooth ramp's
+  // deviation is a fraction of the threshold.
+  // Two passes: the first collapses the scattered mid-band, which lowers the
+  // neighbourhood mean and exposes the pixels hugging the solid edge on the
+  // second. Near-solid pixels are only exempt above 0.96 — a 0.93 pixel inside
+  // a scattered neighbourhood is part of the scatter, not of the garment.
+  for (let pass = 0; pass < 2; pass++) {
+    const w2 = new Float32Array(wMap);
+    for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+      const i = y * W + x;
+      if (!outside[i]) continue;
+      const v = wMap[i];
+      if (v <= 0.04 || v >= 0.96) continue;
+      let sum = 0, sum2 = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const q = wMap[(y + dy) * W + (x + dx)];
+        sum += q; sum2 += q * q;
+      }
+      const mean = sum / 25, sd = Math.sqrt(Math.max(0, sum2 / 25 - mean * mean));
+      if (sd > 0.22) {
+        const k = smooth(sd, 0.22, 0.36);
+        w2[i] = v * (1 - k);
+        neut[i] = Math.max(neut[i], 0.85 * k);
+        evAny[i] = Math.max(evAny[i], 0.85 * k);
+      }
+    }
+    wMap = w2;
   }
 
   const shadeVal = new Float32Array(N);
@@ -1060,6 +1142,84 @@ function analyze(img) {
     if (Math.min(src[o + 1], src[o + 2]) - src[o] > 6) coolPaint++;
   }
 
+  // ---- de-whisker: median ALONG the contour ----
+  //
+  // The core mask is CLOSED early on — dilate then erode — which fills holes and
+  // cannot remove a protrusion. Nothing did the opposite, so the sharpening
+  // serration in a source edge survives as teeth on the silhouette: invisible
+  // under violet, a hairy edge once recoloured, and untouchable by any amount of
+  // sharpening the mask because the teeth ARE the mask.
+  //
+  // Two attempts failed and are worth recording. A grayscale opening removes the
+  // teeth and also erodes the genuine partial coverage on every concave curve —
+  // gallery-f's dark edge pixels went from 6 to 144. A connectivity test that
+  // spares soft ramps keeps the metrics but leaves teeth that are attached along
+  // the edge rather than isolated, because a serration's tooth has as many
+  // neighbours as a smooth edge pixel does.
+  //
+  // What separates them is DIRECTION. Across the edge, a tooth and a smooth
+  // ramp look identical — both climb from background to fabric — and every
+  // isotropic filter therefore has to trade one for the other. Along the edge
+  // they are opposites: coverage varies smoothly around a real silhouette and
+  // alternates on a serrated one. So smooth along the contour only, taking the
+  // tangent from the weight gradient and the median of the three samples on it.
+  // The perpendicular profile is never touched, so no coverage is lost.
+  {
+    const w2 = new Float32Array(wMap);
+    const sample = (x, y) => {
+      x = Math.min(W - 1, Math.max(0, x)); y = Math.min(H - 1, Math.max(0, y));
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+      const fx = x - x0, fy = y - y0;
+      return wMap[y0 * W + x0] * (1 - fx) * (1 - fy) + wMap[y0 * W + x1] * fx * (1 - fy)
+           + wMap[y1 * W + x0] * (1 - fx) * fy + wMap[y1 * W + x1] * fx * fy;
+    };
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x, v = wMap[i];
+      if (v <= 0.02) continue;
+      const gx = wMap[i + 1] - wMap[i - 1], gy = wMap[i + W] - wMap[i - W];
+      const m = Math.hypot(gx, gy);
+      // Only a SHARP edge can carry pixel-level serration; a wide soft band
+      // cannot, and running the median on one only shifts coverage around —
+      // gallery-f, the softest edge in the set, went from 6 dark edge pixels to
+      // 73 before this floor was raised. The gradient tells the two apart.
+      if (m < 0.15) continue;
+      const tx = -gy / m, ty = gx / m;
+      const a = sample(x + tx, y + ty), b = sample(x - tx, y - ty);
+      w2[i] = Math.max(Math.min(a, b), Math.min(Math.max(a, b), v));   // median(a, b, v)
+    }
+    wMap = w2;
+  }
+
+  // ---- orphaned violet: reconcile the bake with the FINAL weights ----
+  //
+  // The matting bake writes a pixel as alpha-times-modelled-violet expecting
+  // the runtime to repaint it by the same alpha. Every weight pass that runs
+  // after the bake — the contour median above — can cut that alpha out from
+  // under a pixel, and then the baked violet ships bare: weight near zero,
+  // repaint never comes, and on any warm colourway it reads as a blue outline
+  // along the seam. Measured on the failing seam: bake-time weight 0.6-0.9,
+  // final weight 0.
+  //
+  // So the reconciliation runs here, after the last thing that touches wMap.
+  // A pixel near the garment whose final weight is too small to repaint it,
+  // and which is bluer than its own local background by a clear margin, holds
+  // colour nothing will correct and nothing legitimate produced — sky is not
+  // bluer than itself, denim is not bluer than the denim behind it — and it
+  // is pulled to its own luminance, partial weight earning a partial pull.
+  for (let i = 0; i < N; i++) {
+    if (!(distC[i] > 0) || core[i] || wMap[i] >= 0.5) continue;
+    const o = i * 4;
+    const exB = (photoData[o + 2] - photoData[o]) - (bgC[i * 3 + 2] - bgC[i * 3]);
+    if (exB <= 8) continue;
+    const kc = 0.9 * smooth(exB, 8, 22) * (1 - wMap[i] / 0.5);
+    if (kc <= 0) continue;
+    const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
+    photoData[o] += (L - photoData[o]) * kc;
+    photoData[o + 1] += (L - photoData[o + 1]) * kc;
+    photoData[o + 2] += (L - photoData[o + 2]) * kc;
+  }
+
   const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
   const ownArr = new Uint8ClampedArray(N);
   // clipArr is design coverage and nothing else. ownArr is the separate
@@ -1174,6 +1334,7 @@ function analyze(img) {
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
     photoData, wArr, clipArr, ownArr, shade,
+    _dbg: { core, outside, distC, gate, bgC, bgFd: bgF.fd, alphaA, confA, },
   };
 }
 

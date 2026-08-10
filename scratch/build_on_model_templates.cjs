@@ -450,6 +450,37 @@ const TEMPLATES = [
         wMap = wm2;
       }
 
+      // Recolour weight that scatters pixel-to-pixel is not an edge. In the
+      // tight channel between torso and arm, JPEG mush mixes fabric, skin and
+      // background three ways and the key's verdicts come out scattered —
+      // invisible on violet, blue speckle on everything else. A real edge,
+      // however soft, is a monotone ramp: its 5x5 deviation is a fraction of
+      // this threshold. Scattered weight is junk, and junk is neutralised,
+      // not recoloured. Two passes: collapsing the mid-band exposes the
+      // scatter hugging the solid edge. Kept in step with template-studio.html.
+      for (let pass = 0; pass < 2; pass++) {
+        const w2 = new Float32Array(wMap);
+        for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+          const i = y * W + x;
+          if (!outside[i]) continue;
+          const v = wMap[i];
+          if (v <= 0.04 || v >= 0.96) continue;
+          let sum = 0, sum2 = 0;
+          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+            const q = wMap[(y + dy) * W + (x + dx)];
+            sum += q; sum2 += q * q;
+          }
+          const mean = sum / 25, sd = Math.sqrt(Math.max(0, sum2 / 25 - mean * mean));
+          if (sd > 0.22) {
+            const k = smooth(sd, 0.22, 0.36);
+            w2[i] = v * (1 - k);
+            neut[i] = Math.max(neut[i], 0.85 * k);
+            evAny[i] = Math.max(evAny[i], 0.85 * k);
+          }
+        }
+        wMap = w2;
+      }
+
       // Illumination per pixel, needed by the matting bake below and written
       // out as the shade map later. On the background side of the silhouette
       // the shade is propagated outward from the nearest fabric: a boundary
@@ -922,6 +953,64 @@ const TEMPLATES = [
         pd.data[o] = r; pd.data[o + 1] = g; pd.data[o + 2] = b; pd.data[o + 3] = 255;
       }
       pctx.putImageData(pd, 0, 0);
+
+      // De-whisker: median ALONG the contour, tangent from the weight
+      // gradient, perpendicular profile untouched — removes the sharpening
+      // serration a source edge carries without eroding partial coverage the
+      // way an isotropic opening does. Only where the gradient is steep: a
+      // wide soft edge cannot carry pixel-level serration, and running the
+      // median there only shifts coverage. Kept in step with template-studio.html.
+      {
+        const w2 = new Float32Array(wMap);
+        const sampleW = (x, y) => {
+          x = Math.min(W - 1, Math.max(0, x)); y = Math.min(H - 1, Math.max(0, y));
+          const x0 = Math.floor(x), y0 = Math.floor(y);
+          const x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+          const fx = x - x0, fy = y - y0;
+          return wMap[y0 * W + x0] * (1 - fx) * (1 - fy) + wMap[y0 * W + x1] * fx * (1 - fy)
+               + wMap[y1 * W + x0] * (1 - fx) * fy + wMap[y1 * W + x1] * fx * fy;
+        };
+        for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+          const i = y * W + x, v = wMap[i];
+          if (v <= 0.02) continue;
+          const gx = wMap[i + 1] - wMap[i - 1], gy = wMap[i + W] - wMap[i - W];
+          const m = Math.hypot(gx, gy);
+          if (m < 0.15) continue;
+          const tx = -gy / m, ty = gx / m;
+          const a3 = sampleW(x + tx, y + ty), b3 = sampleW(x - tx, y - ty);
+          w2[i] = Math.max(Math.min(a3, b3), Math.min(Math.max(a3, b3), v));
+        }
+        wMap = w2;
+      }
+
+      // Reconcile the bake with the FINAL weights. The bake above painted
+      // ring pixels as alpha-times-modelled-violet expecting the runtime to
+      // repaint them by the same alpha; the median just cut some of those
+      // alphas out from under their pixels, and baked violet with no repaint
+      // coming ships as a blue outline on every warm colourway. A pixel near
+      // the garment whose final weight cannot repaint it, and which is bluer
+      // than its own local background by a clear margin, holds colour nothing
+      // legitimate produced — sky is not bluer than itself, denim is not
+      // bluer than the denim behind it — and is pulled to its own luminance,
+      // partial weight earning a partial pull. Runs after the LAST pass that
+      // touches wMap. Kept in step with template-studio.html.
+      {
+        let touched = 0;
+        for (let i = 0; i < N; i++) {
+          if (!(distC[i] > 0) || core[i] || wMap[i] >= 0.5) continue;
+          const o = i * 4;
+          const exB = (pd.data[o + 2] - pd.data[o]) - (bgC[i * 3 + 2] - bgC[i * 3]);
+          if (exB <= 8) continue;
+          const kc = 0.9 * smooth(exB, 8, 22) * (1 - wMap[i] / 0.5);
+          if (kc <= 0) continue;
+          const L = 0.299 * pd.data[o] + 0.587 * pd.data[o + 1] + 0.114 * pd.data[o + 2];
+          pd.data[o] += (L - pd.data[o]) * kc;
+          pd.data[o + 1] += (L - pd.data[o + 1]) * kc;
+          pd.data[o + 2] += (L - pd.data[o + 2]) * kc;
+          touched++;
+        }
+        if (touched) pctx.putImageData(pd, 0, 0);
+      }
 
       // weight map: R = recolour weight, G = design clip
       const wpng = document.createElement('canvas'); wpng.width = W; wpng.height = H;
