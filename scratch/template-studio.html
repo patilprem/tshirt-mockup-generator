@@ -634,7 +634,7 @@ function showFieldNote() {
   if (gm.note) parts.push(gm.note);
   const hairLabel = (HAIR[pModel.value][+pHair.value] || [''])[0];
   if (/loose|ponytail/i.test(hairLabel)) {
-    parts.push('Long loose hair is what puts a ponytail on the collar and its shadow on the chest — if this scene keeps failing on hair, switch to Low bun rather than regenerating.');
+    parts.push('Loose hair down the back is fine — several shipped templates have it. What fails is a MASS of hair pulled forward onto the fabric; the validator flags those as fragment or wedge failures, and the fix is one regeneration, not a different hairstyle.');
   }
   if (pRace.value && pRace.value !== 'white') {
     parts.push('The skin gate in Step 2 is tuned to mid-tone skin and under-reports on deeper tones — judge the arms in Step 3 with white selected.');
