@@ -641,6 +641,79 @@ const TEMPLATES = [
         if (u > 0.5 && !core[i]) crevice[i] = 1;
       }
 
+      // ---- occluder flood: connectivity as the missing information ----
+      // `unrel` calls a near-black neutral pixel information-free, and the
+      // closing and completion below then INVENT weight there by diffusion
+      // from whatever fabric it touches. For a fold enclosed by the garment
+      // that is the right call. For dark hair lying over a collar, or a
+      // shadowed arm resting beside a sleeve, it is exactly wrong — it is
+      // what painted a soft recoloured plume up into the hair on every
+      // dark-haired model and down the arm on every dark-skinned one: the
+      // pixel's own colour says nothing, so the completion happily relaxed
+      // garment weight across it. But the pixel's NEIGHBOURHOOD says
+      // everything. A near-black hair or skin pixel connects, through more
+      // dark pixels, to hair or skin that still shows the warm ordering
+      // (R above G above B) — a signature violet fabric can never produce,
+      // since violet's lowest channel is green. Read that connectivity and
+      // record it as identity: seed at every warm-ordered dark pixel outside
+      // the garment, flood through border-connected dark pixels carrying no
+      // violet evidence, stop at the core, the key (wRaw), the ordering
+      // (orderEv) — and at any pixel where green is still the strict lowest
+      // channel by a few levels, the violet ordering read at its noise
+      // floor, so the flood can never walk into fabric that is merely deep
+      // in shadow.
+      //
+      // What the flood reaches is RELIABLE NON-FABRIC, and the consequence
+      // is deliberately narrow: unrel is forced to 0. Nothing is subtracted
+      // — weight the union's evidence terms already granted (a violet
+      // crease's `dark` weight) survives untouched; a first version also
+      // capped weight at the strict key here, and it carved a black notch
+      // into the underarm shadow of beach-m, which is real fabric whose
+      // recolour came from those terms. Freezing unrel is enough: the
+      // closing cannot lift a frozen pixel, and the completion holds it as
+      // a fixed anchor instead of relaxing garment weight across it — which
+      // kills the plume at its only source, the invention.
+      // Confined to `outside` pixels, so an enclosed fold can never be
+      // reached and every crevice guarantee above is untouched.
+      const occluder = new Uint8Array(N);
+      {
+        const pass = new Uint8Array(N);
+        for (let i = 0; i < N; i++) {
+          if (!outside[i] || core[i]) continue;
+          if (vA[i] >= 0.60 || orderEv[i] >= 0.15 || wRaw[i] >= 0.30) continue;
+          const o = i * 4;
+          // Two walls, each a violet-family signature read at its noise
+          // floor, so the flood can never walk into fabric that is merely
+          // deep in shadow. Green strictly lowest = violet at any
+          // brightness, even where saturation is too far gone for orderEv.
+          // Blue strictly above both = the same fabric once shadow has
+          // shifted it blue-ward (sky ambient dominates in a crease and R
+          // falls to G's level — beach-m's underarm reads 15,17,27 there,
+          // which the green wall alone waves through). Hair and skin are
+          // never blue-dominant; dark denim is, and treating it as a wall
+          // simply keeps the shipped behaviour for it.
+          if (Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) >= 4) continue;
+          if (src[o + 2] - Math.max(src[o], src[o + 1]) >= 3) continue;
+          pass[i] = 1;
+        }
+        const qi = new Int32Array(N);
+        let qh = 0, qt = 0;
+        for (let i = 0; i < N; i++) {
+          if (!pass[i]) continue;
+          const o = i * 4;
+          if (src[o] - src[o + 2] >= 14 && src[o] - src[o + 1] >= 5) { occluder[i] = 1; qi[qt++] = i; }
+        }
+        while (qh < qt) {
+          const i = qi[qh++];
+          const x = i % W;
+          for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+            if (ni < 0 || ni >= N || occluder[ni] || !pass[ni]) continue;
+            occluder[ni] = 1; qi[qt++] = ni;
+          }
+        }
+        for (let i = 0; i < N; i++) if (occluder[i]) unrel[i] = 0;
+      }
+
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
       const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
       let wedgePx = 0;
@@ -1166,6 +1239,15 @@ const TEMPLATES = [
         if (Math.min(src[o + 1], src[o + 2]) - src[o] > 6) coolPaint++;
       }
 
+      // Occluder pixels that would still recolour. The flood froze them out
+      // of the closing and the completion, but weight from the union's own
+      // evidence terms (violet bleed on glossy hair) or the floors survives
+      // by design — this counts what survived, so a candidate whose hair or
+      // hands would visibly take the target colour is measured instead of
+      // discovered by eye in Step 3.
+      let occPaint = 0;
+      for (let i = 0; i < N; i++) if (occluder[i] && wMap[i] > 0.5) occPaint++;
+
       let missed = 0, skin = 0, gN = 0, deepN = 0, bgPaint = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
@@ -1194,7 +1276,7 @@ const TEMPLATES = [
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
         qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct,
-          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint },
+          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -1349,7 +1431,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
