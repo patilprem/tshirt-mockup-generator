@@ -983,6 +983,35 @@ const TEMPLATES = [
         wMap = w2;
       }
 
+      // Reconcile the bake with the FINAL weights. The bake above painted
+      // ring pixels as alpha-times-modelled-violet expecting the runtime to
+      // repaint them by the same alpha; the median just cut some of those
+      // alphas out from under their pixels, and baked violet with no repaint
+      // coming ships as a blue outline on every warm colourway. A pixel near
+      // the garment whose final weight cannot repaint it, and which is bluer
+      // than its own local background by a clear margin, holds colour nothing
+      // legitimate produced — sky is not bluer than itself, denim is not
+      // bluer than the denim behind it — and is pulled to its own luminance,
+      // partial weight earning a partial pull. Runs after the LAST pass that
+      // touches wMap. Kept in step with template-studio.html.
+      {
+        let touched = 0;
+        for (let i = 0; i < N; i++) {
+          if (!(distC[i] > 0) || core[i] || wMap[i] >= 0.5) continue;
+          const o = i * 4;
+          const exB = (pd.data[o + 2] - pd.data[o]) - (bgC[i * 3 + 2] - bgC[i * 3]);
+          if (exB <= 8) continue;
+          const kc = 0.9 * smooth(exB, 8, 22) * (1 - wMap[i] / 0.5);
+          if (kc <= 0) continue;
+          const L = 0.299 * pd.data[o] + 0.587 * pd.data[o + 1] + 0.114 * pd.data[o + 2];
+          pd.data[o] += (L - pd.data[o]) * kc;
+          pd.data[o + 1] += (L - pd.data[o + 1]) * kc;
+          pd.data[o + 2] += (L - pd.data[o + 2]) * kc;
+          touched++;
+        }
+        if (touched) pctx.putImageData(pd, 0, 0);
+      }
+
       // weight map: R = recolour weight, G = design clip
       const wpng = document.createElement('canvas'); wpng.width = W; wpng.height = H;
       const wctx = wpng.getContext('2d');
