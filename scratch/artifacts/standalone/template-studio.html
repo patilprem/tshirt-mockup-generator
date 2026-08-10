@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-09 3d46211</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-10 a34c5de</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -1859,7 +1859,21 @@ function runValidation(img, url) {
       F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%', `No blown-out or burnt-out highlights on the fabric. Keep the ${gm.short} off pure white anywhere — no specular hotspot, no direct hard light source on it.`);
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
       F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', `The garment edges — ${gm.edges} — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.`);
-      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
+      // Calibrated against the shipped set rather than guessed. A photograph's
+      // background DIMS as it approaches the figure — contact shadow, falloff,
+      // the body occluding its own light — so every clean template measures
+      // between -3.3% and -20.7%. Positive means the opposite: brighter right
+      // at the silhouette than further out, which nothing photographic does and
+      // an upscaler's sharpening does every time. The old +4.5% line was an
+      // absolute number written without knowing the population is entirely
+      // negative, and it let through the two templates whose rim is visible to
+      // the eye at +2.0% and +3.7%. Sign is the signal, not magnitude.
+      //
+      // The fix string still speaks to the generator, which can bake a rim in
+      // too — but when the raw generation is clean and the upscaled file is
+      // not, no rewording will help and the upscaler's sharpening is the thing
+      // to turn down.
+      F(a.haloDelta > 0.09, a.haloDelta > -0.015, 'No bright rim baked into the source (shipped templates: \u22123% to \u221221%)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
       F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
       // No fix string on purpose: nothing the image model can be told fixes
       // this. A stepped edge comes from what happened to the file AFTER
