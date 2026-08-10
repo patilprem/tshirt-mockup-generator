@@ -1598,11 +1598,31 @@ function analyze(img) {
   }
 
   // metrics
-  let missed = 0, skin = 0, gN = 0, deepN = 0, blownN = 0, coreN = 0, bgPaint = 0;
+  // Deep shadow next to hair or skin is measured separately from deep
+  // shadow in the open garment: the occluder machinery renders it
+  // photographically, so it no longer belongs in the hard-shadow gate —
+  // counting it just rejected every long-haired model. Kept in step with
+  // build_on_model_templates.cjs.
+  const nearHair = new Uint8Array(N);
+  {
+    let m2 = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (occluder[i]) { m2[i] = 1; continue; }
+      const o = i * 4;
+      if (src[o] - src[o + 2] >= 8 && src[o] - src[o + 1] >= 3 && vA[i] < 0.5) m2[i] = 1;
+    }
+    const HR = Math.max(6, Math.round(W / 60));
+    for (let k = 0; k < HR; k++) m2 = dil(m2);
+    nearHair.set(m2);
+  }
+  let missed = 0, skin = 0, gN = 0, deepN = 0, deepHairN = 0, blownN = 0, coreN = 0, bgPaint = 0;
   for (let i = 0; i < N; i++) {
     if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
     if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
-    if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
+    if (wMap[i] > 0.04 || clip[i] > 0.04) {
+      gN++;
+      if (vA[i] < 0.16) { if (nearHair[i]) deepHairN++; else deepN++; }
+    }
     if (core[i]) { coreN++; if (vA[i] > 0.92 && sA[i] < 0.14) blownN++; }
     if (outside[i] && !crevice[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
   }
@@ -1846,6 +1866,7 @@ function analyze(img) {
     strayVioletPct: 100 * strayViolet / N,
     missed, skin,
     deepShadowPct: 100 * deepN / Math.max(1, gN),
+    hairShadowPct: 100 * deepHairN / Math.max(1, gN),
     blownPct: 100 * blownN / Math.max(1, coreN),
     bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss, coolPaint, occPaint,
     modelFit: fitSum / Math.max(1, fitCnt),
@@ -1929,7 +1950,11 @@ function runValidation(img, url) {
         short + 'px', 'Render at the highest resolution available — the short side must be at least 1300 pixels.');
       F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°', `The ${gm.noun} must be a VIVID VIOLET — a strong purple, clearly more blue than magenta. Not lilac, not lavender, not pink, not indigo, and not washed out.`);
       F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%', `Frame so the ${gm.noun} occupies roughly a third of the picture: the whole torso visible, with clear margin around the figure on every side.`);
-      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)', `Light the torso with SOFT EVEN DIFFUSED light from the front. No hard shadow line across the chest, no dark band down either side of the ${gm.short}. Every part of the ${gm.short} must stay clearly lit — shadow on it may only be a slightly darker violet, never near-black and never grey.`);
+      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction, open garment (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)', `Light the torso with SOFT EVEN DIFFUSED light from the front. No hard shadow line across the chest, no dark band down either side of the ${gm.short}. Every part of the ${gm.short} must stay clearly lit — shadow on it may only be a slightly darker violet, never near-black and never grey.`);
+      // Shadow next to hair/skin is excluded from the gate above: the
+      // pipeline renders it (and the hair) photographically, so it reads
+      // as what it is. Reported here so a huge number still gets a look.
+      F(false, a.hairShadowPct > 14, 'Hair-cast shadow (renders photographic, not gated)', a.hairShadowPct.toFixed(2) + '%');
       F(false, a.fragments > 1, 'Garment is one connected piece', a.fragments + (a.fragments > 1 ? ' fragments (occlusion?)' : ' piece'), gm.seamFix);
       F(a.strayVioletPct > 0.5, a.strayVioletPct > 0.05, 'No other violet objects in scene', a.strayVioletPct.toFixed(2) + '%', 'NOTHING else anywhere in the frame may be violet, purple, lilac, mauve or magenta — not clothing, not props, not flowers, not background.');
       F(false, a.missed > 500, 'Violet fully captured by the key', a.missed + ' px missed', `The ${gm.short} must be a single flat uniformly saturated violet across the whole garment, with no gradient, ombre, heather, marl or two-tone effect and no sheen.`);
@@ -1948,13 +1973,13 @@ function runValidation(img, url) {
       F(false, a.softPerPerim < 2.0 || a.hardStepPct > 12,
         'Matte keeps a soft photographic edge (shipped templates: 2.7–6.3 px, ≤5% steps)',
         a.softPerPerim.toFixed(2) + ' px/edge · ' + a.hardStepPct.toFixed(1) + '% steps');
-      F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm, and hair stays behind the shoulders so it casts no dark shadow onto the shirt.');
+      F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm. Hair over the shoulders is fine; only a hard black shadow wedge under it is a problem.');
       // Same thresholds as the builder's gate. This one is about the pipeline
       // rather than the photo, so it is worth flagging even though the fix is
       // usually code — but the photo can cause it too, by laying dark hair
       // over the shoulder against a bright background, which is where the
       // recolour has to yield to the matte. The prompt advice targets that.
-      F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', `Keep hair entirely behind both shoulders so none of it falls across the ${gm.short}, and keep the light on the shoulders soft enough that no dark band forms where hair meets fabric.`);
+      F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', `Hair over the shoulders is fine, but keep it clear of the centre chest of the ${gm.short} where the design prints, and keep the light soft so hair shadow stays a gentle gradient rather than a black band.`);
       // The mirror of the check above. Lines sit above a noise floor, not at
       // zero: near-black pixels carry a few levels of chroma noise, so a clean
       // template still scores in the low hundreds.
@@ -1964,7 +1989,7 @@ function runValidation(img, url) {
       // measure 4-1105 px; hair or a hand that would visibly recolour lands
       // far above that. Warn-only: the number is a property of the photo
       // (violet bleed on gloss), and Step 3 shows whether it matters.
-      F(false, a.occPaint > 2500, 'Hair and hands near the garment stay photographic', a.occPaint + ' px', 'Keep hair entirely behind both shoulders and both hands away from the garment, so no hair strand or finger crosses the fabric.');
+      F(false, a.occPaint > 2500, 'Hair and hands near the garment stay photographic', a.occPaint + ' px', 'Hair over the shoulders is fine — it stays photographic now. Keep it clear of the centre chest where the design prints, and keep hands away from the chest area.');
       F(a.coolPaint > 600, a.coolPaint > 250, 'Nothing below the hem recoloured (jeans, waistband)', a.coolPaint + ' px', `The ${gm.short} hem must sit clear of the trousers with a visible, sharply focused gap of separation — no near-black waistband pressed directly against the hem, and no fabric of the bottoms in deep shadow immediately below it.`);
     }
     document.getElementById('checks').innerHTML = checks.join('');
@@ -2160,6 +2185,7 @@ document.getElementById('mBuild').addEventListener('click', async () => {
     `shirt hue ${a.shirtHue != null ? a.shirtHue + '\u00B0' : '?'}`,
     `coverage ${a.coverage != null ? a.coverage.toFixed(1) + '%' : '?'}`,
     `deep shadow ${a.deepShadowPct != null ? a.deepShadowPct.toFixed(2) + '%' : '?'}`,
+    `hair shadow ${a.hairShadowPct != null ? a.hairShadowPct.toFixed(2) + '%' : '?'}`,
     `fragments ${a.fragments != null ? a.fragments : '?'}`,
     `stray violet ${a.strayVioletPct != null ? a.strayVioletPct.toFixed(2) + '%' : '?'}`,
     `skin ${a.skin != null ? a.skin : '?'}px`,

@@ -1364,17 +1364,44 @@ const TEMPLATES = [
       let occPaint = 0;
       for (let i = 0; i < N; i++) if (occluder[i] && wMap[i] > 0.5) occPaint++;
 
-      let missed = 0, skin = 0, gN = 0, deepN = 0, bgPaint = 0;
+      // Deep shadow next to hair or skin is measured separately from deep
+      // shadow in the open garment. The gate this feeds exists for crushed
+      // shadow bands across the visible chest, which no recolour can carry
+      // on a pale target. Shadow the model's hair casts on a shoulder is a
+      // different animal now: the occluder machinery renders it (and the
+      // hair) photographically, so it looks like what it is, and counting
+      // it in the gate just rejects every long-haired model — which is a
+      // rule about hairstyles, not about photo quality. `nearHair` marks
+      // everything within ~W/60 of frozen occluder pixels or warm-dark
+      // (hair/skin) evidence; deep pixels there are excluded from the
+      // gated fraction and reported separately as hairShadowPct.
+      const nearHair = new Uint8Array(N);
+      {
+        let m2 = new Uint8Array(N);
+        for (let i = 0; i < N; i++) {
+          if (occluder[i]) { m2[i] = 1; continue; }
+          const o = i * 4;
+          if (src[o] - src[o + 2] >= 8 && src[o] - src[o + 1] >= 3 && vA[i] < 0.5) m2[i] = 1;
+        }
+        const HR = Math.max(6, Math.round(W / 60));
+        for (let k = 0; k < HR; k++) m2 = dil(m2);
+        nearHair.set(m2);
+      }
+      let missed = 0, skin = 0, gN = 0, deepN = 0, deepHairN = 0, bgPaint = 0;
       for (let i = 0; i < N; i++) {
         if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
         if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
-        if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
+        if (wMap[i] > 0.04 || clip[i] > 0.04) {
+          gN++;
+          if (vA[i] < 0.16) { if (nearHair[i]) deepHairN++; else deepN++; }
+        }
         // background pixels that would be recoloured with no violet evidence
         // of any kind — exactly the class that painted a bright rim around
         // the silhouette
         if (outside[i] && !crevice[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
       }
       const deepShadowPct = +(100 * deepN / Math.max(1, gN)).toFixed(2);
+      const hairShadowPct = +(100 * deepHairN / Math.max(1, gN)).toFixed(2);
 
       const dbg = dbgPx.map(([x, y]) => {
         const i = y * W + x, o = i * 4;
@@ -1391,7 +1418,7 @@ const TEMPLATES = [
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct,
+        qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
           chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
@@ -1547,7 +1574,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
