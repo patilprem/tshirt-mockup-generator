@@ -56,11 +56,11 @@ const version = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
-const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
+const OUT_DIR = "/tmp/claude-0/-home-user-tshirt-mockup-generator/de3bd9a4-55b7-54a1-adf3-3147e5250efd/scratchpad/dbg-out";
 const META_OUT = path.join(OUT_DIR, 'templates.json');
 const MAX_EDGE = 1600;
 
-const TEMPLATES = [
+const TEMPLATES = [ { id: "gallery-f", file: "gallery-f.webp", label: "G", model: "female", scene: "x" } ]; const _dead = [
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
   { id: 'gallery-f', file: 'gallery-f.webp', label: 'Gallery Interior', model: 'female', scene: 'Minimal off-white interior' },
   { id: 'livingroom-m', file: 'livingroom-m.webp', label: 'Living Room', model: 'male', scene: 'Bright airy living room' },
@@ -78,7 +78,7 @@ const TEMPLATES = [
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
-  const page = await browser.newPage({ viewport: { width: 1400, height: 1400 } });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 1400 } }); page.on('console', m => { const t = m.text(); if (t.startsWith('DBGD')) console.log(t); });
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const manifest = [];
@@ -517,15 +517,6 @@ const TEMPLATES = [
       // fall back to the taper + neutralise path via a residual-based
       // confidence, keeping their photographic reality.
       const RING = Math.max(4, Math.round(W / 220));
-      // The matte is SOLVED out to twice the bake ring. Within RING its
-      // answer is acted on in full — weight and photo bake. In the outer
-      // half it is measurement only: mAlpha/mConf are recorded so the cap
-      // after the completion can hold invention down to what the matte saw
-      // (dark hair lying on a collar solves confidently to alpha ~0 ten
-      // pixels out, exactly where the completion otherwise invents), but
-      // no bake touches the photograph there — rewriting hair texture to
-      // a diffused mix would smear it.
-      const RING2 = RING * 2;
       const distC = new Int16Array(N).fill(-1);
       {
         let qh = 0, qt = 0;
@@ -534,7 +525,7 @@ const TEMPLATES = [
         while (qh < qt) {
           const cx3 = qxx[qh], cy3 = qyy[qh]; qh++;
           const dd = distC[cy3 * W + cx3];
-          if (dd >= RING2) continue;
+          if (dd >= RING) continue;
           for (const [nx, ny] of [[cx3 + 1, cy3], [cx3 - 1, cy3], [cx3, cy3 + 1], [cx3, cy3 - 1]]) {
             if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
             const ni = ny * W + nx;
@@ -554,7 +545,7 @@ const TEMPLATES = [
           have[i] = 1; fd[i] = 0; const o = i * 4;
           out[i * 3] = src[o]; out[i * 3 + 1] = src[o + 1]; out[i * 3 + 2] = src[o + 2];
         }
-        for (let pass = 0; pass < RING2 + 6; pass++) {
+        for (let pass = 0; pass < RING + 6; pass++) {
           const nh = new Uint8Array(have);
           for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
             const i = y * W + x;
@@ -726,16 +717,9 @@ const TEMPLATES = [
             || Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) >= 4
             || src[o + 2] - Math.max(src[o], src[o + 1]) >= 3;
         };
-        // Two margins for the warm ordering: the loose one (8 levels of
-        // R over B) is evidence for the distance field — near-black hair
-        // holds R over B by single digits, and demanding more left the
-        // field so sparse that half a hair mass measured nearer to the
-        // collar than to its own colour. The strict margin stays in
-        // reserve for nothing: violet can never reach either (its R sits
-        // below B), so the loose test is still unreachable from fabric.
         const isWarm = ni => {
           const o = ni * 4;
-          return src[o] - src[o + 2] >= 8 && src[o] - src[o + 1] >= 3 && vA[ni] < 0.75;
+          return src[o] - src[o + 2] >= 14 && src[o] - src[o + 1] >= 5 && vA[ni] < 0.75;
         };
         const dwarm = new Int32Array(N).fill(-1);
         const dfab = new Int32Array(N).fill(-1);
@@ -761,28 +745,12 @@ const TEMPLATES = [
         };
         bfs(dwarm, isWarm);
         bfs(dfab, isFab);
-        // Freeze STRENGTH, not a freeze verdict. Both rules — warm
-        // decisively nearer, and warm merely nearer while fabric evidence
-        // sits beyond the matte ring's reach — are the right calls, but as
-        // yes/no tests on integer hop counts they printed their own
-        // contours into the weight: a dark fold grazing the dfab=8 line
-        // came out with a blocky staircase bitten into its edge. Each rule
-        // is therefore a smooth 0..1 term over a few hops, the pixel's
-        // unrel is SCALED down by their maximum, and the completion's
-        // relaxation then blends whatever partial freeze remains — the
-        // spatial transition is a fade the closing and completion smooth
-        // further, never a printed threshold.
         for (let i = 0; i < N; i++) {
           if (!unk[i] || dwarm[i] === -1) continue;
-          const df2 = dfab[i] === -1 ? 999 : dfab[i];
-          const decisive = smooth(df2 - 2 * dwarm[i], 0, 4);
-          const nearer = smooth(df2 - dwarm[i], 0, 3) * smooth(df2, 6, 10);
-          const s = Math.max(decisive, nearer);
-          if (s > 0) {
-            unrel[i] *= 1 - s;
-            if (s > 0.5) occluder[i] = 1;
-          }
+          if (dfab[i] === -1 || dwarm[i] * 2 < dfab[i]) occluder[i] = 1;
         }
+        { const rows=[]; for (let yy=560; yy<700; yy+=6) for (let xx=620; xx<760; xx+=6) { const i=yy*W+xx; if (unk[i]) rows.push([xx,yy,dwarm[i],dfab[i],+wMap[i].toFixed(2)]); } console.log("DBGD " + JSON.stringify(rows)); }
+        for (let i = 0; i < N; i++) if (occluder[i]) unrel[i] = 0;
       }
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
@@ -829,9 +797,9 @@ const TEMPLATES = [
         const sep = Math.sqrt(den);
         const fgGap = Math.min(fgC[i * 3] - fgC[i * 3 + 1], fgC[i * 3 + 2] - fgC[i * 3 + 1]);
         let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGap, 3, 14);
-        conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING2 + 1, RING2 + 4);
+        conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING + 1, RING + 4);
         if (fgF.fd[i] < 0) conf = 0;
-        if (distC[i] <= RING && vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING2 + 1)) wedgePx++;
+        if (vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING + 1)) wedgePx++;
         // The matte's answer is recorded for EVERY ring pixel, before the
         // crevice veto below decides whether to act on it. Those are two
         // different questions. Acting on it means assigning the weight AND
@@ -845,9 +813,7 @@ const TEMPLATES = [
         // interpolated across it to mid weight — and mid weight over a dark
         // shade is the broken dark line that follows a hem in every colour.
         mAlpha[i] = a2; mConf[i] = conf;
-        // Weight assignment and photo bake stay confined to the inner ring;
-        // the outer half of the ring is measurement for the cap only.
-        if (crevice[i] || distC[i] > RING) continue;
+        if (crevice[i]) continue;
         alphaA[i] = a2; confA[i] = conf;
         wMap[i] = conf * a2 + (1 - conf) * wMap[i];
         evAny[i] = Math.max(evAny[i], wMap[i]);
@@ -913,63 +879,20 @@ const TEMPLATES = [
       // |Laplacian(delta)| 2.88 either way), so it was not kept. If a future
       // template has a dark region wider than ~26px the difference would start
       // to matter, and that is the point to revisit this.
-      // EDGE-AWARE: each neighbour's contribution is scaled by a
-      // conductance that dies across a strong luminance step. The job is
-      // to identify the garment, recolour it, and leave everything else
-      // alone — and the one place the isotropic version broke that
-      // contract is diffusion straight across the garment's own occlusion
-      // edge: fabric at v=0.45 meets hair at v=0.10 in a two-pixel step,
-      // and weight walked over it into the hair as a soft recoloured
-      // plume. A crease has no such step — its shading changes by a
-      // hundredth or two per pixel — so conductance ~1 leaves every
-      // crevice completion exactly as it was, while the seam band's
-      // conductance ~0 means a hair pixel simply never hears from the
-      // fabric across the edge. Pixels sealed off on all four sides keep
-      // their base weight.
       {
         const idx = [];
         for (let i = 0; i < N; i++) if (unrel[i] > 0.01) idx.push(i);
         if (idx.length) {
-          const cE = new Float32Array(N), cS = new Float32Array(N);
-          for (let i = 0; i < N; i++) {
-            const x = i % W;
-            cE[i] = x + 1 < W ? 1 - smooth(Math.abs(vA[i] - vA[i + 1]), 0.055, 0.14) : 0;
-            cS[i] = i + W < N ? 1 - smooth(Math.abs(vA[i] - vA[i + W]), 0.055, 0.14) : 0;
-          }
           const base = new Float32Array(wMap);
           for (let pass = 0; pass < 700; pass++) {
             for (let k = 0; k < idx.length; k++) {
               const i = idx[k], x = i % W;
               if (x < 1 || x >= W - 1 || i < W || i >= N - W) continue;
-              const gw = cE[i - 1], ge = cE[i], gn = cS[i - W], gs = cS[i];
-              const gsum = gw + ge + gn + gs;
-              if (gsum < 1e-4) continue;
-              const avg = (gw * wMap[i - 1] + ge * wMap[i + 1] + gn * wMap[i - W] + gs * wMap[i + W]) / gsum;
+              const avg = (wMap[i - 1] + wMap[i + 1] + wMap[i - W] + wMap[i + W]) * 0.25;
               wMap[i] = (1 - unrel[i]) * base[i] + unrel[i] * avg;
             }
           }
         }
-      }
-
-      // The matte's answer as a CAP — the exact mirror of the matte floor
-      // below, and the stage that finally owns the band the distance test
-      // cannot call: hair lying ON the collar, nearer to fabric evidence
-      // than to its own colour's. The matte solved that band directly —
-      // a hair pixel matches its dark background endpoint at alpha ~0 with
-      // real confidence, because the endpoints there are far apart and the
-      // fabric endpoint keeps violet's green deficit. Where it is
-      // confident, invention may not exceed its answer. Lowering-only, in
-      // the same monotone form as the floors, and applied BEFORE them: the
-      // ordering floor still raises any pixel carrying the key's own
-      // signature back afterwards, so shadowed fabric the cap wrongly
-      // grazes is restored, and true crevices are untouched because their
-      // confidence is already zero (their background is unreachable, which
-      // the fd gate turns into conf 0).
-      for (let i = 0; i < N; i++) {
-        if (!ring[i]) continue;
-        const cf = Math.max(0, Math.min(1, mConf[i]));
-        if (!cf) continue;
-        if (wMap[i] > mAlpha[i]) wMap[i] = (1 - cf) * wMap[i] + cf * mAlpha[i];
       }
 
       // The ordering evidence again, now as a FLOOR — applied last, after
@@ -1039,7 +962,7 @@ const TEMPLATES = [
       // a bright background mixing brightens and shading darkens, the two are
       // not confusable, and the matte's answer is the best one available.
       for (let i = 0; i < N; i++) {
-        if (!ring[i] || distC[i] > RING) continue;
+        if (!ring[i]) continue;
         const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
         const fl = mAlpha[i] * Math.max(0, Math.min(1, mConf[i])) * smooth(bgL, 60, 110);
         if (fl > wMap[i]) wMap[i] = fl;

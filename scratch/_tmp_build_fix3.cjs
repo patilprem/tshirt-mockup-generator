@@ -56,11 +56,11 @@ const version = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
-const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
+const OUT_DIR = "/tmp/claude-0/-home-user-tshirt-mockup-generator/de3bd9a4-55b7-54a1-adf3-3147e5250efd/scratchpad/fix-out";
 const META_OUT = path.join(OUT_DIR, 'templates.json');
 const MAX_EDGE = 1600;
 
-const TEMPLATES = [
+const TEMPLATES = [ { id: "gallery-f", file: "gallery-f.webp", label: "G", model: "female", scene: "x" }, { id: "beach-m", file: "beach-m.webp", label: "B", model: "male", scene: "x" } ]; const _dead = [
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
   { id: 'gallery-f', file: 'gallery-f.webp', label: 'Gallery Interior', model: 'female', scene: 'Minimal off-white interior' },
   { id: 'livingroom-m', file: 'livingroom-m.webp', label: 'Living Room', model: 'male', scene: 'Bright airy living room' },
@@ -787,11 +787,16 @@ const TEMPLATES = [
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
       const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
+      // endpoint separation per ring pixel, recorded even when the matte
+      // bails out — a collapsed separation IS a measurement (see the damp
+      // stage below), and the bail-out cases are its strongest readings
+      const mSep = new Float32Array(N);
       let wedgePx = 0;
       for (let i = 0; i < N; i++) if (ring[i]) {
         const o = i * 4;
         const fr = fgC[i * 3] - bgC[i * 3], fg2 = fgC[i * 3 + 1] - bgC[i * 3 + 1], fb = fgC[i * 3 + 2] - bgC[i * 3 + 2];
         const den = fr * fr + fg2 * fg2 + fb * fb;
+        mSep[i] = Math.sqrt(den);
         if (den < 100) continue;
         const dr = src[o] - bgC[i * 3], dg = src[o + 1] - bgC[i * 3 + 1], db = src[o + 2] - bgC[i * 3 + 2];
         let a2 = (dr * fr + dg * fg2 + db * fb) / den;
@@ -970,6 +975,55 @@ const TEMPLATES = [
         const cf = Math.max(0, Math.min(1, mConf[i]));
         if (!cf) continue;
         if (wMap[i] > mAlpha[i]) wMap[i] = (1 - cf) * wMap[i] + cf * mAlpha[i];
+      }
+
+      // Ambiguity damp: the band no colour rule can call, rendered the way
+      // both of its readings agree on. Fabric deep in hair shadow and the
+      // hair casting that shadow are BOTH near-black and neutral — the
+      // matte measured it directly: its two endpoints collapse to within
+      // ~15 levels there (mSep), which its own comments name as the point
+      // where alpha stops meaning coverage. Painting such a pixel toward
+      // any target is invention that shows as a grey haze on the hair; NOT
+      // painting renders deep shadow that stays deep shadow, which is
+      // right whichever thing the pixel actually is — the same call the
+      // wedge rule has always made. So weight is pulled toward zero by the
+      // product of two smooth measurements: how collapsed the matte's
+      // endpoints are, and how information-free the pixel itself is. Both
+      // vary smoothly, so the transition into the damped zone is a fade,
+      // never an edge — the jagged notch the first freeze carved came from
+      // a thresholded boundary, not from darkness. The ordering floor runs
+      // AFTER this and restores any pixel that still carries the key's own
+      // signature, so shadowed fabric the matte cannot see but the
+      // ordering can is untouched.
+      {
+        const dampA = new Float32Array(N);
+        for (let i = 0; i < N; i++) {
+          if (!ring[i]) continue;
+          // any violet-family signature at its noise floor exempts the pixel:
+          // the ordering floor cannot restore what it cannot see (its
+          // saturation window is far above this), and a blue-shifted crease
+          // reads 15,17,27 — no orderEv, but blue strictly dominant.
+          const o = i * 4;
+          const sig = Math.max(
+            Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]),
+            src[o + 2] - Math.max(src[o], src[o + 1]));
+          // faded toward the ring boundary — distC is a city-block hop count,
+          // and a damp that stops dead at RING2 prints that metric into the
+          // weight as a staircase
+          dampA[i] = (1 - smooth(mSep[i], 18, 34)) * unrel[i] * (1 - smooth(sig, 2, 6))
+            * (1 - smooth(distC[i], RING2 - 4, RING2));
+        }
+        // Blurred before use: sig and unrel are per-pixel chroma reads, and
+        // in near-black they flip with the codec's own 8px chroma blocks —
+        // applied raw, the damp printed those blocks into the weight as a
+        // blocky bite along any dark fold that grazes the ring. The blur
+        // averages the exemption over the block noise; every input to the
+        // damp is smooth at that scale, so nothing real is lost.
+        const dampS = boxBlur(dampA, 3);
+        for (let i = 0; i < N; i++) {
+          const d2 = Math.min(1, dampS[i]);
+          if (d2 > 0) wMap[i] *= 1 - d2;
+        }
       }
 
       // The ordering evidence again, now as a FLOOR — applied last, after

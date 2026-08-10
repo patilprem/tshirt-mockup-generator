@@ -56,11 +56,11 @@ const version = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
-const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
+const OUT_DIR = "/tmp/claude-0/-home-user-tshirt-mockup-generator/de3bd9a4-55b7-54a1-adf3-3147e5250efd/scratchpad/fix-out";
 const META_OUT = path.join(OUT_DIR, 'templates.json');
 const MAX_EDGE = 1600;
 
-const TEMPLATES = [
+const TEMPLATES = [ { id: "gallery-f", file: "gallery-f.webp", label: "G", model: "female", scene: "x" } ]; const _dead = [
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
   { id: 'gallery-f', file: 'gallery-f.webp', label: 'Gallery Interior', model: 'female', scene: 'Minimal off-white interior' },
   { id: 'livingroom-m', file: 'livingroom-m.webp', label: 'Living Room', model: 'male', scene: 'Bright airy living room' },
@@ -78,7 +78,7 @@ const TEMPLATES = [
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
-  const page = await browser.newPage({ viewport: { width: 1400, height: 1400 } });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 1400 } }); page.on('console', m => { const t = m.text(); if (t.startsWith('ROWS')) console.log(t); });
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const manifest = [];
@@ -761,28 +761,19 @@ const TEMPLATES = [
         };
         bfs(dwarm, isWarm);
         bfs(dfab, isFab);
-        // Freeze STRENGTH, not a freeze verdict. Both rules — warm
-        // decisively nearer, and warm merely nearer while fabric evidence
-        // sits beyond the matte ring's reach — are the right calls, but as
-        // yes/no tests on integer hop counts they printed their own
-        // contours into the weight: a dark fold grazing the dfab=8 line
-        // came out with a blocky staircase bitten into its edge. Each rule
-        // is therefore a smooth 0..1 term over a few hops, the pixel's
-        // unrel is SCALED down by their maximum, and the completion's
-        // relaxation then blends whatever partial freeze remains — the
-        // spatial transition is a fade the closing and completion smooth
-        // further, never a printed threshold.
+        // Freeze where warm evidence is decisively nearer, and also where
+        // it is merely nearer AND fabric is beyond the matte ring's reach
+        // (~8px): inside that band the matte and the completion own the
+        // answer, beyond it any weight would be pure invention, so a
+        // region that measures closer to hair than to fabric there is
+        // hair. Both cases still require warm evidence to be reachable at
+        // all, which fabric-enclosed folds never satisfy.
         for (let i = 0; i < N; i++) {
           if (!unk[i] || dwarm[i] === -1) continue;
-          const df2 = dfab[i] === -1 ? 999 : dfab[i];
-          const decisive = smooth(df2 - 2 * dwarm[i], 0, 4);
-          const nearer = smooth(df2 - dwarm[i], 0, 3) * smooth(df2, 6, 10);
-          const s = Math.max(decisive, nearer);
-          if (s > 0) {
-            unrel[i] *= 1 - s;
-            if (s > 0.5) occluder[i] = 1;
-          }
+          if (dfab[i] === -1 || dwarm[i] * 2 < dfab[i]
+            || (dwarm[i] < dfab[i] && dfab[i] > 8)) occluder[i] = 1;
         }
+        for (let i = 0; i < N; i++) if (occluder[i]) unrel[i] = 0;
       }
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
@@ -972,6 +963,7 @@ const TEMPLATES = [
         if (wMap[i] > mAlpha[i]) wMap[i] = (1 - cf) * wMap[i] + cf * mAlpha[i];
       }
 
+{ const rows=[]; for (let yy=660; yy<702; yy+=6) for (let xx=668; xx<766; xx+=7) { const i=yy*W+xx; rows.push([xx,yy,+wMap[i].toFixed(2),ring[i],distC[i],+mAlpha[i].toFixed(2),+mConf[i].toFixed(2)]); } console.log("ROWS "+JSON.stringify(rows)); }
       // The ordering evidence again, now as a FLOOR — applied last, after
       // every stage that can lower a weight. The min filter, the matte, the
       // closing and the harmonic completion each disbelieve this band for

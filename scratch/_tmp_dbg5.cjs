@@ -56,11 +56,11 @@ const version = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
-const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
+const OUT_DIR = "/tmp/claude-0/-home-user-tshirt-mockup-generator/de3bd9a4-55b7-54a1-adf3-3147e5250efd/scratchpad/fix-out";
 const META_OUT = path.join(OUT_DIR, 'templates.json');
 const MAX_EDGE = 1600;
 
-const TEMPLATES = [
+const TEMPLATES = [ { id: "gallery-f", file: "gallery-f.webp", label: "G", model: "female", scene: "x" } ]; const _dead = [
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
   { id: 'gallery-f', file: 'gallery-f.webp', label: 'Gallery Interior', model: 'female', scene: 'Minimal off-white interior' },
   { id: 'livingroom-m', file: 'livingroom-m.webp', label: 'Living Room', model: 'male', scene: 'Bright airy living room' },
@@ -78,7 +78,7 @@ const TEMPLATES = [
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
-  const page = await browser.newPage({ viewport: { width: 1400, height: 1400 } });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 1400 } }); page.on('console', m => { const t = m.text(); if (t.startsWith('TERM')) console.log(t); });
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const manifest = [];
@@ -761,28 +761,19 @@ const TEMPLATES = [
         };
         bfs(dwarm, isWarm);
         bfs(dfab, isFab);
-        // Freeze STRENGTH, not a freeze verdict. Both rules — warm
-        // decisively nearer, and warm merely nearer while fabric evidence
-        // sits beyond the matte ring's reach — are the right calls, but as
-        // yes/no tests on integer hop counts they printed their own
-        // contours into the weight: a dark fold grazing the dfab=8 line
-        // came out with a blocky staircase bitten into its edge. Each rule
-        // is therefore a smooth 0..1 term over a few hops, the pixel's
-        // unrel is SCALED down by their maximum, and the completion's
-        // relaxation then blends whatever partial freeze remains — the
-        // spatial transition is a fade the closing and completion smooth
-        // further, never a printed threshold.
+        // Freeze where warm evidence is decisively nearer, and also where
+        // it is merely nearer AND fabric is beyond the matte ring's reach
+        // (~8px): inside that band the matte and the completion own the
+        // answer, beyond it any weight would be pure invention, so a
+        // region that measures closer to hair than to fabric there is
+        // hair. Both cases still require warm evidence to be reachable at
+        // all, which fabric-enclosed folds never satisfy.
         for (let i = 0; i < N; i++) {
           if (!unk[i] || dwarm[i] === -1) continue;
-          const df2 = dfab[i] === -1 ? 999 : dfab[i];
-          const decisive = smooth(df2 - 2 * dwarm[i], 0, 4);
-          const nearer = smooth(df2 - dwarm[i], 0, 3) * smooth(df2, 6, 10);
-          const s = Math.max(decisive, nearer);
-          if (s > 0) {
-            unrel[i] *= 1 - s;
-            if (s > 0.5) occluder[i] = 1;
-          }
+          if (dfab[i] === -1 || dwarm[i] * 2 < dfab[i]
+            || (dwarm[i] < dfab[i] && dfab[i] > 8)) occluder[i] = 1;
         }
+        for (let i = 0; i < N; i++) if (occluder[i]) unrel[i] = 0;
       }
 
       const alphaA = new Float32Array(N), confA = new Float32Array(N);
@@ -844,6 +835,7 @@ const TEMPLATES = [
         // alpha ~0.95. Vetoed, that band fell through to the completion, which
         // interpolated across it to mid weight — and mid weight over a dark
         // shade is the broken dark line that follows a hem in every colour.
+        { const x2=i%W, y2=(i/W)|0; if (y2>=666 && y2<=696 && x2>=675 && x2<=760 && ((y2%6)===0) && ((x2%7)===0)) console.log("TERM "+JSON.stringify({x:x2,y:y2,a2:+a2.toFixed(2),err:+err.toFixed(1),sep:+sep.toFixed(1),fgGap:+fgGap.toFixed(1),fdB:bgF.fd[i],fdF:fgF.fd[i],conf:+conf.toFixed(3)})); }
         mAlpha[i] = a2; mConf[i] = conf;
         // Weight assignment and photo bake stay confined to the inner ring;
         // the outer half of the ring is measurement for the cap only.
