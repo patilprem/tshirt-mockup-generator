@@ -16,10 +16,11 @@ Everything below requires account access or publishing under your identity, so C
 - [x] **Activate the GA4 internal traffic filter** — done 2026-08-08. Internal-traffic rule defined
   and the Data filter switched from *Testing* to **Active**, so our pageviews stop counting too.
 
-> **2026-08-08 is day zero for analytics.** Neither fix is retroactive, so every number recorded in
-> [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §1–2 still contains our own traffic. Compare against
-> data from this date forward, never across it. If the home IP is dynamic, re-check the filter after
-> a router reboot — a rule pointing at a stale address fails silently.
+> **2026-08-08 is day zero for collection**, but the historical data is filterable rather than lost —
+> see [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §3b. Short version: Search Console was never
+> affected; GA4 sessions are ~40% ours and need the clean segment applied; GA4/`/stats` **exports**
+> are ~95% clean and can be used as they are. If the home IP is dynamic, re-check the filter after a
+> router reboot — a rule pointing at a stale address fails silently.
 - [ ] **Merge open `seo/*` PRs** as they appear — nothing goes live until merged and deployed.
 - [x] **Google Search Console**: verified as a domain property; sitemap submitted. First non-zero
   data day is **2026-06-21**, so treat that — not the site's launch — as the start of search history.
