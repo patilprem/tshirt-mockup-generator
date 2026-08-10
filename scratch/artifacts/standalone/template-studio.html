@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-10 78c5d40</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-10 fb318b6</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -1173,6 +1173,44 @@ function analyze(img) {
     wMap[i] *= Math.max(tap, fabricEv, orderEv[i]);
     neut[i] = Math.max(evChroma, evMix);
     evAny[i] = Math.max(tap, fabricEv, orderEv[i], evChroma, evMix);
+  }
+
+  // ---- enclosure test: a crevice is surrounded, hair is not ----
+  //
+  // The `dark` rescue claims dark violet-tinted pixels the strict key drops, so
+  // that folds and creases recolour instead of staying black holes. Dark hair
+  // beside a violet shoulder catches violet bounce and satisfies it exactly —
+  // measured on the failing template as 658 pixels with `dark` at full strength,
+  // which is the soft blob hanging off the shoulder in the weight map.
+  //
+  // Neither colour nor distance separates them: both are dark and violet-ish,
+  // both sit against the garment. Geometry does. A crevice is enclosed BY the
+  // garment, so rays cast from it hit fabric in most directions; hair beside a
+  // shoulder has open background on most of them. The comment on the crevice
+  // rule below has said so for a long time — this applies it to the rescue.
+  //
+  // Only background-side pixels are tested, so nothing inside the garment can
+  // lose weight, and support is measured against the STRICT key rather than the
+  // grown mask, so the test cannot feed on its own output.
+  {
+    const RAYS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    const REACH = Math.max(6, Math.round(W / 90));
+    for (let i = 0; i < N; i++) {
+      if (!outside[i] || wMap[i] <= 0.02) continue;
+      const x = i % W, y = (i / W) | 0;
+      let hit = 0;
+      for (const [dx, dy] of RAYS) {
+        for (let t = 1; t <= REACH; t++) {
+          const nx = x + dx * t, ny = y + dy * t;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) break;
+          if (wRaw[ny * W + nx] > 0.5) { hit++; break; }
+        }
+      }
+      // 6+ of 8 rays reaching fabric is enclosure; 3 or fewer is open ground.
+      // Between them the weight tapers rather than switching, so a pixel on the
+      // boundary of the test cannot flip a visible speck on or off.
+      wMap[i] *= smooth(hit, 3, 6);
+    }
   }
 
   const cV = [], cR = [], cG = [], cB = [];
