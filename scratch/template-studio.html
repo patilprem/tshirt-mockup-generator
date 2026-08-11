@@ -285,16 +285,18 @@
     <section class="step">
       <div class="step-head"><span class="step-num">STEP 2</span><h2>Validate the image</h2></div>
       <p class="sub">
-        Paste (Ctrl/Cmd-V anywhere on this page), drop, or pick the generated image. This runs
-        the same analysis as the build pipeline — same thresholds, same verdicts. Validate the
-        raw generation first; if it passes, upscale it, remove the watermark, and validate the
-        final file again before handing it over.
+        Paste (Ctrl/Cmd-V anywhere on this page), drop, or pick generated images — you can drop
+        a WHOLE BATCH at once. Each candidate is validated with the exact pipeline analysis and
+        the batch is ranked best-first: with current generators, sampling 3–4 and keeping the
+        winner converges far faster than rewording a prompt the model half-ignores. Validate the
+        raw generations first; upscale only the winner, then validate the final file again.
       </p>
       <div class="drop" id="drop">
-        <b>Paste, drop, or click</b> to load the candidate image<br>
-        <span class="note">JPG / PNG / WebP · portrait · short side ideally ≥ 1300px</span>
-        <input type="file" id="file" accept="image/*">
+        <b>Paste, drop, or click</b> to load candidate images (several at once is best)<br>
+        <span class="note">JPG / PNG / WebP · portrait · short side ideally ≥ 1300px · up to 8 at a time</span>
+        <input type="file" id="file" accept="image/*" multiple>
       </div>
+      <div class="hidden" id="candStrip" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"></div>
       <div class="val-layout hidden" id="valResults" style="margin-top:18px">
         <div>
           <img class="preview" id="valPreview" alt="Candidate template">
@@ -1919,10 +1921,9 @@ drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add(
 drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', e => {
   e.preventDefault(); drop.classList.remove('over');
-  const f = e.dataTransfer.files && e.dataTransfer.files[0];
-  if (f) loadFile(f);
+  if (e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
 });
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files.length) loadFiles(fileInput.files); });
 window.addEventListener('paste', e => {
   for (const item of e.clipboardData.items) {
     if (item.type.startsWith('image/')) {
@@ -1943,6 +1944,75 @@ function loadFile(f) {
   img.src = url;
 }
 
+/* ---- batch mode: validate several candidates, rank, keep the winner ----
+   The corrected-prompt loop assumes the generator obeys corrections; in
+   practice it half-ignores them, so iteration doesn't converge. Sampling
+   does: every candidate gets the full analysis, the strip shows them
+   ranked best-first, and the best one is opened automatically. */
+let candidates = [];
+async function loadFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/')).slice(0, 8);
+  if (!files.length) return;
+  if (files.length === 1) { loadFile(files[0]); return; }
+  candidates = [];
+  document.getElementById('candStrip').classList.add('hidden');
+  for (let k = 0; k < files.length; k++) {
+    drop.querySelector('b').textContent = 'Analysing candidate ' + (k + 1) + ' of ' + files.length + '…';
+    await new Promise(r => setTimeout(r, 30));
+    const url = URL.createObjectURL(files[k]);
+    let img;
+    try {
+      img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    } catch (e) { continue; }
+    runValidationCore(img, url);
+    candidates.push({
+      name: files[k].name || ('candidate ' + (k + 1)), url,
+      fails: lastVerdict ? lastVerdict.fails : 99,
+      warns: lastVerdict ? lastVerdict.warns : 99,
+      deep: analysis && analysis.deepShadowPct ? analysis.deepShadowPct : 0,
+    });
+  }
+  drop.querySelector('b').textContent = 'Paste, drop, or click';
+  if (!candidates.length) return;
+  const score = c => c.fails * 1000 + c.warns * 10 + c.deep / 100;
+  candidates.sort((a, b) => score(a) - score(b));
+  renderCandStrip(0);
+  selectCandidate(0);
+}
+function renderCandStrip(sel) {
+  const host = document.getElementById('candStrip');
+  host.classList.remove('hidden');
+  host.innerHTML = '';
+  candidates.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px;'
+      + 'border-radius:10px;cursor:pointer;background:var(--sunk);'
+      + 'border:2px solid ' + (i === sel ? 'var(--accent)' : 'var(--line)') + ';';
+    const im = document.createElement('img');
+    im.src = c.url; im.alt = c.name;
+    im.style.cssText = 'width:58px;height:78px;object-fit:cover;border-radius:6px;display:block;';
+    const tag = document.createElement('span');
+    const st = c.fails ? 'fail' : (c.warns ? 'warn' : 'ok');
+    tag.className = 'tag';
+    tag.style.cssText = 'font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;'
+      + (st === 'ok' ? 'background:var(--ok-soft);color:var(--ok);'
+        : st === 'warn' ? 'background:var(--warn-soft);color:var(--warn);'
+        : 'background:var(--fail-soft);color:var(--fail);');
+    tag.textContent = (i === 0 ? '★ ' : '') + (c.fails ? c.fails + ' FAIL' : c.warns ? c.warns + ' WARN' : 'PASS');
+    b.appendChild(im); b.appendChild(tag);
+    b.addEventListener('click', () => { renderCandStrip(i); selectCandidate(i); });
+    host.appendChild(b);
+  });
+}
+function selectCandidate(i) {
+  const c = candidates[i];
+  if (!c) return;
+  const img = new Image();
+  img.onload = () => { runValidationCore(img, c.url); };
+  img.src = c.url;
+}
+
 function checkRow(status, label, num) {
   return `<div class="check ${status}"><span class="tag">${status.toUpperCase()}</span><span>${label}</span><span class="num">${num}</span></div>`;
 }
@@ -1950,6 +2020,13 @@ function checkRow(status, label, num) {
 function runValidation(img, url) {
   drop.querySelector('b').textContent = 'Analysing… (a few seconds)';
   setTimeout(() => {
+    runValidationCore(img, url);
+    drop.querySelector('b').textContent = 'Paste, drop, or click';
+  }, 30);
+}
+
+function runValidationCore(img, url) {
+  {
     const a = analyze(img);
     analysis = a;
     document.getElementById('valResults').classList.remove('hidden');
@@ -2031,7 +2108,7 @@ function runValidation(img, url) {
     const v = document.getElementById('verdict');
     if (fails) {
       v.className = 'verdict fail';
-      v.innerHTML = 'FAIL — regenerate with the corrected prompt below.<small>Do not upscale or hand this one over.</small>';
+      v.innerHTML = 'FAIL — generate a fresh batch and drop them all here.<small>With current generators a new batch of 3–4 beats a reworded retry; the corrected prompt below is a nudge, not a guarantee. Do not upscale or hand this one over.</small>';
       document.getElementById('tryStep').classList.add('hidden');
       document.getElementById('pushStep').classList.add('hidden');
       showFixPrompt(broke);
@@ -2048,7 +2125,6 @@ function runValidation(img, url) {
       setupTry();
       renderMeta();
     }
-    drop.querySelector('b').textContent = 'Paste, drop, or click';
     // maps
     if (!a.noGarment) {
       const mw = document.getElementById('mapWeight'), ms = document.getElementById('mapShade');
@@ -2060,7 +2136,7 @@ function runValidation(img, url) {
         x.putImageData(im, 0, 0);
       }
     }
-  }, 30);
+  }
 }
 
 /* ============ STEP 3 — TRY RECOLOURS ============ */
