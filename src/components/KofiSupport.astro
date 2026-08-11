@@ -70,6 +70,35 @@ const { variant = 'footer' } = Astro.props;
   </p>
 )}
 
+<script>
+  // One delegated listener covers every placement (footer / about / export),
+  // however many times this component is rendered on the page — Astro
+  // dedupes identical inline scripts, and the flag below is a backstop for
+  // that in case it ever isn't. Fires a GA4 event only; the D1-backed
+  // /stats endpoint is shaped around exported images (garment/template/
+  // quality columns) and a button click has none of those, so it stays out
+  // of that table rather than forcing a fit.
+  //
+  // Same notrack opt-out as export tracking in Editor.astro, so testing
+  // this component locally does not inflate the count — see MONETIZATION-
+  // PLAN.md §3 on how expensive that mistake was to untangle once.
+  if (!window.__kofiClickBound) {
+    window.__kofiClickBound = true;
+    document.addEventListener('click', (event) => {
+      const link = event.target.closest('[data-kofi-placement]');
+      if (!link) return;
+      try {
+        if (localStorage.getItem('teemockup_notrack') === '1') return;
+      } catch (e) { /* no-op */ }
+      try {
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'kofi_click', { placement: link.dataset.kofiPlacement });
+        }
+      } catch (e) { /* no-op */ }
+    });
+  }
+</script>
+
 <style is:global>
   /* ─── KO-FI SUPPORT ─── */
   .kofi-link {
