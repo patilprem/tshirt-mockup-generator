@@ -1116,6 +1116,22 @@ const TEMPLATES = [
         if (fl > wMap[i]) wMap[i] = fl;
       }
 
+      // ---- silhouette confinement: the mask's universe, stated once ----
+      // The garment is the violet region plus the narrow measured boundary
+      // band around it (the matte ring, where edge pixels are physically
+      // part fabric). EVERYTHING beyond that is not the garment and its
+      // weight is hard zero — no completion, closing, floor or any future
+      // stage can paint there, whatever it believes. This is a guarantee
+      // about the OUTPUT, not another heuristic: speckle below a hem, a
+      // smudge wandering past a collar, any invention that escapes the
+      // stages above dies here by construction. Enclosed folds are not
+      // `outside` and keep their full machinery; the underarm and hem
+      // channels sit within the band by construction (they are bounded by
+      // core on both sides, so no pixel in them is far from it).
+      for (let i = 0; i < N; i++) {
+        if (outside[i] && distC[i] === -1) wMap[i] = 0;
+      }
+
       // The own-value blend, computed once and shared by the weight map's B
       // channel and the chroma QA gate below. One array rather than the same
       // expression written twice: the gate exists to catch this value going
