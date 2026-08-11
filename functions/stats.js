@@ -17,6 +17,7 @@
 // places. Here the total leads, everything under it is a breakdown of that
 // total, and the full grid of raw figures is kept at the bottom.
 import { ensureExportStats } from './_export-stats.js';
+import { ensureKofiClicks } from './_kofi-stats.js';
 
 const COOKIE = 'teemockup_stats';
 
@@ -146,6 +147,11 @@ export async function onRequestGet(context) {
   } catch {
     /* read-only or unavailable DB — fall through and show what can be read */
   }
+  try {
+    await ensureKofiClicks(db);
+  } catch {
+    /* same — read-only or unavailable DB */
+  }
 
   let rows;
   try {
@@ -154,6 +160,15 @@ export async function onRequestGet(context) {
       .all()).results || [];
   } catch {
     rows = []; // table not created yet — no exports tracked so far
+  }
+
+  let kofiRows;
+  try {
+    kofiRows = (await db
+      .prepare('SELECT day, placement, count FROM kofi_clicks ORDER BY day')
+      .all()).results || [];
+  } catch {
+    kofiRows = []; // table not created yet — no clicks tracked so far
   }
 
   const now = new Date();
@@ -216,6 +231,28 @@ export async function onRequestGet(context) {
     modeRuns.variants[name] = sum((r) => isBatch(r) && r.mode === 'variants', w, 'count');
     modeRuns.designs[name] = sum((r) => isBatch(r) && r.mode === 'designs', w, 'count');
   }
+
+  // ---- ko-fi clicks ---------------------------------------------------------
+  // A click is not an image: not folded into totalImages above, not shown as
+  // a percentage of it. Two different units, kept in two different sections
+  // so they are never silently added together.
+  const PLACEMENT_LABELS = { footer: 'Footer', about: 'About page', export: 'Download modal' };
+  const sumKofi = (placement, w) =>
+    kofiRows.filter((r) => r.placement === placement).filter(inWindow(w)).reduce((a, r) => a + (r.count || 0), 0);
+  const kofiByPlacement = {};
+  for (const p of Object.keys(PLACEMENT_LABELS)) {
+    kofiByPlacement[p] = {};
+    for (const [name, w] of Object.entries(WINDOWS)) kofiByPlacement[p][name] = sumKofi(p, w);
+  }
+  const kofiTotal = {};
+  for (const name of Object.keys(WINDOWS)) {
+    kofiTotal[name] = Object.keys(PLACEMENT_LABELS).reduce((a, p) => a + kofiByPlacement[p][name], 0);
+  }
+  const byPlacement = Object.keys(PLACEMENT_LABELS)
+    .map((p) => ({ label: PLACEMENT_LABELS[p], v: kofiByPlacement[p].all }))
+    .filter((x) => x.v > 0)
+    .sort((a, b) => b.v - a.v);
+  const kofiD7 = delta(kofiTotal.d7, kofiTotal.p7, '7 days before');
 
   const hasLegacy = images.legacy.all > 0;
   const shownSources = SOURCES.filter((s) => s.key !== 'legacy' || hasLegacy);
@@ -400,6 +437,9 @@ export async function onRequestGet(context) {
     { label: 'Batch runs', data: batchRuns, indent: 1 },
     { label: 'Batch — variants mode', data: modeRuns.variants, indent: 2 },
     { label: 'Batch — designs mode', data: modeRuns.designs, indent: 2 },
+    { label: 'Ko-fi clicks', data: null, spacer: true },
+    { label: 'Total', data: kofiTotal, indent: 1 },
+    ...Object.keys(PLACEMENT_LABELS).map((p) => ({ label: PLACEMENT_LABELS[p], data: kofiByPlacement[p], indent: 2 })),
   ];
 
   const metricTable = `
@@ -504,6 +544,21 @@ export async function onRequestGet(context) {
     <section class="card">
       <h2>Export sizes <span class="sub">all time · every export, flat lay and on model${qualities.length > bySize.length ? ` · top ${bySize.length} of ${qualities.length}` : ''}</span></h2>
       ${ranked(bySize, 'neutral', 'No sizes recorded yet.')}
+    </section>
+
+    <section class="card">
+      <h2>Ko-fi clicks <span class="sub">first-party, ad-blocker-proof</span></h2>
+      ${
+        kofiTotal.all
+          ? `<div class="tiles">
+              ${tile('Today', kofiTotal.today, null)}
+              ${tile('Last 7 days', kofiTotal.d7, kofiD7)}
+              ${tile('All time', kofiTotal.all, null)}
+            </div>
+            <div style="margin-top: 20px;">${ranked(byPlacement, 'neutral', 'No placement recorded yet.')}</div>
+            <p class="note">A click, not an exported image — not counted toward the totals above and not implied to convert into a tip. The download-modal placement only shows on exports where the quality picker itself shows, which is not every export.</p>`
+          : '<p class="empty">No Ko-fi clicks tracked yet — the first click will land here.</p>'
+      }
     </section>
 
     <section class="card">
