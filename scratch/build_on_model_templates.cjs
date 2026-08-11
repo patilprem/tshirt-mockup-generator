@@ -120,15 +120,31 @@ const TEMPLATES = [
       const ad = (a, b) => { let d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
       const smooth = (x, a, b) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-      // dominant saturated hue = the shirt's key colour
+      // Dominant saturated hue = the shirt's key colour — searched ONLY in
+      // the violet corridor, because the garment is violet BY CONSTRUCTION
+      // (the whole pipeline is a violet-key system) and an open argmax is
+      // winner-take-one-bin: on a tight framing with lots of skin, the
+      // shirt's violet spreads over several 10-degree bins as its shading
+      // shifts hue while skin concentrates into one, and the key latched
+      // onto the model's FACE — every downstream stage then masked skin as
+      // garment. Bins are smoothed circularly so a split violet cannot
+      // lose to a concentrated one, and the final hue is the centroid of
+      // the winning neighbourhood rather than a bin centre.
       const bins = new Float64Array(36);
       for (let i = 0; i < N; i++) {
         const o = i * 4; const [h, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
         if (s > 0.25 && v > 0.15) bins[Math.floor(h / 10) % 36] += s * v;
       }
-      let bb = 0, bv = -1;
-      for (let i = 0; i < 36; i++) if (bins[i] > bv) { bv = bins[i]; bb = i; }
-      const shirtHue = bb * 10 + 5;
+      let bb = 23, bv = -1;
+      for (let i = 0; i < 36; i++) {
+        const h0 = i * 10 + 5;
+        if (h0 < 235 || h0 > 325) continue;
+        const sc = bins[(i + 35) % 36] * 0.5 + bins[i] + bins[(i + 1) % 36] * 0.5;
+        if (sc > bv) { bv = sc; bb = i; }
+      }
+      let hMass = 0, hSum = 0;
+      for (const k of [(bb + 35) % 36, bb, (bb + 1) % 36]) { hMass += bins[k]; hSum += bins[k] * (k * 10 + 5); }
+      const shirtHue = Math.round(hMass > 0 ? hSum / hMass : bb * 10 + 5);
 
       // per-pixel shirt weight: hue proximity gated by saturation and value.
       // Deliberately soft — the runtime uses it as a linear mixing fraction,

@@ -825,6 +825,11 @@ function analyze(img) {
   ctx.drawImage(img, 0, 0, W, H);
   const src = ctx.getImageData(0, 0, W, H).data;
 
+  // Key hue searched ONLY in the violet corridor — the garment is violet
+  // by construction, and an open winner-take-one-bin argmax let a tight
+  // framing full of skin out-vote a shirt whose violet spread over
+  // several bins: the key latched onto the model's FACE. Smoothed
+  // circularly, centroid-refined. Kept in step with the builder.
   const bins = new Float64Array(36);
   const hA = new Float32Array(N), sA = new Float32Array(N), vA = new Float32Array(N);
   for (let i = 0; i < N; i++) {
@@ -832,9 +837,16 @@ function analyze(img) {
     hA[i] = h; sA[i] = s; vA[i] = v;
     if (s > 0.25 && v > 0.15) bins[Math.floor(h / 10) % 36] += s * v;
   }
-  let bb = 0, bv = -1;
-  for (let i = 0; i < 36; i++) if (bins[i] > bv) { bv = bins[i]; bb = i; }
-  const shirtHue = bb * 10 + 5;
+  let bb = 23, bv = -1;
+  for (let i = 0; i < 36; i++) {
+    const h0 = i * 10 + 5;
+    if (h0 < 235 || h0 > 325) continue;
+    const sc = bins[(i + 35) % 36] * 0.5 + bins[i] + bins[(i + 1) % 36] * 0.5;
+    if (sc > bv) { bv = sc; bb = i; }
+  }
+  let hMass = 0, hSum = 0;
+  for (const k of [(bb + 35) % 36, bb, (bb + 1) % 36]) { hMass += bins[k]; hSum += bins[k] * (k * 10 + 5); }
+  const shirtHue = Math.round(hMass > 0 ? hSum / hMass : bb * 10 + 5);
 
   const wRaw = new Float32Array(N);
   for (let i = 0; i < N; i++) {
