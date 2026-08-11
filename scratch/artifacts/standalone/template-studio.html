@@ -284,16 +284,18 @@
     <section class="step">
       <div class="step-head"><span class="step-num">STEP 2</span><h2>Validate the image</h2></div>
       <p class="sub">
-        Paste (Ctrl/Cmd-V anywhere on this page), drop, or pick the generated image. This runs
-        the same analysis as the build pipeline — same thresholds, same verdicts. Validate the
-        raw generation first; if it passes, upscale it, remove the watermark, and validate the
-        final file again before handing it over.
+        Paste (Ctrl/Cmd-V anywhere on this page), drop, or pick generated images — you can drop
+        a WHOLE BATCH at once. Each candidate is validated with the exact pipeline analysis and
+        the batch is ranked best-first: with current generators, sampling 3–4 and keeping the
+        winner converges far faster than rewording a prompt the model half-ignores. Validate the
+        raw generations first; upscale only the winner, then validate the final file again.
       </p>
       <div class="drop" id="drop">
-        <b>Paste, drop, or click</b> to load the candidate image<br>
-        <span class="note">JPG / PNG / WebP · portrait · short side ideally ≥ 1300px</span>
-        <input type="file" id="file" accept="image/*">
+        <b>Paste, drop, or click</b> to load candidate images (several at once is best)<br>
+        <span class="note">JPG / PNG / WebP · portrait · short side ideally ≥ 1300px · up to 8 at a time</span>
+        <input type="file" id="file" accept="image/*" multiple>
       </div>
+      <div class="hidden" id="candStrip" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"></div>
       <div class="val-layout hidden" id="valResults" style="margin-top:18px">
         <div>
           <img class="preview" id="valPreview" alt="Candidate template">
@@ -825,6 +827,11 @@ function analyze(img) {
   ctx.drawImage(img, 0, 0, W, H);
   const src = ctx.getImageData(0, 0, W, H).data;
 
+  // Key hue searched ONLY in the violet corridor — the garment is violet
+  // by construction, and an open winner-take-one-bin argmax let a tight
+  // framing full of skin out-vote a shirt whose violet spread over
+  // several bins: the key latched onto the model's FACE. Smoothed
+  // circularly, centroid-refined. Kept in step with the builder.
   const bins = new Float64Array(36);
   const hA = new Float32Array(N), sA = new Float32Array(N), vA = new Float32Array(N);
   for (let i = 0; i < N; i++) {
@@ -832,9 +839,16 @@ function analyze(img) {
     hA[i] = h; sA[i] = s; vA[i] = v;
     if (s > 0.25 && v > 0.15) bins[Math.floor(h / 10) % 36] += s * v;
   }
-  let bb = 0, bv = -1;
-  for (let i = 0; i < 36; i++) if (bins[i] > bv) { bv = bins[i]; bb = i; }
-  const shirtHue = bb * 10 + 5;
+  let bb = 23, bv = -1;
+  for (let i = 0; i < 36; i++) {
+    const h0 = i * 10 + 5;
+    if (h0 < 235 || h0 > 325) continue;
+    const sc = bins[(i + 35) % 36] * 0.5 + bins[i] + bins[(i + 1) % 36] * 0.5;
+    if (sc > bv) { bv = sc; bb = i; }
+  }
+  let hMass = 0, hSum = 0;
+  for (const k of [(bb + 35) % 36, bb, (bb + 1) % 36]) { hMass += bins[k]; hSum += bins[k] * (k * 10 + 5); }
+  const shirtHue = Math.round(hMass > 0 ? hSum / hMass : bb * 10 + 5);
 
   const wRaw = new Float32Array(N);
   for (let i = 0; i < N; i++) {
@@ -1000,9 +1014,19 @@ function analyze(img) {
         // the widening only applies to dark pixels and denim is bright.
         const lim = d >= 0 ? 65 : 45 + 25 * (1 - smooth(vA[i], 0.10, 0.30));
     const a = Math.abs(d);
+    // Hue and saturation are RATIOS: at 13,13,15 a "saturation" of 0.46 is
+    // six levels of codec chroma noise wearing a hue angle. Both terms
+    // below identify fabric from that angle, so both are gated by the
+    // chroma actually present — otherwise unrel says "no information" and
+    // the weight says "certainly fabric" about the same pixel, which is
+    // what rendered hair beside a collar as a grey band on a white shirt.
+    // Kept in step with build_on_model_templates.cjs.
+    const chromaAbs = Math.max(src[i * 4], src[i * 4 + 1], src[i * 4 + 2])
+      - Math.min(src[i * 4], src[i * 4 + 1], src[i * 4 + 2]);
+    const chromaOK = smooth(chromaAbs, 6, 14);
     const wide = (a <= 30 ? 1 : a >= lim ? 0 : 0.5 + 0.5 * Math.cos((a - 30) / (lim - 30) * Math.PI))
-      * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08);
-    const dark = (a < 80 ? 1 : 0) * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34));
+      * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08) * chromaOK;
+    const dark = (a < 80 ? 1 : 0) * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34)) * chromaOK;
     const enclosed = (!core[i] && !outside[i])
       ? (1 - smooth(sA[i], 0.10, 0.20)) * (1 - smooth(vA[i], 0.16, 0.28)) : 0;
     // border-connected background never takes the clip floor — letting it
@@ -1129,6 +1153,15 @@ function analyze(img) {
   // real seam shadows) keep their photographic reality via low confidence.
   const lutVm = relightLut(violetBase, { ambientTint, relMax: REL_MAX });
   const RING = Math.max(4, Math.round(W / 220));
+  // The matte is SOLVED out to twice the bake ring. Within RING its
+  // answer is acted on in full — weight and photo bake. In the outer
+  // half it is measurement only: mAlpha/mConf are recorded so the cap
+  // after the completion can hold invention down to what the matte saw
+  // (dark hair lying on a collar solves confidently to alpha ~0 ten
+  // pixels out, exactly where the completion otherwise invents), but
+  // no bake touches the photograph there — rewriting hair texture to
+  // a diffused mix would smear it.
+    const RING2 = RING * 2;
   const distC = new Int16Array(N).fill(-1);
   {
     let qh = 0, qt = 0;
@@ -1137,7 +1170,7 @@ function analyze(img) {
     while (qh < qt) {
       const cx3 = qxx[qh], cy3 = qyy[qh]; qh++;
       const dd = distC[cy3 * W + cx3];
-      if (dd >= RING) continue;
+      if (dd >= RING2) continue;
       for (const [nx, ny] of [[cx3 + 1, cy3], [cx3 - 1, cy3], [cx3, cy3 + 1], [cx3, cy3 - 1]]) {
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const ni = ny * W + nx;
@@ -1156,7 +1189,7 @@ function analyze(img) {
       have[i] = 1; fd[i] = 0; const o = i * 4;
       out[i * 3] = src[o]; out[i * 3 + 1] = src[o + 1]; out[i * 3 + 2] = src[o + 2];
     }
-    for (let pass = 0; pass < RING + 6; pass++) {
+    for (let pass = 0; pass < RING2 + 6; pass++) {
       const nh = new Uint8Array(have);
       for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
         const i = y * W + x;
@@ -1246,8 +1279,199 @@ function analyze(img) {
     if (u > 0.5 && !core[i]) crevice[i] = 1;
   }
 
+  // ---- occluder regions: connectivity as the missing information ----
+  // `unrel` calls a near-black neutral pixel information-free, and the
+  // closing and completion below then INVENT weight there by diffusion
+  // from whatever fabric it touches. For a fold enclosed by the garment
+  // that is the right call. For dark hair lying over a collar, or a
+  // shadowed hand resting beside a hem, it is exactly wrong — it is
+  // what painted a soft recoloured plume up into the hair on every
+  // dark-haired model: the pixel's own colour says nothing, so the
+  // completion happily relaxed garment weight across it. But the
+  // pixel's NEIGHBOURHOOD says everything: a hair mass is BOUNDED by
+  // hair that still shows the warm ordering (R above G above B) — a
+  // signature violet fabric can never produce, since violet's lowest
+  // channel is green — while a shadow crease is bounded by fabric.
+  //
+  // The decision is by DISTANCE TO EVIDENCE, never a per-pixel wall.
+  // A first version flooded pixel-by-pixel from warm seeds behind
+  // per-pixel violet walls, and on a real generation those walls are
+  // exactly as reliable as the codec: on a muted, noisier source the
+  // violet signature in deep shadow drops below any fixed threshold,
+  // single-pixel breaches let the flood pour into genuine fabric
+  // shadow, and the mask grew black bites along sleeve edges and a
+  // hole in the middle of a hoodie's side fold. A second version voted
+  // once per connected region, and failed the other way: hair and dark
+  // background merge into one huge region whose single verdict is
+  // decided by a global ratio that any busy scene can tip.
+  //
+  // So each information-free pixel takes its identity from whichever
+  // evidence is NEARER, measured through the dark region itself: a
+  // two-source BFS from every boundary pixel showing warm evidence and
+  // every boundary pixel showing fabric evidence. Frozen only where
+  // warm is clearly nearer (twice as near, strictly), so the middle of
+  // an ambiguous channel — between an arm and the torso, where the
+  // completion's spatial interpolation is the right answer — stays
+  // unfrozen, as does everything within reach of a crease's
+  // violet-signature penumbra. A stray warm vote inside a crease
+  // freezes nothing, because fabric evidence is just as near; a stray
+  // fabric vote inside hair protects only its own little disc, which
+  // the completion then pulls to the frozen weight around it.
+  //
+  // Frozen regions get unrel = 0 and nothing else. Nothing is ever
+  // subtracted — weight the union's evidence terms already granted
+  // survives untouched. The closing cannot lift a frozen pixel, and
+  // the completion holds it as a fixed anchor instead of relaxing
+  // garment weight across it — which kills the plume at its only
+  // source, the invention. Confined to `outside` pixels, so an
+  // enclosed fold can never be reached and every crevice guarantee
+  // above is untouched.
+  const occluder = new Uint8Array(N);
+  {
+    // Region membership: pixels the completion would act on (unrel),
+    // outside the garment, carrying no violet evidence of any kind.
+    // The two ordering tests are violet-family signatures at their
+    // noise floor: green strictly lowest = violet at any brightness;
+    // blue strictly above both = the same fabric once crease shadow
+    // has shifted it blue-ward (beach-m's underarm reads 15,17,27).
+    // Here they only shape the region — a breach costs one pixel's
+    // vote, not a hole.
+    const unk = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!outside[i] || core[i]) continue;
+      if (unrel[i] <= 0.05 || orderEv[i] >= 0.15 || wRaw[i] >= 0.30) continue;
+      const o = i * 4;
+      if (Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) >= 4) continue;
+      if (src[o + 2] - Math.max(src[o], src[o + 1]) >= 3) continue;
+      // the same ordering read RELATIVE to the pixel's own brightness: a
+      // muted generation's shadowed fabric can hold green lowest by only
+      // 2 levels at 30 brightness, under every absolute floor — 6% of its
+      // own maximum is still unreachable for hair and skin
+      const vm = Math.max(src[o], src[o + 1], src[o + 2]);
+      if (vm >= 12 && Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) / vm >= 0.06) continue;
+      unk[i] = 1;
+    }
+    // Boundary evidence classes. Fabric evidence is the core, real
+    // recolour weight, or either violet ordering; warm evidence is the
+    // skin/hair/wood ordering with enough margin to be no accident.
+    // Bright background is evidence for no one — the taper owns it.
+    const isFab = ni => {
+      const o = ni * 4;
+      const vm = Math.max(src[o], src[o + 1], src[o + 2]);
+      return core[ni] || wMap[ni] > 0.45
+        || Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) >= 4
+        || src[o + 2] - Math.max(src[o], src[o + 1]) >= 3
+        || (vm >= 12 && Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) / vm >= 0.06);
+    };
+    // Two margins for the warm ordering: the loose one (8 levels of
+      // R over B) is evidence for the distance field — near-black hair
+      // holds R over B by single digits, and demanding more left the
+      // field so sparse that half a hair mass measured nearer to the
+      // collar than to its own colour. The strict margin stays in
+      // reserve for nothing: violet can never reach either (its R sits
+      // below B), so the loose test is still unreachable from fabric.
+      const isWarm = ni => {
+        const o = ni * 4;
+        return src[o] - src[o + 2] >= 8 && src[o] - src[o + 1] >= 3 && vA[ni] < 0.75;
+      };
+    const dwarm = new Int32Array(N).fill(-1);
+    const dfab = new Int32Array(N).fill(-1);
+    const bfs = (dist, isSeedClass) => {
+      const q = new Int32Array(N);
+      let qh = 0, qt = 0;
+      for (let i = 0; i < N; i++) {
+        if (!unk[i]) continue;
+        const x = i % W;
+        for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+          if (ni < 0 || ni >= N || unk[ni]) continue;
+          if (isSeedClass(ni)) { dist[i] = 0; q[qt++] = i; break; }
+        }
+      }
+      while (qh < qt) {
+        const i = q[qh++];
+        const dd = dist[i], x = i % W;
+        for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+          if (ni < 0 || ni >= N || !unk[ni] || dist[ni] !== -1) continue;
+          dist[ni] = dd + 1; q[qt++] = ni;
+        }
+      }
+    };
+    bfs(dwarm, isWarm);
+    bfs(dfab, isFab);
+    // Second signal: WHO SURROUNDS the region. The distance rule fails
+    // exactly where the user keeps seeing shadow enter the mask — the
+    // chin/neck shadow above a collar sits a few pixels from skin AND
+    // a few pixels from fabric, so neither is decisively nearer. But
+    // its boundary composition is unambiguous: skin on almost every
+    // side, fabric only in the thin collar edge below. A crease is the
+    // mirror image (fabric all around), and the arm-torso channel is
+    // balanced — which correctly stays with the completion. Counted
+    // per connected component; a component whose informative boundary
+    // is overwhelmingly warm is an occluder-shadow, however its
+    // distances measure.
+    const comp = new Int32Array(N).fill(-1);
+    const compVote = [];
+    {
+      const q2 = new Int32Array(N);
+      for (let s0 = 0; s0 < N; s0++) {
+        if (!unk[s0] || comp[s0] !== -1) continue;
+        const id = compVote.length;
+        let qh = 0, qt = 0, warmN = 0, fabN = 0;
+        q2[qt++] = s0; comp[s0] = id;
+        while (qh < qt) {
+          const i = q2[qh++];
+          const x = i % W;
+          for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+            if (ni < 0 || ni >= N) continue;
+            if (unk[ni]) { if (comp[ni] === -1) { comp[ni] = id; q2[qt++] = ni; } continue; }
+            if (isFab(ni)) fabN++;
+            else if (isWarm(ni)) warmN++;
+          }
+        }
+        const frac = warmN / Math.max(1, warmN + fabN);
+        compVote.push(smooth(frac, 0.62, 0.82) * smooth(warmN, 8, 20));
+      }
+    }
+      // Freeze where warm evidence is decisively nearer, and also where
+      // it is merely nearer AND fabric is beyond the matte ring's reach
+      // (~8px): inside that band the matte and the completion own the
+      // answer, beyond it any weight would be pure invention, so a
+      // region that measures closer to hair than to fabric there is
+      // hair. Both cases still require warm evidence to be reachable at
+      // all, which fabric-enclosed folds never satisfy.
+      // Freeze STRENGTH, not a freeze verdict — a yes/no test on integer
+      // hop counts printed its own contours into the weight as a blocky
+      // staircase, so the rule is a smooth 0..1 term scaling unrel. Only
+      // the DECISIVE rule survives: warm evidence at most half as far as
+      // fabric evidence. A looser rule (warm merely nearer) bit a ragged
+      // notch out of a muted generation's shadowed sleeve, whose blurred
+      // warm trees measured nearer than its own washed-out violet. When
+      // the distances are comparable the pixel stays with the completion —
+      // the conservative failure is a faint haze, not a broken edge.
+      for (let i = 0; i < N; i++) {
+        if (!unk[i] || dwarm[i] === -1) continue;
+        const df2 = dfab[i] === -1 ? 999 : dfab[i];
+        const s = Math.max(smooth(df2 - 2 * dwarm[i], 0, 4), compVote[comp[i]] || 0);
+        if (s > 0) {
+          unrel[i] *= 1 - s;
+          if (s > 0.5) occluder[i] = 1;
+        }
+      }
+  }
+
+
   const alphaA = new Float32Array(N), confA = new Float32Array(N);
+  // Two confidences per ring pixel. mConfS carries the SHIPPED gate:
+  // the background estimate must come from within RING+4 hops, which
+  // is the invariant that lets the matte PAINT (bake, weight blend,
+  // floor) — a far-travelled background is a guess, and painting from
+  // a guessed endpoint put a comb of white teeth in the torso-arm gap.
+  // mConf carries the relaxed RING2 gate and feeds ONLY the cap, which
+  // can lower weight but never add it — safe with a weaker endpoint.
   const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
+  const mConfS = new Float32Array(N), mAlphaE = new Float32Array(N);
+  // brightness-corroborated coverage ceiling per ring pixel (see below)
+  const mLumCap = new Float32Array(N).fill(1);
   let wedgePx = 0;
   for (let i = 0; i < N; i++) if (ring[i]) {
     const o = i * 4;
@@ -1290,9 +1514,11 @@ function analyze(img) {
     const sep = Math.sqrt(den);
     const fgGap = Math.min(fgC[i * 3] - fgC[i * 3 + 1], fgC[i * 3 + 2] - fgC[i * 3 + 1]);
     let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGap, 3, 14);
-    conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING + 1, RING + 4);
     if (fgF.fd[i] < 0) conf = 0;
-    if (vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING + 1)) wedgePx++;
+    const fdB = bgF.fd[i] < 0 ? 99 : bgF.fd[i];
+    const confS = conf * (1 - smooth(fdB, RING + 1, RING + 4));
+    conf *= 1 - smooth(fdB, RING2 + 1, RING2 + 4);
+    if (distC[i] <= RING && vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING2 + 1)) wedgePx++;
     // The matte's answer is recorded for EVERY ring pixel, before the crevice
     // veto below decides whether to act on it. Those are two different
     // questions. Acting on it means assigning the weight AND baking the pixel
@@ -1305,10 +1531,49 @@ function analyze(img) {
     // that band fell through to the completion, which interpolated across it
     // to mid weight — and mid weight over a dark shade is the broken dark line
     // that follows a hem in every colour.
-    mAlpha[i] = a2; mConf[i] = conf;
-    if (crevice[i]) continue;
-    alphaA[i] = a2; confA[i] = conf;
-    wMap[i] = conf * a2 + (1 - conf) * wMap[i];
+    // Low-alpha coverage must show violet in the PIXEL ITSELF. The
+    // wall in the garment's own cast shadow darkens along nearly the
+    // same line as mixing violet in does, and the matte read it as
+    // 10-30% fabric at good confidence — a glow band outside the
+    // sleeve and a grey wedge above the shoulder on a white recolour.
+    // A genuinely mixed pixel carries violet's green deficit in
+    // proportion to its coverage; a shadowed wall carries none. So an
+    // alpha below ~0.5 is honoured only as far as the pixel shows that
+    // deficit; strong alphas keep their own authority (their identity
+    // comes from sitting near the fabric endpoint, not from tint).
+    const gdP = Math.max(0, (src[o] + src[o + 2]) / 2 - src[o + 1]);
+    // Coverage must be corroborated by BRIGHTNESS. JPEG stores colour
+    // at half resolution, so a background pixel touching a saturated
+    // garment carries the garment's chroma while keeping its own
+    // luminance — the codec put the violet there, not the camera. The
+    // alpha solve runs in RGB and reads that tint as 10-30% coverage,
+    // which is why a sleeve corner bleeds under EVERY target colour:
+    // the delta painted is (target - violet), non-zero for all of
+    // them. Luminance is stored at full resolution and cannot bleed,
+    // so it is the honest witness: a genuinely part-fabric pixel is
+    // pulled toward the fabric's brightness, a chroma-bled one is not.
+    // Skipped where fabric and background are too close in brightness
+    // for the test to mean anything, and given a noise allowance so a
+    // real soft edge is never clipped. What remains tinted is handled
+    // by the existing neutralisation, which is target-independent and
+    // therefore cannot glow under any colour.
+    const yF = 0.299 * fgC[i * 3] + 0.587 * fgC[i * 3 + 1] + 0.114 * fgC[i * 3 + 2];
+    const yB = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+    const sepY = yF - yB;
+    let lumCap = 1;
+    if (Math.abs(sepY) >= 25) {
+      const yP = 0.299 * src[o] + 0.587 * src[o + 1] + 0.114 * src[o + 2];
+      lumCap = Math.max(0, Math.min(1, (yP - yB) / sepY + 0.12));
+    }
+    mLumCap[i] = lumCap;
+    const aEff = Math.min(a2 * Math.max(smooth(a2, 0.45, 0.7), smooth(gdP, 1.5, 4.5)), lumCap);
+    mAlpha[i] = a2; mConf[i] = conf; mConfS[i] = confS; mAlphaE[i] = aEff;
+    // Weight assignment and photo bake stay confined to the inner ring
+    // and to the STRICT confidence; the outer half of the ring and the
+    // relaxed confidence are measurement for the cap only.
+    if (crevice[i] || distC[i] > RING) continue;
+    alphaA[i] = aEff; confA[i] = confS;
+    wMap[i] = confS * aEff + (1 - confS) * wMap[i];
     evAny[i] = Math.max(evAny[i], wMap[i]);
   }
 
@@ -1349,6 +1614,22 @@ function analyze(img) {
       wMap[i] += (dil[i] - wMap[i]) * unrel[i];
   }
 
+  // ---- the garment's envelope: the core closed over its own gaps ----
+  // Closing bridges a gap only where fabric lies on BOTH sides of it,
+  // which is precisely what separates the two dark regions no colour
+  // rule can tell apart. The channel between a sleeve and the torso is
+  // bridged, so it belongs to the garment: it must be filled and it
+  // must survive the confinement, or a white recolour grows a black
+  // notch through the underarm. Hair above a shoulder has fabric only
+  // below it, is never bridged, and stays photographic. The radius
+  // spans an underarm channel and stays well under the neck opening,
+  // which must NOT be bridged.
+  const ENV = Math.max(10, Math.round(W / 20));
+  let envelope = new Uint8Array(N);
+  for (let i = 0; i < N; i++) envelope[i] = core[i];
+  for (let k = 0; k < ENV; k++) envelope = dil(envelope);
+  for (let k = 0; k < ENV; k++) envelope = ero(envelope);
+
   // ---- harmonic weight completion: the structural cure for speckle ----
   // Where a pixel's own reading is unreliable, its weight is not decided -
   // it is INTERPOLATED from confident neighbours by relaxing toward the
@@ -1361,17 +1642,80 @@ function analyze(img) {
   // A crevice enclosed by fabric relaxes to full garment weight; a dark
   // patch open to the background relaxes to zero; the transition between
   // them is smooth because a harmonic function has no jumps.
+  // EDGE-AWARE: each neighbour's contribution is scaled by a
+  // conductance that dies across a strong luminance step. The job is
+  // to identify the garment, recolour it, and leave everything else
+  // alone — and the one place the isotropic version broke that
+  // contract is diffusion straight across the garment's own occlusion
+  // edge: fabric at v=0.45 meets hair at v=0.10 in a two-pixel step,
+  // and weight walked over it into the hair as a soft recoloured
+  // plume. A crease has no such step — its shading changes by a
+  // hundredth or two per pixel — so conductance ~1 leaves every
+  // crevice completion exactly as it was, while the seam band's
+  // conductance ~0 means a hair pixel simply never hears from the
+  // fabric across the edge. Pixels sealed off on all four sides keep
+  // their base weight.
   {
     const idx = [];
     for (let i = 0; i < N; i++) if (unrel[i] > 0.01) idx.push(i);
     if (idx.length) {
+      // Conductance on the RELATIVE luminance step, not the absolute
+      // one. Illumination is multiplicative: shading across fabric
+      // changes by a few percent per pixel at any brightness, while an
+      // occlusion boundary is a factor. Measured absolutely, the hair
+      // edge above a collar (value 0.05 rising to 0.33 over five
+      // pixels) reads as five small steps and weight walked straight
+      // across it into the hair — the grey band on a white shirt. In
+      // relative terms that same edge is a 100%-per-pixel jump and a
+      // fold's shading is still a few percent, so one threshold
+      // separates them at every brightness, which no absolute one can.
+      // How far a genuine partial-coverage edge can reach: anti-aliasing
+      // and lens softness span a pixel or two, so within EDGE_PX of
+      // solid fabric a dark pixel is the garment's own edge and the
+      // completion must be free to fill it — restricting it there ate
+      // a black notch out of a shadowed sleeve. Beyond that distance a
+      // dark region is a different object (hair above a shoulder sits
+      // five to ten pixels out), and there the matte's answer stands.
+      const EDGE_PX = Math.max(2, Math.round(RING * 0.5));
+      const relStep = (u, v) => Math.abs(u - v) / (Math.min(u, v) + 0.02);
+      const cE = new Float32Array(N), cS = new Float32Array(N);
+      for (let i = 0; i < N; i++) {
+        const x = i % W;
+        cE[i] = x + 1 < W ? 1 - smooth(relStep(vA[i], vA[i + 1]), 0.30, 0.60) : 0;
+        cS[i] = i + W < N ? 1 - smooth(relStep(vA[i], vA[i + W]), 0.30, 0.60) : 0;
+      }
       const base = new Float32Array(wMap);
       for (let pass = 0; pass < 700; pass++) {
         for (let k = 0; k < idx.length; k++) {
           const i = idx[k], x = i % W;
           if (x < 1 || x >= W - 1 || i < W || i >= N - W) continue;
-          const avg = (wMap[i - 1] + wMap[i + 1] + wMap[i - W] + wMap[i + W]) * 0.25;
-          wMap[i] = (1 - unrel[i]) * base[i] + unrel[i] * avg;
+          const gw = cE[i - 1], ge = cE[i], gn = cS[i - W], gs = cS[i];
+          const gsum = gw + ge + gn + gs;
+          // A blocked direction pulls toward the pixel's OWN base, not
+          // toward whatever else happens to be reachable. Normalising
+          // by the conductance sum — the obvious way to write this —
+          // silently defeats the barrier: a pixel walled off on three
+          // sides still takes the full value of the fourth, because
+          // dividing by that one conductance restores its full vote.
+          // That is why weight kept walking across the hair edge even
+          // with the conductance in place. Charging the blocked share
+          // to base[i] makes the barrier real — where a pixel cannot
+          // see, it keeps what it had — while a crevice with open
+          // sides still equilibrates to the fabric around it.
+          const avg = (gw * wMap[i - 1] + ge * wMap[i + 1] + gn * wMap[i - W] + gs * wMap[i + W]
+            + (4 - gsum) * base[i]) / 4;
+          const v = (1 - unrel[i]) * base[i] + unrel[i] * avg;
+          // Inside the boundary band the MATTE is the authority: it
+          // solved those pixels against the fabric and background it
+          // measured either side, and the completion's job there is
+          // only to remove speckle, never to invent coverage. Letting
+          // it raise them is what put a grey band over the hair beside
+          // a collar — the matte had already answered ~0 and the
+          // completion overwrote it with 0.6 by averaging along the
+          // band. So in the band the completion may only lower; the
+          // garment's interior, where crevices genuinely need filling
+          // from their surroundings, is untouched by this.
+          wMap[i] = (!envelope[i] && distC[i] > EDGE_PX) ? Math.min(v, base[i]) : v;
         }
       }
     }
@@ -1428,11 +1772,31 @@ function analyze(img) {
   }
 
   // metrics
-  let missed = 0, skin = 0, gN = 0, deepN = 0, blownN = 0, coreN = 0, bgPaint = 0;
+  // Deep shadow next to hair or skin is measured separately from deep
+  // shadow in the open garment: the occluder machinery renders it
+  // photographically, so it no longer belongs in the hard-shadow gate —
+  // counting it just rejected every long-haired model. Kept in step with
+  // build_on_model_templates.cjs.
+  const nearHair = new Uint8Array(N);
+  {
+    let m2 = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (occluder[i]) { m2[i] = 1; continue; }
+      const o = i * 4;
+      if (src[o] - src[o + 2] >= 8 && src[o] - src[o + 1] >= 3 && vA[i] < 0.5) m2[i] = 1;
+    }
+    const HR = Math.max(6, Math.round(W / 60));
+    for (let k = 0; k < HR; k++) m2 = dil(m2);
+    nearHair.set(m2);
+  }
+  let missed = 0, skin = 0, gN = 0, deepN = 0, deepHairN = 0, blownN = 0, coreN = 0, bgPaint = 0;
   for (let i = 0; i < N; i++) {
     if (sA[i] > 0.25 && vA[i] > 0.15 && ad(hA[i], shirtHue) < 30 && wMap[i] < 0.3) missed++;
     if (sA[i] > 0.15 && sA[i] < 0.55 && vA[i] > 0.30 && ad(hA[i], 25) < 25 && wMap[i] > 0.7) skin++;
-    if (wMap[i] > 0.04 || clip[i] > 0.04) { gN++; if (vA[i] < 0.16) deepN++; }
+    if (wMap[i] > 0.04 || clip[i] > 0.04) {
+      gN++;
+      if (vA[i] < 0.16) { if (nearHair[i]) deepHairN++; else deepN++; }
+    }
     if (core[i]) { coreN++; if (vA[i] > 0.92 && sA[i] < 0.14) blownN++; }
     if (outside[i] && !crevice[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
   }
@@ -1472,6 +1836,28 @@ function analyze(img) {
     fitSum += (Math.abs(src[o] - vr) + Math.abs(src[o + 1] - vg) + Math.abs(src[o + 2] - vb2)) / 3;
     fitCnt++;
   }
+
+  // The matte's answer as a CAP — the exact mirror of the matte floor
+  // below, and the stage that finally owns the band the distance test
+  // cannot call: hair lying ON the collar, nearer to fabric evidence
+  // than to its own colour's. The matte solved that band directly —
+  // a hair pixel matches its dark background endpoint at alpha ~0 with
+  // real confidence, because the endpoints there are far apart and the
+  // fabric endpoint keeps violet's green deficit. Where it is
+  // confident, invention may not exceed its answer. Lowering-only, in
+  // the same monotone form as the floors, and applied BEFORE them: the
+  // ordering floor still raises any pixel carrying the key's own
+  // signature back afterwards, so shadowed fabric the cap wrongly
+  // grazes is restored, and true crevices are untouched because their
+  // confidence is already zero (their background is unreachable, which
+  // the fd gate turns into conf 0).
+  for (let i = 0; i < N; i++) {
+    if (!ring[i]) continue;
+    const cf = Math.max(0, Math.min(1, mConf[i]));
+    if (!cf) continue;
+    if (wMap[i] > mAlpha[i]) wMap[i] = (1 - cf) * wMap[i] + cf * mAlpha[i];
+  }
+
 
   // The ordering evidence again, as a FLOOR, applied after every stage that
   // can lower a weight — the min filter, the matte, the closing, the harmonic
@@ -1519,9 +1905,9 @@ function analyze(img) {
   // a bright background mixing brightens and shading darkens, the two are
   // not confusable, and the matte's answer is the best one available.
   for (let i = 0; i < N; i++) {
-    if (!ring[i]) continue;
+    if (!ring[i] || distC[i] > RING) continue;
     const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
-    const fl = mAlpha[i] * Math.max(0, Math.min(1, mConf[i])) * smooth(bgL, 60, 110);
+    const fl = mAlphaE[i] * Math.max(0, Math.min(1, mConfS[i])) * smooth(bgL, 60, 110);
     if (fl > wMap[i]) wMap[i] = fl;
   }
 
@@ -1537,6 +1923,52 @@ function analyze(img) {
     const o = i * 4;
     if (Math.min(src[o + 1], src[o + 2]) - src[o] > 6) coolPaint++;
   }
+
+  // Occluder pixels that would still recolour: the flood froze them out of
+  // the closing and the completion, but weight from the union's evidence
+  // terms or the floors survives by design. Shipped templates measure
+  // 4-1105 px; a candidate whose hair or hands would visibly take the
+  // target colour lands far above that.
+  let occPaint = 0;
+  for (let i = 0; i < N; i++) if (occluder[i] && wMap[i] > 0.5) occPaint++;
+
+  // ---- silhouette confinement: the mask's universe, stated once ----
+  // The garment is the violet region plus the narrow measured boundary
+  // band around it (the matte ring, where edge pixels are physically
+  // part fabric). EVERYTHING beyond that is not the garment and its
+  // weight is hard zero — no completion, closing, floor or any future
+  // stage can paint there, whatever it believes. This is a guarantee
+  // about the OUTPUT, not another heuristic: speckle below a hem, a
+  // smudge wandering past a collar, any invention that escapes the
+  // stages above dies here by construction. Enclosed folds are not
+  // `outside` and keep their full machinery; the underarm and hem
+  // channels sit within the band by construction (they are bounded by
+  // core on both sides, so no pixel in them is far from it).
+  // The same brightness ceiling applied to the FINAL weight, so paint
+  // arriving from the union or the floors is held to it too, not only
+  // paint the matte assigned. Lowering-only, and confined to the ring.
+  for (let i = 0; i < N; i++) {
+    if (ring[i] && wMap[i] > mLumCap[i]) wMap[i] = mLumCap[i];
+  }
+
+  for (let i = 0; i < N; i++) {
+    if (!outside[i] || envelope[i]) continue;
+    if (distC[i] === -1) { wMap[i] = 0; continue; }
+    // and inside the band, painting requires a REASON: violet evidence
+    // of some kind, or a matte that actually solved the pixel, or the
+    // crevice machinery (dark folds squeezing through to the border).
+    // Band residue with none of those — thin low-weight films left on
+    // collar-adjacent skin by the blur and the completion — is exactly
+    // what the bgPaint audit counts as a defect, so it is removed by
+    // construction rather than merely counted.
+    if (!crevice[i] && evAny[i] < 0.05 && mConf[i] < 0.1) wMap[i] = 0;
+  }
+  // bgPaint is recounted here, on the FINAL weight — the metrics loop above
+  // runs before the floors and the confinement, and reporting the
+  // pre-confinement count failed candidates for paint that no longer exists.
+  // The builder counts after; this keeps the two the same measurement.
+  bgPaint = 0;
+  for (let i = 0; i < N; i++) if (outside[i] && !crevice[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
 
   const wArr = new Uint8ClampedArray(N), clipArr = new Uint8ClampedArray(N);
   const ownArr = new Uint8ClampedArray(N);
@@ -1646,8 +2078,9 @@ function analyze(img) {
     strayVioletPct: 100 * strayViolet / N,
     missed, skin,
     deepShadowPct: 100 * deepN / Math.max(1, gN),
+    hairShadowPct: 100 * deepHairN / Math.max(1, gN),
     blownPct: 100 * blownN / Math.max(1, coreN),
-    bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss, coolPaint,
+    bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss, coolPaint, occPaint,
     modelFit: fitSum / Math.max(1, fitCnt),
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
@@ -1664,10 +2097,9 @@ drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add(
 drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', e => {
   e.preventDefault(); drop.classList.remove('over');
-  const f = e.dataTransfer.files && e.dataTransfer.files[0];
-  if (f) loadFile(f);
+  if (e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
 });
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files.length) loadFiles(fileInput.files); });
 window.addEventListener('paste', e => {
   for (const item of e.clipboardData.items) {
     if (item.type.startsWith('image/')) {
@@ -1688,6 +2120,75 @@ function loadFile(f) {
   img.src = url;
 }
 
+/* ---- batch mode: validate several candidates, rank, keep the winner ----
+   The corrected-prompt loop assumes the generator obeys corrections; in
+   practice it half-ignores them, so iteration doesn't converge. Sampling
+   does: every candidate gets the full analysis, the strip shows them
+   ranked best-first, and the best one is opened automatically. */
+let candidates = [];
+async function loadFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/')).slice(0, 8);
+  if (!files.length) return;
+  if (files.length === 1) { loadFile(files[0]); return; }
+  candidates = [];
+  document.getElementById('candStrip').classList.add('hidden');
+  for (let k = 0; k < files.length; k++) {
+    drop.querySelector('b').textContent = 'Analysing candidate ' + (k + 1) + ' of ' + files.length + '…';
+    await new Promise(r => setTimeout(r, 30));
+    const url = URL.createObjectURL(files[k]);
+    let img;
+    try {
+      img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    } catch (e) { continue; }
+    runValidationCore(img, url);
+    candidates.push({
+      name: files[k].name || ('candidate ' + (k + 1)), url,
+      fails: lastVerdict ? lastVerdict.fails : 99,
+      warns: lastVerdict ? lastVerdict.warns : 99,
+      deep: analysis && analysis.deepShadowPct ? analysis.deepShadowPct : 0,
+    });
+  }
+  drop.querySelector('b').textContent = 'Paste, drop, or click';
+  if (!candidates.length) return;
+  const score = c => c.fails * 1000 + c.warns * 10 + c.deep / 100;
+  candidates.sort((a, b) => score(a) - score(b));
+  renderCandStrip(0);
+  selectCandidate(0);
+}
+function renderCandStrip(sel) {
+  const host = document.getElementById('candStrip');
+  host.classList.remove('hidden');
+  host.innerHTML = '';
+  candidates.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px;'
+      + 'border-radius:10px;cursor:pointer;background:var(--sunk);'
+      + 'border:2px solid ' + (i === sel ? 'var(--accent)' : 'var(--line)') + ';';
+    const im = document.createElement('img');
+    im.src = c.url; im.alt = c.name;
+    im.style.cssText = 'width:58px;height:78px;object-fit:cover;border-radius:6px;display:block;';
+    const tag = document.createElement('span');
+    const st = c.fails ? 'fail' : (c.warns ? 'warn' : 'ok');
+    tag.className = 'tag';
+    tag.style.cssText = 'font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;'
+      + (st === 'ok' ? 'background:var(--ok-soft);color:var(--ok);'
+        : st === 'warn' ? 'background:var(--warn-soft);color:var(--warn);'
+        : 'background:var(--fail-soft);color:var(--fail);');
+    tag.textContent = (i === 0 ? '★ ' : '') + (c.fails ? c.fails + ' FAIL' : c.warns ? c.warns + ' WARN' : 'PASS');
+    b.appendChild(im); b.appendChild(tag);
+    b.addEventListener('click', () => { renderCandStrip(i); selectCandidate(i); });
+    host.appendChild(b);
+  });
+}
+function selectCandidate(i) {
+  const c = candidates[i];
+  if (!c) return;
+  const img = new Image();
+  img.onload = () => { runValidationCore(img, c.url); };
+  img.src = c.url;
+}
+
 function checkRow(status, label, num) {
   return `<div class="check ${status}"><span class="tag">${status.toUpperCase()}</span><span>${label}</span><span class="num">${num}</span></div>`;
 }
@@ -1695,6 +2196,13 @@ function checkRow(status, label, num) {
 function runValidation(img, url) {
   drop.querySelector('b').textContent = 'Analysing… (a few seconds)';
   setTimeout(() => {
+    runValidationCore(img, url);
+    drop.querySelector('b').textContent = 'Paste, drop, or click';
+  }, 30);
+}
+
+function runValidationCore(img, url) {
+  {
     const a = analyze(img);
     analysis = a;
     document.getElementById('valResults').classList.remove('hidden');
@@ -1729,7 +2237,11 @@ function runValidation(img, url) {
         short + 'px', 'Render at the highest resolution available — the short side must be at least 1300 pixels.');
       F(a.shirtHue < 250 || a.shirtHue > 305, false, 'Garment hue is violet', a.shirtHue + '°', `The ${gm.noun} must be a VIVID VIOLET — a strong purple, clearly more blue than magenta. Not lilac, not lavender, not pink, not indigo, and not washed out.`);
       F(a.coverage < 8, a.coverage > 55, 'Garment fills a sensible share of frame', a.coverage.toFixed(1) + '%', `Frame so the ${gm.noun} occupies roughly a third of the picture: the whole torso visible, with clear margin around the figure on every side.`);
-      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)', `Light the torso with SOFT EVEN DIFFUSED light from the front. No hard shadow line across the chest, no dark band down either side of the ${gm.short}. Every part of the ${gm.short} must stay clearly lit — shadow on it may only be a slightly darker violet, never near-black and never grey.`);
+      F(a.deepShadowPct > 8, a.deepShadowPct > 5.5, 'Deep-shadow fraction, open garment (hard shadow band)', a.deepShadowPct.toFixed(2) + '% (limit 8%)', `Light the torso with SOFT EVEN DIFFUSED light from the front. No hard shadow line across the chest, no dark band down either side of the ${gm.short}. Every part of the ${gm.short} must stay clearly lit — shadow on it may only be a slightly darker violet, never near-black and never grey.`);
+      // Shadow next to hair/skin is excluded from the gate above: the
+      // pipeline renders it (and the hair) photographically, so it reads
+      // as what it is. Reported here so a huge number still gets a look.
+      F(false, a.hairShadowPct > 14, 'Hair-cast shadow (renders photographic, not gated)', a.hairShadowPct.toFixed(2) + '%');
       F(false, a.fragments > 1, 'Garment is one connected piece', a.fragments + (a.fragments > 1 ? ' fragments (occlusion?)' : ' piece'), gm.seamFix);
       F(a.strayVioletPct > 0.5, a.strayVioletPct > 0.05, 'No other violet objects in scene', a.strayVioletPct.toFixed(2) + '%', 'NOTHING else anywhere in the frame may be violet, purple, lilac, mauve or magenta — not clothing, not props, not flowers, not background.');
       F(false, a.missed > 500, 'Violet fully captured by the key', a.missed + ' px missed', `The ${gm.short} must be a single flat uniformly saturated violet across the whole garment, with no gradient, ombre, heather, marl or two-tone effect and no sheen.`);
@@ -1737,7 +2249,21 @@ function runValidation(img, url) {
       F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%', `No blown-out or burnt-out highlights on the fabric. Keep the ${gm.short} off pure white anywhere — no specular hotspot, no direct hard light source on it.`);
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
       F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', `The garment edges — ${gm.edges} — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.`);
-      F(a.haloDelta > 0.09, a.haloDelta > 0.045, 'No baked-in edge halo in the source (generator or upscaler ring)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
+      // Calibrated against the shipped set rather than guessed. A photograph's
+      // background DIMS as it approaches the figure — contact shadow, falloff,
+      // the body occluding its own light — so every clean template measures
+      // between -3.3% and -20.7%. Positive means the opposite: brighter right
+      // at the silhouette than further out, which nothing photographic does and
+      // an upscaler's sharpening does every time. The old +4.5% line was an
+      // absolute number written without knowing the population is entirely
+      // negative, and it let through the two templates whose rim is visible to
+      // the eye at +2.0% and +3.7%. Sign is the signal, not magnitude.
+      //
+      // The fix string still speaks to the generator, which can bake a rim in
+      // too — but when the raw generation is clean and the upscaled file is
+      // not, no rewording will help and the upscaler's sharpening is the thing
+      // to turn down.
+      F(a.haloDelta > 0.09, a.haloDelta > -0.015, 'No bright rim baked into the source (shipped templates: \u22123% to \u221221%)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
       F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
       // No fix string on purpose: nothing the image model can be told fixes
       // this. A stepped edge comes from what happened to the file AFTER
@@ -1748,16 +2274,23 @@ function runValidation(img, url) {
       F(false, a.softPerPerim < 2.0 || a.hardStepPct > 12,
         'Matte keeps a soft photographic edge (shipped templates: 2.7–6.3 px, ≤5% steps)',
         a.softPerPerim.toFixed(2) + ' px/edge · ' + a.hardStepPct.toFixed(1) + '% steps');
-      F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm, and hair stays behind the shoulders so it casts no dark shadow onto the shirt.');
+      F(false, a.wedgePx > 250, 'No hard shadow wedges at underarms or under hair (these stay photographic)', a.wedgePx + ' px', 'Both upper arms rest lightly against the torso with NO deep dark crease at the underarm. Hair over the shoulders is fine; only a hard black shadow wedge under it is a problem.');
       // Same thresholds as the builder's gate. This one is about the pipeline
       // rather than the photo, so it is worth flagging even though the fix is
       // usually code — but the photo can cause it too, by laying dark hair
       // over the shoulder against a bright background, which is where the
       // recolour has to yield to the matte. The prompt advice targets that.
-      F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', `Keep hair entirely behind both shoulders so none of it falls across the ${gm.short}, and keep the light on the shoulders soft enough that no dark band forms where hair meets fabric.`);
+      F(a.keyMiss > 120, a.keyMiss > 60, 'Shadowed fabric fully recoloured (no stripe on pink)', a.keyMiss + ' px', `Hair over the shoulders is fine, but keep it clear of the centre chest of the ${gm.short} where the design prints, and keep the light soft so hair shadow stays a gentle gradient rather than a black band.`);
       // The mirror of the check above. Lines sit above a noise floor, not at
       // zero: near-black pixels carry a few levels of chroma noise, so a clean
       // template still scores in the low hundreds.
+      // Hair, hands and dark occluders next to the garment: the builder now
+      // freezes them out of the weight completion, so what remains weighted
+      // is evidence the union or the floors insist on. Shipped templates
+      // measure 4-1105 px; hair or a hand that would visibly recolour lands
+      // far above that. Warn-only: the number is a property of the photo
+      // (violet bleed on gloss), and Step 3 shows whether it matters.
+      F(false, a.occPaint > 2500, 'Hair and hands near the garment stay photographic', a.occPaint + ' px', 'Hair over the shoulders is fine — it stays photographic now. Keep it clear of the centre chest where the design prints, and keep hands away from the chest area.');
       F(a.coolPaint > 600, a.coolPaint > 250, 'Nothing below the hem recoloured (jeans, waistband)', a.coolPaint + ' px', `The ${gm.short} hem must sit clear of the trousers with a visible, sharply focused gap of separation — no near-black waistband pressed directly against the hem, and no fabric of the bottoms in deep shadow immediately below it.`);
     }
     document.getElementById('checks').innerHTML = checks.join('');
@@ -1765,7 +2298,7 @@ function runValidation(img, url) {
     const v = document.getElementById('verdict');
     if (fails) {
       v.className = 'verdict fail';
-      v.innerHTML = 'FAIL — regenerate with the corrected prompt below.<small>Do not upscale or hand this one over.</small>';
+      v.innerHTML = 'FAIL — generate a fresh batch and drop them all here.<small>With current generators a new batch of 3–4 beats a reworded retry; the corrected prompt below is a nudge, not a guarantee. Do not upscale or hand this one over.</small>';
       document.getElementById('tryStep').classList.add('hidden');
       document.getElementById('pushStep').classList.add('hidden');
       showFixPrompt(broke);
@@ -1782,7 +2315,6 @@ function runValidation(img, url) {
       setupTry();
       renderMeta();
     }
-    drop.querySelector('b').textContent = 'Paste, drop, or click';
     // maps
     if (!a.noGarment) {
       const mw = document.getElementById('mapWeight'), ms = document.getElementById('mapShade');
@@ -1794,7 +2326,7 @@ function runValidation(img, url) {
         x.putImageData(im, 0, 0);
       }
     }
-  }, 30);
+  }
 }
 
 /* ============ STEP 3 — TRY RECOLOURS ============ */
@@ -1953,6 +2485,7 @@ document.getElementById('mBuild').addEventListener('click', async () => {
     `shirt hue ${a.shirtHue != null ? a.shirtHue + '\u00B0' : '?'}`,
     `coverage ${a.coverage != null ? a.coverage.toFixed(1) + '%' : '?'}`,
     `deep shadow ${a.deepShadowPct != null ? a.deepShadowPct.toFixed(2) + '%' : '?'}`,
+    `hair shadow ${a.hairShadowPct != null ? a.hairShadowPct.toFixed(2) + '%' : '?'}`,
     `fragments ${a.fragments != null ? a.fragments : '?'}`,
     `stray violet ${a.strayVioletPct != null ? a.strayVioletPct.toFixed(2) + '%' : '?'}`,
     `skin ${a.skin != null ? a.skin : '?'}px`,
@@ -1964,6 +2497,7 @@ document.getElementById('mBuild').addEventListener('click', async () => {
     `wedge ${a.wedgePx != null ? a.wedgePx : '?'}px`,
     `keyMiss ${a.keyMiss != null ? a.keyMiss : '?'}px`,
     `coolPaint ${a.coolPaint != null ? a.coolPaint : '?'}px`,
+    `occPaint ${a.occPaint != null ? a.occPaint : '?'}px`,
   ].join(', ');
   const verdictLine = !lastVerdict ? 'not validated'
     : lastVerdict.fails ? `FAIL (${lastVerdict.fails})`
