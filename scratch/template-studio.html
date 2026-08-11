@@ -1404,7 +1404,15 @@ function analyze(img) {
 
 
   const alphaA = new Float32Array(N), confA = new Float32Array(N);
+  // Two confidences per ring pixel. mConfS carries the SHIPPED gate:
+  // the background estimate must come from within RING+4 hops, which
+  // is the invariant that lets the matte PAINT (bake, weight blend,
+  // floor) — a far-travelled background is a guess, and painting from
+  // a guessed endpoint put a comb of white teeth in the torso-arm gap.
+  // mConf carries the relaxed RING2 gate and feeds ONLY the cap, which
+  // can lower weight but never add it — safe with a weaker endpoint.
   const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
+  const mConfS = new Float32Array(N);
   let wedgePx = 0;
   for (let i = 0; i < N; i++) if (ring[i]) {
     const o = i * 4;
@@ -1447,8 +1455,10 @@ function analyze(img) {
     const sep = Math.sqrt(den);
     const fgGap = Math.min(fgC[i * 3] - fgC[i * 3 + 1], fgC[i * 3 + 2] - fgC[i * 3 + 1]);
     let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGap, 3, 14);
-    conf *= 1 - smooth(bgF.fd[i] < 0 ? 99 : bgF.fd[i], RING2 + 1, RING2 + 4);
     if (fgF.fd[i] < 0) conf = 0;
+    const fdB = bgF.fd[i] < 0 ? 99 : bgF.fd[i];
+    const confS = conf * (1 - smooth(fdB, RING + 1, RING + 4));
+    conf *= 1 - smooth(fdB, RING2 + 1, RING2 + 4);
     if (distC[i] <= RING && vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING2 + 1)) wedgePx++;
     // The matte's answer is recorded for EVERY ring pixel, before the crevice
     // veto below decides whether to act on it. Those are two different
@@ -1462,12 +1472,13 @@ function analyze(img) {
     // that band fell through to the completion, which interpolated across it
     // to mid weight — and mid weight over a dark shade is the broken dark line
     // that follows a hem in every colour.
-    mAlpha[i] = a2; mConf[i] = conf;
-    // Weight assignment and photo bake stay confined to the inner ring;
-    // the outer half of the ring is measurement for the cap only.
+    mAlpha[i] = a2; mConf[i] = conf; mConfS[i] = confS;
+    // Weight assignment and photo bake stay confined to the inner ring
+    // and to the STRICT confidence; the outer half of the ring and the
+    // relaxed confidence are measurement for the cap only.
     if (crevice[i] || distC[i] > RING) continue;
-    alphaA[i] = a2; confA[i] = conf;
-    wMap[i] = conf * a2 + (1 - conf) * wMap[i];
+    alphaA[i] = a2; confA[i] = confS;
+    wMap[i] = confS * a2 + (1 - confS) * wMap[i];
     evAny[i] = Math.max(evAny[i], wMap[i]);
   }
 
@@ -1744,7 +1755,7 @@ function analyze(img) {
   for (let i = 0; i < N; i++) {
     if (!ring[i] || distC[i] > RING) continue;
     const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
-    const fl = mAlpha[i] * Math.max(0, Math.min(1, mConf[i])) * smooth(bgL, 60, 110);
+    const fl = mAlpha[i] * Math.max(0, Math.min(1, mConfS[i])) * smooth(bgL, 60, 110);
     if (fl > wMap[i]) wMap[i] = fl;
   }
 
