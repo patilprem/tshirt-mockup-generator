@@ -714,6 +714,13 @@ const TEMPLATES = [
           const o = i * 4;
           if (Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) >= 4) continue;
           if (src[o + 2] - Math.max(src[o], src[o + 1]) >= 3) continue;
+          // the same ordering read RELATIVE to the pixel's own brightness:
+          // a muted generation's shadowed fabric can hold green lowest by
+          // only 2 levels at 30 brightness, under every absolute floor —
+          // 6% of its own maximum is still unreachable for hair and skin,
+          // whose green never sits strictly lowest at all
+          const vm = Math.max(src[o], src[o + 1], src[o + 2]);
+          if (vm >= 12 && Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) / vm >= 0.06) continue;
           unk[i] = 1;
         }
         // Boundary evidence classes. Fabric evidence is the core, real
@@ -722,9 +729,11 @@ const TEMPLATES = [
         // Bright background is evidence for no one — the taper owns it.
         const isFab = ni => {
           const o = ni * 4;
+          const vm = Math.max(src[o], src[o + 1], src[o + 2]);
           return core[ni] || wMap[ni] > 0.45
             || Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) >= 4
-            || src[o + 2] - Math.max(src[o], src[o + 1]) >= 3;
+            || src[o + 2] - Math.max(src[o], src[o + 1]) >= 3
+            || (vm >= 12 && Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]) / vm >= 0.06);
         };
         // Two margins for the warm ordering: the loose one (8 levels of
         // R over B) is evidence for the distance field — near-black hair
@@ -761,23 +770,24 @@ const TEMPLATES = [
         };
         bfs(dwarm, isWarm);
         bfs(dfab, isFab);
-        // Freeze STRENGTH, not a freeze verdict. Both rules — warm
-        // decisively nearer, and warm merely nearer while fabric evidence
-        // sits beyond the matte ring's reach — are the right calls, but as
-        // yes/no tests on integer hop counts they printed their own
-        // contours into the weight: a dark fold grazing the dfab=8 line
-        // came out with a blocky staircase bitten into its edge. Each rule
-        // is therefore a smooth 0..1 term over a few hops, the pixel's
-        // unrel is SCALED down by their maximum, and the completion's
-        // relaxation then blends whatever partial freeze remains — the
-        // spatial transition is a fade the closing and completion smooth
-        // further, never a printed threshold.
+        // Freeze STRENGTH, not a freeze verdict — a yes/no test on
+        // integer hop counts printed its own contours into the weight as
+        // a blocky staircase, so the rule is a smooth 0..1 term and the
+        // pixel's unrel is SCALED by it, with the completion blending
+        // whatever partial freeze remains. Only the DECISIVE rule
+        // survives: warm evidence at most half as far as fabric evidence.
+        // A second, looser rule (warm merely nearer while fabric sat
+        // beyond the matte ring) was tried and reverted: on a muted
+        // generation a shadowed sleeve against warm blurred trees put the
+        // trees' evidence slightly nearer than its own washed-out violet,
+        // and the rule bit a ragged notch out of the sleeve. When the two
+        // distances are even comparable the pixel stays with the
+        // completion, whose worst case is a faint haze at a hair seam —
+        // the conservative failure, not a broken edge.
         for (let i = 0; i < N; i++) {
           if (!unk[i] || dwarm[i] === -1) continue;
           const df2 = dfab[i] === -1 ? 999 : dfab[i];
-          const decisive = smooth(df2 - 2 * dwarm[i], 0, 4);
-          const nearer = smooth(df2 - dwarm[i], 0, 3) * smooth(df2, 6, 10);
-          const s = Math.max(decisive, nearer);
+          const s = smooth(df2 - 2 * dwarm[i], 0, 4);
           if (s > 0) {
             unrel[i] *= 1 - s;
             if (s > 0.5) occluder[i] = 1;
