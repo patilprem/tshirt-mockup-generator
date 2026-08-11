@@ -1129,7 +1129,16 @@ const TEMPLATES = [
       // channels sit within the band by construction (they are bounded by
       // core on both sides, so no pixel in them is far from it).
       for (let i = 0; i < N; i++) {
-        if (outside[i] && distC[i] === -1) wMap[i] = 0;
+        if (!outside[i]) continue;
+        if (distC[i] === -1) { wMap[i] = 0; continue; }
+        // and inside the band, painting requires a REASON: violet evidence
+        // of some kind, or a matte that actually solved the pixel, or the
+        // crevice machinery (dark folds squeezing through to the border).
+        // Band residue with none of those — thin low-weight films left on
+        // collar-adjacent skin by the blur and the completion — is exactly
+        // what the bgPaint audit counts as a defect, so it is removed by
+        // construction rather than merely counted.
+        if (!crevice[i] && evAny[i] < 0.05 && mConf[i] < 0.1) wMap[i] = 0;
       }
 
       // The own-value blend, computed once and shared by the weight map's B
