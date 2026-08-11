@@ -1,0 +1,231 @@
+---
+// Ko-fi tip jar. A plain anchor by design — no Ko-fi widget script, no third
+// party JS, no cookies, so this costs nothing against Core Web Vitals and
+// nothing against the "files never leave your browser" privacy claim.
+//
+const KOFI_HANDLE = 'freeteemockup';
+const KOFI_URL = `https://ko-fi.com/${KOFI_HANDLE}`;
+
+interface Props {
+  /** footer = compact link under the brand blurb
+   *  block  = full support panel for /about
+   *  modal  = one quiet line inside the download modal */
+  variant?: 'footer' | 'block' | 'modal';
+}
+
+const { variant = 'footer' } = Astro.props;
+---
+
+{variant === 'footer' && (
+  <a
+    class="kofi-link kofi-link-footer"
+    href={KOFI_URL}
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Buy me a coffee on Ko-fi (opens in a new tab)"
+    data-kofi-placement="footer"
+  >
+    <span class="kofi-cup" aria-hidden="true">&#9749;</span>
+    <span>Buy me a coffee</span>
+  </a>
+)}
+
+{variant === 'block' && (
+  <div class="kofi-block">
+    <span class="kofi-block-cup" aria-hidden="true">&#9749;</span>
+    <h2>TeeMockup is free, and stays free</h2>
+    <p>
+      No account, no watermark, no export limits — and no plan to add any. If the tool saved you
+      time on a listing, a coffee helps cover the hosting and keeps it that way. Entirely optional,
+      and nothing about the editor changes either way.
+    </p>
+    <a
+      class="kofi-link kofi-link-solid"
+      href={KOFI_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Buy me a coffee on Ko-fi (opens in a new tab)"
+      data-kofi-placement="about"
+    >
+      <span class="kofi-cup" aria-hidden="true">&#9749;</span>
+      <span>Buy me a coffee</span>
+    </a>
+  </div>
+)}
+
+{variant === 'modal' && (
+  <p class="kofi-modal-line">
+    Free, no watermark, no limit.
+    <a
+      class="kofi-link kofi-link-quiet"
+      href={KOFI_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Buy me a coffee on Ko-fi (opens in a new tab)"
+      data-kofi-placement="export"
+    >
+      <span class="kofi-cup" aria-hidden="true">&#9749;</span>
+      <span>Buy me a coffee</span>
+    </a>
+  </p>
+)}
+
+<script>
+  // One delegated listener covers every placement (footer / about / export),
+  // however many times this component is rendered on the page — Astro
+  // dedupes identical inline scripts, and the flag below is a backstop for
+  // that in case it ever isn't. Reports to both GA4 (ad-blocker-visible) and
+  // the first-party /api/kofi-click beacon (ad-blocker-proof, shown on
+  // /stats) — same dual send as trackEvent() in Editor.astro, and for the
+  // same reason: either one on its own misses a real slice of visitors.
+  //
+  // The beacon writes to its own kofi_clicks table, not export_stats_v2: a
+  // click has none of that table's columns (garment/template/quality), so
+  // it gets a table shaped for what it actually is instead.
+  //
+  // Same notrack opt-out as export tracking, so testing this component
+  // locally does not inflate the count — see MONETIZATION-PLAN.md §3 on how
+  // expensive that mistake was to untangle once.
+  if (!window.__kofiClickBound) {
+    window.__kofiClickBound = true;
+    document.addEventListener('click', (event) => {
+      const link = event.target.closest('[data-kofi-placement]');
+      if (!link) return;
+      try {
+        if (localStorage.getItem('teemockup_notrack') === '1') return;
+      } catch (e) { /* no-op */ }
+      const placement = link.dataset.kofiPlacement;
+      try {
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'kofi_click', { placement });
+        }
+      } catch (e) { /* no-op */ }
+      try {
+        const beacon = JSON.stringify({ placement });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/kofi-click', beacon);
+        } else {
+          fetch('/api/kofi-click', { method: 'POST', body: beacon, keepalive: true }).catch(() => {});
+        }
+      } catch (e) { /* no-op */ }
+    });
+  }
+</script>
+
+<style is:global>
+  /* ─── KO-FI SUPPORT ─── */
+  .kofi-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    transition: var(--transition-smooth);
+    white-space: nowrap;
+  }
+
+  .kofi-cup {
+    font-size: 1em;
+    line-height: 1;
+  }
+
+  /* Footer — quiet, sits under the brand blurb */
+  .kofi-link-footer {
+    margin-top: 16px;
+    padding: 8px 14px;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    background: hsla(28, 90%, 60%, 0.08);
+    border: 1px solid hsla(28, 90%, 60%, 0.22);
+  }
+
+  .kofi-link-footer:hover {
+    color: var(--text-primary);
+    background: hsla(28, 90%, 60%, 0.16);
+    border-color: hsla(28, 90%, 60%, 0.45);
+    transform: translateY(-1px);
+  }
+
+  /* About page — the one place that makes the full ask */
+  .kofi-block {
+    text-align: center;
+    padding: 44px 24px;
+    background: linear-gradient(135deg, hsla(28, 90%, 60%, 0.07), hsla(14, 90%, 58%, 0.05));
+    border: 1px solid hsla(28, 90%, 60%, 0.22);
+    border-radius: var(--radius-lg);
+    margin-top: 48px;
+  }
+
+  .kofi-block-cup {
+    display: block;
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 14px;
+  }
+
+  .kofi-block h2 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+
+  .kofi-block p {
+    color: var(--text-secondary);
+    margin: 0 auto 28px;
+    max-width: 560px;
+    line-height: 1.7;
+  }
+
+  .kofi-link-solid {
+    padding: 13px 26px;
+    font-size: 0.95rem;
+    color: hsl(20, 30%, 12%);
+    background: linear-gradient(135deg, hsl(34, 95%, 62%), hsl(20, 92%, 58%));
+    border: 1px solid transparent;
+  }
+
+  .kofi-link-solid:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px hsla(28, 90%, 55%, 0.3);
+  }
+
+  /* Download modal — one line, below the action buttons */
+  .kofi-modal-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-top: -8px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    position: relative;
+    z-index: 1;
+  }
+
+  .kofi-link-quiet {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    color: hsl(30, 85%, 68%);
+    background: hsla(28, 90%, 60%, 0.1);
+    border: 1px solid hsla(28, 90%, 60%, 0.24);
+  }
+
+  .kofi-link-quiet:hover {
+    background: hsla(28, 90%, 60%, 0.2);
+    border-color: hsla(28, 90%, 60%, 0.5);
+  }
+
+  @media (max-width: 600px) {
+    .kofi-block {
+      padding: 36px 20px;
+    }
+    .kofi-block h2 {
+      font-size: 1.3rem;
+    }
+  }
+</style>
