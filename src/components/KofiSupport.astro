@@ -74,14 +74,18 @@ const { variant = 'footer' } = Astro.props;
   // One delegated listener covers every placement (footer / about / export),
   // however many times this component is rendered on the page — Astro
   // dedupes identical inline scripts, and the flag below is a backstop for
-  // that in case it ever isn't. Fires a GA4 event only; the D1-backed
-  // /stats endpoint is shaped around exported images (garment/template/
-  // quality columns) and a button click has none of those, so it stays out
-  // of that table rather than forcing a fit.
+  // that in case it ever isn't. Reports to both GA4 (ad-blocker-visible) and
+  // the first-party /api/kofi-click beacon (ad-blocker-proof, shown on
+  // /stats) — same dual send as trackEvent() in Editor.astro, and for the
+  // same reason: either one on its own misses a real slice of visitors.
   //
-  // Same notrack opt-out as export tracking in Editor.astro, so testing
-  // this component locally does not inflate the count — see MONETIZATION-
-  // PLAN.md §3 on how expensive that mistake was to untangle once.
+  // The beacon writes to its own kofi_clicks table, not export_stats_v2: a
+  // click has none of that table's columns (garment/template/quality), so
+  // it gets a table shaped for what it actually is instead.
+  //
+  // Same notrack opt-out as export tracking, so testing this component
+  // locally does not inflate the count — see MONETIZATION-PLAN.md §3 on how
+  // expensive that mistake was to untangle once.
   if (!window.__kofiClickBound) {
     window.__kofiClickBound = true;
     document.addEventListener('click', (event) => {
@@ -90,9 +94,18 @@ const { variant = 'footer' } = Astro.props;
       try {
         if (localStorage.getItem('teemockup_notrack') === '1') return;
       } catch (e) { /* no-op */ }
+      const placement = link.dataset.kofiPlacement;
       try {
         if (typeof window.gtag === 'function') {
-          window.gtag('event', 'kofi_click', { placement: link.dataset.kofiPlacement });
+          window.gtag('event', 'kofi_click', { placement });
+        }
+      } catch (e) { /* no-op */ }
+      try {
+        const beacon = JSON.stringify({ placement });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/kofi-click', beacon);
+        } else {
+          fetch('/api/kofi-click', { method: 'POST', body: beacon, keepalive: true }).catch(() => {});
         }
       } catch (e) { /* no-op */ }
     });
