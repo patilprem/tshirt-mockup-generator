@@ -1471,6 +1471,8 @@ function analyze(img) {
   // can lower weight but never add it — safe with a weaker endpoint.
   const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
   const mConfS = new Float32Array(N), mAlphaE = new Float32Array(N);
+  // brightness-corroborated coverage ceiling per ring pixel (see below)
+  const mLumCap = new Float32Array(N).fill(1);
   let wedgePx = 0;
   for (let i = 0; i < N; i++) if (ring[i]) {
     const o = i * 4;
@@ -1541,7 +1543,31 @@ function analyze(img) {
     // deficit; strong alphas keep their own authority (their identity
     // comes from sitting near the fabric endpoint, not from tint).
     const gdP = Math.max(0, (src[o] + src[o + 2]) / 2 - src[o + 1]);
-    const aEff = a2 * Math.max(smooth(a2, 0.45, 0.7), smooth(gdP, 1.5, 4.5));
+    // Coverage must be corroborated by BRIGHTNESS. JPEG stores colour
+    // at half resolution, so a background pixel touching a saturated
+    // garment carries the garment's chroma while keeping its own
+    // luminance — the codec put the violet there, not the camera. The
+    // alpha solve runs in RGB and reads that tint as 10-30% coverage,
+    // which is why a sleeve corner bleeds under EVERY target colour:
+    // the delta painted is (target - violet), non-zero for all of
+    // them. Luminance is stored at full resolution and cannot bleed,
+    // so it is the honest witness: a genuinely part-fabric pixel is
+    // pulled toward the fabric's brightness, a chroma-bled one is not.
+    // Skipped where fabric and background are too close in brightness
+    // for the test to mean anything, and given a noise allowance so a
+    // real soft edge is never clipped. What remains tinted is handled
+    // by the existing neutralisation, which is target-independent and
+    // therefore cannot glow under any colour.
+    const yF = 0.299 * fgC[i * 3] + 0.587 * fgC[i * 3 + 1] + 0.114 * fgC[i * 3 + 2];
+    const yB = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+    const sepY = yF - yB;
+    let lumCap = 1;
+    if (Math.abs(sepY) >= 25) {
+      const yP = 0.299 * src[o] + 0.587 * src[o + 1] + 0.114 * src[o + 2];
+      lumCap = Math.max(0, Math.min(1, (yP - yB) / sepY + 0.12));
+    }
+    mLumCap[i] = lumCap;
+    const aEff = Math.min(a2 * Math.max(smooth(a2, 0.45, 0.7), smooth(gdP, 1.5, 4.5)), lumCap);
     mAlpha[i] = a2; mConf[i] = conf; mConfS[i] = confS; mAlphaE[i] = aEff;
     // Weight assignment and photo bake stay confined to the inner ring
     // and to the STRICT confidence; the outer half of the ring and the
@@ -1919,6 +1945,13 @@ function analyze(img) {
   // `outside` and keep their full machinery; the underarm and hem
   // channels sit within the band by construction (they are bounded by
   // core on both sides, so no pixel in them is far from it).
+  // The same brightness ceiling applied to the FINAL weight, so paint
+  // arriving from the union or the floors is held to it too, not only
+  // paint the matte assigned. Lowering-only, and confined to the ring.
+  for (let i = 0; i < N; i++) {
+    if (ring[i] && wMap[i] > mLumCap[i]) wMap[i] = mLumCap[i];
+  }
+
   for (let i = 0; i < N; i++) {
     if (!outside[i] || envelope[i]) continue;
     if (distC[i] === -1) { wMap[i] = 0; continue; }
