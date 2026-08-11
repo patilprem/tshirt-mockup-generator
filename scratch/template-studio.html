@@ -1460,7 +1460,7 @@ function analyze(img) {
   // mConf carries the relaxed RING2 gate and feeds ONLY the cap, which
   // can lower weight but never add it — safe with a weaker endpoint.
   const mAlpha = new Float32Array(N), mConf = new Float32Array(N);
-  const mConfS = new Float32Array(N);
+  const mConfS = new Float32Array(N), mAlphaE = new Float32Array(N);
   let wedgePx = 0;
   for (let i = 0; i < N; i++) if (ring[i]) {
     const o = i * 4;
@@ -1520,13 +1520,25 @@ function analyze(img) {
     // that band fell through to the completion, which interpolated across it
     // to mid weight — and mid weight over a dark shade is the broken dark line
     // that follows a hem in every colour.
-    mAlpha[i] = a2; mConf[i] = conf; mConfS[i] = confS;
+    // Low-alpha coverage must show violet in the PIXEL ITSELF. The
+    // wall in the garment's own cast shadow darkens along nearly the
+    // same line as mixing violet in does, and the matte read it as
+    // 10-30% fabric at good confidence — a glow band outside the
+    // sleeve and a grey wedge above the shoulder on a white recolour.
+    // A genuinely mixed pixel carries violet's green deficit in
+    // proportion to its coverage; a shadowed wall carries none. So an
+    // alpha below ~0.5 is honoured only as far as the pixel shows that
+    // deficit; strong alphas keep their own authority (their identity
+    // comes from sitting near the fabric endpoint, not from tint).
+    const gdP = Math.max(0, (src[o] + src[o + 2]) / 2 - src[o + 1]);
+    const aEff = a2 * Math.max(smooth(a2, 0.45, 0.7), smooth(gdP, 1.5, 4.5));
+    mAlpha[i] = a2; mConf[i] = conf; mConfS[i] = confS; mAlphaE[i] = aEff;
     // Weight assignment and photo bake stay confined to the inner ring
     // and to the STRICT confidence; the outer half of the ring and the
     // relaxed confidence are measurement for the cap only.
     if (crevice[i] || distC[i] > RING) continue;
-    alphaA[i] = a2; confA[i] = confS;
-    wMap[i] = confS * a2 + (1 - confS) * wMap[i];
+    alphaA[i] = aEff; confA[i] = confS;
+    wMap[i] = confS * aEff + (1 - confS) * wMap[i];
     evAny[i] = Math.max(evAny[i], wMap[i]);
   }
 
@@ -1803,7 +1815,7 @@ function analyze(img) {
   for (let i = 0; i < N; i++) {
     if (!ring[i] || distC[i] > RING) continue;
     const bgL = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
-    const fl = mAlpha[i] * Math.max(0, Math.min(1, mConfS[i])) * smooth(bgL, 60, 110);
+    const fl = mAlphaE[i] * Math.max(0, Math.min(1, mConfS[i])) * smooth(bgL, 60, 110);
     if (fl > wMap[i]) wMap[i] = fl;
   }
 
