@@ -763,5 +763,107 @@
       "w": 771,
       "h": 737
     }
+  },
+  {
+    "id": "stadium-hoodie-m",
+    "label": "Stadium Hoodie",
+    "model": "male",
+    "scene": "Empty stadium seating, pitch behind",
+    "width": 1067,
+    "height": 1600,
+    "photo": "/assets/on-model/stadium-hoodie-m-photo.jpg?v=a940819a",
+    "weight": "/assets/on-model/stadium-hoodie-m-weight.png?v=08fab74b",
+    "shade": "/assets/on-model/stadium-hoodie-m-shade.jpg?v=b6f0dacd",
+    "thumbPhoto": "/assets/on-model/stadium-hoodie-m-thumb-photo.jpg?v=5a7e9389",
+    "thumbWeight": "/assets/on-model/stadium-hoodie-m-thumb-weight.png?v=b76f79fc",
+    "thumbShade": "/assets/on-model/stadium-hoodie-m-thumb-shade.jpg?v=81f8d0d1",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9593,
+      0.9477
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      98.3,
+      59.7,
+      144
+    ],
+    "quad": {
+      "tl": [
+        361.70000000000005,
+        590
+      ],
+      "tr": [
+        737.3,
+        590
+      ],
+      "br": [
+        691.8,
+        952
+      ],
+      "bl": [
+        316.20000000000005,
+        952
+      ]
+    },
+    "bbox": {
+      "x": 193,
+      "y": 396,
+      "w": 710,
+      "h": 926
+    }
+  },
+  {
+    "id": "garden-path-longsleeve-f",
+    "label": "Garden Path",
+    "model": "female",
+    "scene": "Leafy garden path, soft even light",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/garden-path-longsleeve-f-photo.jpg?v=3a384156",
+    "weight": "/assets/on-model/garden-path-longsleeve-f-weight.png?v=a7762bd3",
+    "shade": "/assets/on-model/garden-path-longsleeve-f-shade.jpg?v=5043a79e",
+    "thumbPhoto": "/assets/on-model/garden-path-longsleeve-f-thumb-photo.jpg?v=ce2c616e",
+    "thumbWeight": "/assets/on-model/garden-path-longsleeve-f-thumb-weight.png?v=601f09df",
+    "thumbShade": "/assets/on-model/garden-path-longsleeve-f-thumb-shade.jpg?v=eb024f4a",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9341,
+      0.9222
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      121.8,
+      67.9,
+      164
+    ],
+    "quad": {
+      "tl": [
+        367.1,
+        716
+      ],
+      "tr": [
+        734.9,
+        716
+      ],
+      "br": [
+        711.4,
+        1067
+      ],
+      "bl": [
+        343.6,
+        1067
+      ]
+    },
+    "bbox": {
+      "x": 145,
+      "y": 527,
+      "w": 798,
+      "h": 900
+    }
   }
 ]

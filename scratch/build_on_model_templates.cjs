@@ -77,6 +77,8 @@ const TEMPLATES = [
   { id: 'rooftop-hoodie-f', file: 'rooftop-hoodie-f.png', label: 'Rooftop Hoodie', model: 'female', scene: 'Rooftop skyline, overcast light' },
   { id: 'sunbeam-wall-f', file: 'sunbeam-wall-f.png', label: 'Sunbeam Wall', model: 'female', scene: 'Warm plaster wall, diagonal light beam' },
   { id: 'tree-lined-f', file: 'tree-lined-f.png', label: 'Tree-Lined Street', model: 'female', scene: 'Leafy residential street' },
+  { id: 'stadium-hoodie-m', file: 'stadium-hoodie-m.png', label: 'Stadium Hoodie', model: 'male', scene: 'Empty stadium seating, pitch behind' },
+  { id: 'garden-path-longsleeve-f', file: 'garden-path-longsleeve-f.png', label: 'Garden Path', model: 'female', scene: 'Leafy garden path, soft even light' },
 ];
 
 (async () => {
