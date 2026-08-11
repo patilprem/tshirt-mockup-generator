@@ -1014,9 +1014,19 @@ function analyze(img) {
         // the widening only applies to dark pixels and denim is bright.
         const lim = d >= 0 ? 65 : 45 + 25 * (1 - smooth(vA[i], 0.10, 0.30));
     const a = Math.abs(d);
+    // Hue and saturation are RATIOS: at 13,13,15 a "saturation" of 0.46 is
+    // six levels of codec chroma noise wearing a hue angle. Both terms
+    // below identify fabric from that angle, so both are gated by the
+    // chroma actually present — otherwise unrel says "no information" and
+    // the weight says "certainly fabric" about the same pixel, which is
+    // what rendered hair beside a collar as a grey band on a white shirt.
+    // Kept in step with build_on_model_templates.cjs.
+    const chromaAbs = Math.max(src[i * 4], src[i * 4 + 1], src[i * 4 + 2])
+      - Math.min(src[i * 4], src[i * 4 + 1], src[i * 4 + 2]);
+    const chromaOK = smooth(chromaAbs, 6, 14);
     const wide = (a <= 30 ? 1 : a >= lim ? 0 : 0.5 + 0.5 * Math.cos((a - 30) / (lim - 30) * Math.PI))
-      * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08);
-    const dark = (a < 80 ? 1 : 0) * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34));
+      * smooth(sA[i], 0.05, 0.15) * smooth(vA[i], 0.03, 0.08) * chromaOK;
+    const dark = (a < 80 ? 1 : 0) * smooth(sA[i], 0.08, 0.18) * (1 - smooth(vA[i], 0.26, 0.34)) * chromaOK;
     const enclosed = (!core[i] && !outside[i])
       ? (1 - smooth(sA[i], 0.10, 0.20)) * (1 - smooth(vA[i], 0.16, 0.28)) : 0;
     // border-connected background never takes the clip floor — letting it
@@ -1578,6 +1588,22 @@ function analyze(img) {
       wMap[i] += (dil[i] - wMap[i]) * unrel[i];
   }
 
+  // ---- the garment's envelope: the core closed over its own gaps ----
+  // Closing bridges a gap only where fabric lies on BOTH sides of it,
+  // which is precisely what separates the two dark regions no colour
+  // rule can tell apart. The channel between a sleeve and the torso is
+  // bridged, so it belongs to the garment: it must be filled and it
+  // must survive the confinement, or a white recolour grows a black
+  // notch through the underarm. Hair above a shoulder has fabric only
+  // below it, is never bridged, and stays photographic. The radius
+  // spans an underarm channel and stays well under the neck opening,
+  // which must NOT be bridged.
+  const ENV = Math.max(10, Math.round(W / 20));
+  let envelope = new Uint8Array(N);
+  for (let i = 0; i < N; i++) envelope[i] = core[i];
+  for (let k = 0; k < ENV; k++) envelope = dil(envelope);
+  for (let k = 0; k < ENV; k++) envelope = ero(envelope);
+
   // ---- harmonic weight completion: the structural cure for speckle ----
   // Where a pixel's own reading is unreliable, its weight is not decided -
   // it is INTERPOLATED from confident neighbours by relaxing toward the
@@ -1607,11 +1633,30 @@ function analyze(img) {
     const idx = [];
     for (let i = 0; i < N; i++) if (unrel[i] > 0.01) idx.push(i);
     if (idx.length) {
+      // Conductance on the RELATIVE luminance step, not the absolute
+      // one. Illumination is multiplicative: shading across fabric
+      // changes by a few percent per pixel at any brightness, while an
+      // occlusion boundary is a factor. Measured absolutely, the hair
+      // edge above a collar (value 0.05 rising to 0.33 over five
+      // pixels) reads as five small steps and weight walked straight
+      // across it into the hair — the grey band on a white shirt. In
+      // relative terms that same edge is a 100%-per-pixel jump and a
+      // fold's shading is still a few percent, so one threshold
+      // separates them at every brightness, which no absolute one can.
+      // How far a genuine partial-coverage edge can reach: anti-aliasing
+      // and lens softness span a pixel or two, so within EDGE_PX of
+      // solid fabric a dark pixel is the garment's own edge and the
+      // completion must be free to fill it — restricting it there ate
+      // a black notch out of a shadowed sleeve. Beyond that distance a
+      // dark region is a different object (hair above a shoulder sits
+      // five to ten pixels out), and there the matte's answer stands.
+      const EDGE_PX = Math.max(2, Math.round(RING * 0.5));
+      const relStep = (u, v) => Math.abs(u - v) / (Math.min(u, v) + 0.02);
       const cE = new Float32Array(N), cS = new Float32Array(N);
       for (let i = 0; i < N; i++) {
         const x = i % W;
-        cE[i] = x + 1 < W ? 1 - smooth(Math.abs(vA[i] - vA[i + 1]), 0.055, 0.14) : 0;
-        cS[i] = i + W < N ? 1 - smooth(Math.abs(vA[i] - vA[i + W]), 0.055, 0.14) : 0;
+        cE[i] = x + 1 < W ? 1 - smooth(relStep(vA[i], vA[i + 1]), 0.30, 0.60) : 0;
+        cS[i] = i + W < N ? 1 - smooth(relStep(vA[i], vA[i + W]), 0.30, 0.60) : 0;
       }
       const base = new Float32Array(wMap);
       for (let pass = 0; pass < 700; pass++) {
@@ -1620,9 +1665,31 @@ function analyze(img) {
           if (x < 1 || x >= W - 1 || i < W || i >= N - W) continue;
           const gw = cE[i - 1], ge = cE[i], gn = cS[i - W], gs = cS[i];
           const gsum = gw + ge + gn + gs;
-          if (gsum < 1e-4) continue;
-          const avg = (gw * wMap[i - 1] + ge * wMap[i + 1] + gn * wMap[i - W] + gs * wMap[i + W]) / gsum;
-          wMap[i] = (1 - unrel[i]) * base[i] + unrel[i] * avg;
+          // A blocked direction pulls toward the pixel's OWN base, not
+          // toward whatever else happens to be reachable. Normalising
+          // by the conductance sum — the obvious way to write this —
+          // silently defeats the barrier: a pixel walled off on three
+          // sides still takes the full value of the fourth, because
+          // dividing by that one conductance restores its full vote.
+          // That is why weight kept walking across the hair edge even
+          // with the conductance in place. Charging the blocked share
+          // to base[i] makes the barrier real — where a pixel cannot
+          // see, it keeps what it had — while a crevice with open
+          // sides still equilibrates to the fabric around it.
+          const avg = (gw * wMap[i - 1] + ge * wMap[i + 1] + gn * wMap[i - W] + gs * wMap[i + W]
+            + (4 - gsum) * base[i]) / 4;
+          const v = (1 - unrel[i]) * base[i] + unrel[i] * avg;
+          // Inside the boundary band the MATTE is the authority: it
+          // solved those pixels against the fabric and background it
+          // measured either side, and the completion's job there is
+          // only to remove speckle, never to invent coverage. Letting
+          // it raise them is what put a grey band over the hair beside
+          // a collar — the matte had already answered ~0 and the
+          // completion overwrote it with 0.6 by averaging along the
+          // band. So in the band the completion may only lower; the
+          // garment's interior, where crevices genuinely need filling
+          // from their surroundings, is untouched by this.
+          wMap[i] = (!envelope[i] && distC[i] > EDGE_PX) ? Math.min(v, base[i]) : v;
         }
       }
     }
@@ -1852,7 +1919,7 @@ function analyze(img) {
   // channels sit within the band by construction (they are bounded by
   // core on both sides, so no pixel in them is far from it).
   for (let i = 0; i < N; i++) {
-    if (!outside[i]) continue;
+    if (!outside[i] || envelope[i]) continue;
     if (distC[i] === -1) { wMap[i] = 0; continue; }
     // and inside the band, painting requires a REASON: violet evidence
     // of some kind, or a matte that actually solved the pixel, or the
