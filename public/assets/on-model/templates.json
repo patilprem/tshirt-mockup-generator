@@ -610,5 +610,158 @@
       "w": 725,
       "h": 685
     }
+  },
+  {
+    "id": "rooftop-hoodie-f",
+    "label": "Rooftop Hoodie",
+    "model": "female",
+    "scene": "Rooftop skyline, overcast light",
+    "width": 1290,
+    "height": 1600,
+    "photo": "/assets/on-model/rooftop-hoodie-f-photo.jpg?v=d8abcfba",
+    "weight": "/assets/on-model/rooftop-hoodie-f-weight.png?v=d3ce2bdd",
+    "shade": "/assets/on-model/rooftop-hoodie-f-shade.jpg?v=a0d96d4f",
+    "thumbPhoto": "/assets/on-model/rooftop-hoodie-f-thumb-photo.jpg?v=a5f2b049",
+    "thumbWeight": "/assets/on-model/rooftop-hoodie-f-thumb-weight.png?v=8862b510",
+    "thumbShade": "/assets/on-model/rooftop-hoodie-f-thumb-shade.jpg?v=a6962dc3",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9815,
+      0.9815,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      95.7,
+      65.7,
+      148
+    ],
+    "quad": {
+      "tl": [
+        477,
+        695
+      ],
+      "tr": [
+        903,
+        695
+      ],
+      "br": [
+        813,
+        1066
+      ],
+      "bl": [
+        387,
+        1066
+      ]
+    },
+    "bbox": {
+      "x": 269,
+      "y": 495,
+      "w": 807,
+      "h": 951
+    }
+  },
+  {
+    "id": "sunbeam-wall-f",
+    "label": "Sunbeam Wall",
+    "model": "female",
+    "scene": "Warm plaster wall, diagonal light beam",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/sunbeam-wall-f-photo.jpg?v=367a4e6e",
+    "weight": "/assets/on-model/sunbeam-wall-f-weight.png?v=b9f56f0e",
+    "shade": "/assets/on-model/sunbeam-wall-f-shade.jpg?v=8d0a3129",
+    "thumbPhoto": "/assets/on-model/sunbeam-wall-f-thumb-photo.jpg?v=03639813",
+    "thumbWeight": "/assets/on-model/sunbeam-wall-f-thumb-weight.png?v=4276387b",
+    "thumbShade": "/assets/on-model/sunbeam-wall-f-thumb-shade.jpg?v=aeab7ff5",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9545,
+      0.9394
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      116.1,
+      75,
+      156
+    ],
+    "quad": {
+      "tl": [
+        400.1,
+        634
+      ],
+      "tr": [
+        647.9,
+        634
+      ],
+      "br": [
+        633.4,
+        906
+      ],
+      "bl": [
+        385.6,
+        906
+      ]
+    },
+    "bbox": {
+      "x": 182,
+      "y": 488,
+      "w": 669,
+      "h": 696
+    }
+  },
+  {
+    "id": "tree-lined-f",
+    "label": "Tree-Lined Street",
+    "model": "female",
+    "scene": "Leafy residential street",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/tree-lined-f-photo.jpg?v=275eb4f8",
+    "weight": "/assets/on-model/tree-lined-f-weight.png?v=11afdf4d",
+    "shade": "/assets/on-model/tree-lined-f-shade.jpg?v=d0d8624c",
+    "thumbPhoto": "/assets/on-model/tree-lined-f-thumb-photo.jpg?v=10c1c0bc",
+    "thumbWeight": "/assets/on-model/tree-lined-f-thumb-weight.png?v=13288787",
+    "thumbShade": "/assets/on-model/tree-lined-f-thumb-shade.jpg?v=7bd8a691",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9815,
+      0.963
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      112.6,
+      79.7,
+      163
+    ],
+    "quad": {
+      "tl": [
+        404.6,
+        634
+      ],
+      "tr": [
+        658.4,
+        634
+      ],
+      "br": [
+        652.9,
+        921
+      ],
+      "bl": [
+        399.1,
+        921
+      ]
+    },
+    "bbox": {
+      "x": 141,
+      "y": 479,
+      "w": 771,
+      "h": 737
+    }
   }
 ]

@@ -74,6 +74,9 @@ const TEMPLATES = [
   { id: 'beach-m', file: 'beach-m.webp', label: 'Beach', model: 'male', scene: 'Sandy beach, open sky, sea behind' },
   { id: 'marina-m', file: 'marina-m.png', label: 'Marina', model: 'male', scene: 'Marina railing, boats and open water' },
   { id: 'sky-f', file: 'sky-f.png', label: 'Open Sky', model: 'female', scene: 'Open pale sky, soft daylight' },
+  { id: 'rooftop-hoodie-f', file: 'rooftop-hoodie-f.png', label: 'Rooftop Hoodie', model: 'female', scene: 'Rooftop skyline, overcast light' },
+  { id: 'sunbeam-wall-f', file: 'sunbeam-wall-f.png', label: 'Sunbeam Wall', model: 'female', scene: 'Warm plaster wall, diagonal light beam' },
+  { id: 'tree-lined-f', file: 'tree-lined-f.png', label: 'Tree-Lined Street', model: 'female', scene: 'Leafy residential street' },
 ];
 
 (async () => {
