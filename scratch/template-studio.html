@@ -1389,6 +1389,40 @@ function analyze(img) {
     };
     bfs(dwarm, isWarm);
     bfs(dfab, isFab);
+    // Second signal: WHO SURROUNDS the region. The distance rule fails
+    // exactly where the user keeps seeing shadow enter the mask — the
+    // chin/neck shadow above a collar sits a few pixels from skin AND
+    // a few pixels from fabric, so neither is decisively nearer. But
+    // its boundary composition is unambiguous: skin on almost every
+    // side, fabric only in the thin collar edge below. A crease is the
+    // mirror image (fabric all around), and the arm-torso channel is
+    // balanced — which correctly stays with the completion. Counted
+    // per connected component; a component whose informative boundary
+    // is overwhelmingly warm is an occluder-shadow, however its
+    // distances measure.
+    const comp = new Int32Array(N).fill(-1);
+    const compVote = [];
+    {
+      const q2 = new Int32Array(N);
+      for (let s0 = 0; s0 < N; s0++) {
+        if (!unk[s0] || comp[s0] !== -1) continue;
+        const id = compVote.length;
+        let qh = 0, qt = 0, warmN = 0, fabN = 0;
+        q2[qt++] = s0; comp[s0] = id;
+        while (qh < qt) {
+          const i = q2[qh++];
+          const x = i % W;
+          for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+            if (ni < 0 || ni >= N) continue;
+            if (unk[ni]) { if (comp[ni] === -1) { comp[ni] = id; q2[qt++] = ni; } continue; }
+            if (isFab(ni)) fabN++;
+            else if (isWarm(ni)) warmN++;
+          }
+        }
+        const frac = warmN / Math.max(1, warmN + fabN);
+        compVote.push(smooth(frac, 0.62, 0.82) * smooth(warmN, 8, 20));
+      }
+    }
       // Freeze where warm evidence is decisively nearer, and also where
       // it is merely nearer AND fabric is beyond the matte ring's reach
       // (~8px): inside that band the matte and the completion own the
@@ -1408,7 +1442,7 @@ function analyze(img) {
       for (let i = 0; i < N; i++) {
         if (!unk[i] || dwarm[i] === -1) continue;
         const df2 = dfab[i] === -1 ? 999 : dfab[i];
-        const s = smooth(df2 - 2 * dwarm[i], 0, 4);
+        const s = Math.max(smooth(df2 - 2 * dwarm[i], 0, 4), compVote[comp[i]] || 0);
         if (s > 0) {
           unrel[i] *= 1 - s;
           if (s > 0.5) occluder[i] = 1;

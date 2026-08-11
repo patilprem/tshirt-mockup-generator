@@ -56,11 +56,11 @@ const version = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
-const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
+const OUT_DIR = "/tmp/claude-0/-home-user-tshirt-mockup-generator/de3bd9a4-55b7-54a1-adf3-3147e5250efd/scratchpad/fix-out";
 const META_OUT = path.join(OUT_DIR, 'templates.json');
 const MAX_EDGE = 1600;
 
-const TEMPLATES = [
+const TEMPLATES = [ { id: "gallery-f", file: "gallery-f.webp", label: "G", model: "female", scene: "x" }, { id: "beach-m", file: "beach-m.webp", label: "B", model: "male", scene: "x" }, { id: "miami-f", file: "miami-f.webp", label: "M", model: "female", scene: "x" } ]; const _dead = [
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
   { id: 'gallery-f', file: 'gallery-f.webp', label: 'Gallery Interior', model: 'female', scene: 'Minimal off-white interior' },
   { id: 'livingroom-m', file: 'livingroom-m.webp', label: 'Living Room', model: 'male', scene: 'Bright airy living room' },
