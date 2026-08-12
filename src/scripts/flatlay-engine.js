@@ -32,15 +32,20 @@ import { SEL_ROT_GAP, SEL_LINE, SEL_COLOUR, drawSelectionChrome } from './select
 // it. Flip it to true in the same commit that adds the PNG.
 export const garmentConfigs = {
   'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230, label: 'Crewneck Tee', printArea: { x: 310, y: 265, w: 384, h: 365 }, pxPerIn: 25.5,
-    back: { ready: false, path: '/assets/processed/tshirt_flatlay_back.png', chestY: 445, printArea: { x: 310, y: 250, w: 384, h: 395 } } },
+    back: { ready: true, path: '/assets/processed/tshirt_flatlay_back.png', chestY: 406, printArea: { x: 290, y: 180, w: 420, h: 645 } } },
   'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225, label: 'Ladies Tee', printArea: { x: 302, y: 225, w: 396, h: 375 }, pxPerIn: 30.8 },
   'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225, label: 'Polo Shirt', printArea: { x: 306, y: 400, w: 402, h: 245 }, pxPerIn: 25.3 },
   'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230, label: 'Long Sleeve', printArea: { x: 327, y: 265, w: 353, h: 375 }, pxPerIn: 23.3,
-    back: { ready: false, path: '/assets/processed/tshirt_longsleeve_back.png', chestY: 450, printArea: { x: 327, y: 250, w: 353, h: 400 } } },
+    back: { ready: true, path: '/assets/processed/tshirt_longsleeve_back.png', chestY: 412, printArea: { x: 340, y: 230, w: 320, h: 520 } } },
   'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230, label: 'Hoodie', printArea: { x: 346, y: 340, w: 312, h: 310 }, pxPerIn: 18.7,
-    back: { ready: false, path: '/assets/processed/tshirt_hoodie_back.png', chestY: 530, printArea: { x: 340, y: 355, w: 320, h: 350 } } },
+    // The back photo's garment fills more of its 1000x1000 frame than the
+    // front's does (bounding-box width 834px vs 797px — the hood spreads
+    // wider laid flat behind the shoulders than it does from the front), so
+    // pxPerIn is restated here rather than inherited: the same physical
+    // inches now span more pixels.
+    back: { ready: true, path: '/assets/processed/tshirt_hoodie_back.png', chestY: 494, printArea: { x: 296, y: 340, w: 410, h: 440 }, pxPerIn: 19.6 } },
   'sweatshirt': { chestY: 410, centerY: 480, bellyY: 570, defaultScale: 0.33, path: '/assets/processed/tshirt_sweatshirt.png', yFlat: 235, label: 'Sweatshirt', printArea: { x: 333, y: 265, w: 334, h: 305 }, pxPerIn: 20.0,
-    back: { ready: false, path: '/assets/processed/tshirt_sweatshirt_back.png', chestY: 445, printArea: { x: 333, y: 255, w: 334, h: 380 } } },
+    back: { ready: true, path: '/assets/processed/tshirt_sweatshirt_back.png', chestY: 398, printArea: { x: 280, y: 195, w: 440, h: 580 } } },
   'vneck': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.35, path: '/assets/processed/tshirt_vneck.png', yFlat: 225, label: 'V-Neck Tee', printArea: { x: 296, y: 270, w: 409, h: 370 }, pxPerIn: 26.9 },
   'tanktop': { chestY: 380, centerY: 460, bellyY: 550, defaultScale: 0.35, path: '/assets/processed/tshirt_tanktop.png', yFlat: 235, label: 'Tank Top', printArea: { x: 310, y: 330, w: 380, h: 310 }, pxPerIn: 33.5 }
 };

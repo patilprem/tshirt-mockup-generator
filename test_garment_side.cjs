@@ -1,14 +1,13 @@
 // Exercises the front/back print-side toggle in the editor.
 //
-// The back assets are not in the repo yet, so this test manufactures one: it
-// mirrors a front PNG vertically and writes it to the path the config expects,
-// then flips the config's `ready` flag in the built bundle is NOT possible, so
-// instead it drives the toggle through the module's own exports via the page.
+// The back assets for crewneck, hoodie, sweatshirt and long sleeve are real,
+// shipped PNGs (ready: true in garmentConfigs) — this hits them directly
+// rather than standing in for anything.
 //
-// What it is actually checking is the wiring, not the artwork — that the
-// toggle appears only where a back view exists, that flipping it changes the
-// pixels, that each side keeps its own placement across a flip, and that a
-// garment with no back view falls back to the front instead of blanking.
+// What it checks: the toggle appears only where a back view exists, flipping
+// it changes the pixels, each side keeps its own placement across a flip, and
+// a garment with no back view (tank top) falls back to the front instead of
+// blanking.
 //
 // Needs the dev server: npm run dev, then node test_garment_side.cjs
 const { chromium } = require('playwright');
@@ -35,37 +34,23 @@ const diff = (a, b) => {
   const p = await br.newPage({ viewport: { width: 1440, height: 900 } });
   p.on('pageerror', e => fail('PAGE ERROR: ' + e.message));
 
-  // Serve a stand-in back asset for the four scaffolded garments by mirroring
-  // the front one. Route interception rather than files on disk, so the repo
-  // stays free of placeholder art that could be mistaken for the real thing.
-  const BACKS = {
-    '/assets/processed/tshirt_flatlay_back.png': '/assets/processed/tshirt_flatlay.png',
-    '/assets/processed/tshirt_hoodie_back.png': '/assets/processed/tshirt_hoodie.png',
-    '/assets/processed/tshirt_sweatshirt_back.png': '/assets/processed/tshirt_sweatshirt.png',
-    '/assets/processed/tshirt_longsleeve_back.png': '/assets/processed/tshirt_longsleeve.png',
-  };
-  for (const [backPath, frontPath] of Object.entries(BACKS)) {
-    await p.route(BASE + backPath, async route => {
-      const res = await p.request.get(BASE + frontPath);
-      route.fulfill({ status: 200, contentType: 'image/png', body: await res.body() });
-    });
-  }
-
   await p.goto(BASE + '/editor', { waitUntil: 'networkidle' });
   await sleep(1200);
 
   console.log('\nside toggle visibility');
-  // Every garment ships with `ready: false` today, so the toggle is hidden.
-  // That IS the shipped behaviour and worth asserting: a visible toggle with no
-  // asset behind it would 404 on click.
+  // crewneck, longsleeve, hoodie and sweatshirt ship real back assets; the
+  // other four garments have no `back` entry at all.
   const readyCount = await p.evaluate(async () => {
     const m = await import('/src/scripts/flatlay-engine.js');
     return Object.keys(m.garmentConfigs).filter(k => m.hasBackView(k)).length;
   });
+  // The default garment on load is the crewneck, which has a ready back view,
+  // so the toggle should already be showing.
   const toggleShown = await p.evaluate(() =>
     getComputedStyle(document.getElementById('garment-side-group')).display !== 'none');
-  if (readyCount === 0 && toggleShown) fail('toggle visible while no garment has a ready back asset');
-  else ok(`toggle hidden with ${readyCount} ready back assets`);
+  if (readyCount !== 4) fail(`expected 4 ready back views, got ${readyCount}`);
+  else if (!toggleShown) fail('toggle hidden for the crewneck, which has a ready back view');
+  else ok(`toggle shown with ${readyCount} ready back assets (default garment is crewneck)`);
 
   console.log('\nconfig shape');
   const cfgCheck = await p.evaluate(async () => {
@@ -83,7 +68,14 @@ const diff = (a, b) => {
       if (view.path === front.path) out.bad.push(`${id}: back view reuses the front photograph`);
       if (JSON.stringify(view.printArea) === JSON.stringify(front.printArea)) out.bad.push(`${id}: back reuses the front print area`);
       if (view.yFlat !== front.yFlat) out.bad.push(`${id}: back did not inherit yFlat`);
-      if (view.pxPerIn !== front.pxPerIn) out.bad.push(`${id}: back did not inherit pxPerIn`);
+      // The hoodie's back photo measures wider in its 1000x1000 frame than the
+      // front (hood spreads out laid flat), so it deliberately overrides
+      // pxPerIn rather than inheriting it — every other garment still inherits.
+      if (id === 'hoodie') {
+        if (view.pxPerIn === front.pxPerIn) out.bad.push(`${id}: back should override pxPerIn but matches the front`);
+      } else if (view.pxPerIn !== front.pxPerIn) {
+        out.bad.push(`${id}: back did not inherit pxPerIn`);
+      }
       if (view.label !== front.label) out.bad.push(`${id}: back did not inherit label`);
       // The back print area has to sit inside the artboard or the design gets
       // clamped against a rect that is partly off-canvas.
@@ -104,10 +96,21 @@ const diff = (a, b) => {
     for (const id of ['crewneck', 'hoodie', 'sweatshirt', 'longsleeve']) {
       const f = m.centerChestPlacement(id, 'front');
       const b = m.centerChestPlacement(id, 'back');
-      // A back print is the larger of the two and hangs lower; if they come out
-      // identical the side argument is not reaching the maths.
+      const fView = m.garmentView(id, 'front');
+      const bView = m.garmentView(id, 'back');
+      // A back print is the larger of the two; if they come out identical the
+      // side argument is not reaching the maths.
       if (b.scale <= f.scale) out.push(`${id}: back print is not wider than the front (${b.scale} vs ${f.scale})`);
-      if (b.pos.y <= f.pos.y) out.push(`${id}: back print does not sit below the front (${b.pos.y} vs ${f.pos.y})`);
+      // A back print area reaches further down the garment than the front's —
+      // there's no hem/pocket clearance the way a front chest print has, and
+      // it's a bigger design. Its default CENTER isn't reliably lower than the
+      // front's, though: unlike a chest logo, a back print area starts right
+      // under the collar with no chest-height offset to clear, so a tall back
+      // area can have a higher top edge than the front's despite extending
+      // further down overall — the bottom edge is the invariant that holds.
+      const fBottom = fView.printArea.y + fView.printArea.h;
+      const bBottom = bView.printArea.y + bView.printArea.h;
+      if (bBottom <= fBottom) out.push(`${id}: back print area does not extend further down the garment than the front's (${bBottom} vs ${fBottom})`);
       // And a placement must survive the round trip through relative space.
       const rel = m.placementToRelative(b.pos, b.scale, id, 'back');
       const rt = m.placementFromRelative(rel, id, 'back');
@@ -121,14 +124,6 @@ const diff = (a, b) => {
   if (!placeCheck.length) ok('back defaults are wider, lower, and round-trip through relative space');
 
   console.log('\nlive toggle behaviour');
-  // Force the four scaffolded garments ready so the toggle can actually be
-  // driven, standing in for the commit that lands the real PNGs.
-  await p.evaluate(async () => {
-    const m = await import('/src/scripts/flatlay-engine.js');
-    for (const cfg of Object.values(m.garmentConfigs)) if (cfg.back) cfg.back.ready = true;
-  });
-
-  // Re-select the crewneck so syncSideToggle runs with the flags now set.
   await p.click('[data-garment="hoodie"]');
   await sleep(900);
   const shownForHoodie = await p.evaluate(() =>

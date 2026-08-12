@@ -63,12 +63,12 @@ per-use cost needs a very good reason.
    mockups have almost no supply and real search volume. Exports directly usable as Etsy video.
 8. **Back print + sleeve print.** Second print area per garment. Unlocks "front and back mockup"
    searches and matches how real POD listings work.
-   *Back print is scaffolded and waiting on art:* the engine, the per-side print areas, the
-   editor toggle and the batch/export naming all landed for hoodie, crewneck, sweatshirt and
-   long sleeve, gated behind `back.ready` in `garmentConfigs`. What remains per garment is the
-   photograph — prompts in `scratch/BACK-VIEW-PROMPTS.md`, then `crop_garment.cjs`,
-   then recalibrate the provisional `printArea` with `calibrate_print_areas.cjs` and flip
-   `ready: true`. Sleeve print is untouched.
+   *Back print has shipped for crewneck, hoodie, sweatshirt and long sleeve* (`back.ready: true`
+   in `garmentConfigs`) — Print Side toggle in the editor, per-side design placement, print
+   areas calibrated with `scratch/calibrate_back_areas.cjs`, batch export naming. The other four
+   garments (ladies, polo, v-neck, tank top) have no `back` entry — same asset pipeline
+   (`scratch/BACK-VIEW-PROMPTS.md` → `crop_garment.cjs` → calibrate → add a `back` entry)
+   extends this to them when there's demand. Sleeve print is untouched.
 9. **Scene presets.** One-click styled compositions (current props + new ones arranged as
    "Cozy", "Streetwear", "Summer") so a non-designer gets the gallery look in one click.
 
