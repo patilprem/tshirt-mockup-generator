@@ -2,9 +2,12 @@
 //
 // The back assets for crewneck, hoodie, sweatshirt and long sleeve are real,
 // shipped PNGs (ready: true in garmentConfigs) — this hits them directly
-// rather than standing in for anything.
+// rather than standing in for anything. Ladies tee and polo carry a `back`
+// entry too, but ready: false (no photo yet) — their config shape and
+// placement maths are checked the same way, but the UI toggle is expected to
+// stay hidden for them until a photo lands and flips the flag.
 //
-// What it checks: the toggle appears only where a back view exists, flipping
+// What it checks: the toggle appears only where a back view is ready, flipping
 // it changes the pixels, each side keeps its own placement across a flip, and
 // a garment with no back view (tank top) falls back to the front instead of
 // blanking.
@@ -84,8 +87,8 @@ const diff = (a, b) => {
     }
     return out;
   });
-  if (cfgCheck.scaffolded.length !== 4) fail(`expected 4 scaffolded garments, got ${cfgCheck.scaffolded.length}: ${cfgCheck.scaffolded}`);
-  else ok(`4 garments scaffolded: ${cfgCheck.scaffolded.join(', ')}`);
+  if (cfgCheck.scaffolded.length !== 6) fail(`expected 6 garments with a back entry, got ${cfgCheck.scaffolded.length}: ${cfgCheck.scaffolded}`);
+  else ok(`6 garments carry a back entry: ${cfgCheck.scaffolded.join(', ')}`);
   cfgCheck.bad.forEach(fail);
   if (!cfgCheck.bad.length) ok('back views resolve cleanly and inherit the shared fields');
 
@@ -93,7 +96,10 @@ const diff = (a, b) => {
   const placeCheck = await p.evaluate(async () => {
     const m = await import('/src/scripts/flatlay-engine.js');
     const out = [];
-    for (const id of ['crewneck', 'hoodie', 'sweatshirt', 'longsleeve']) {
+    // Includes ladies/polo even though their back isn't ready yet — the
+    // placement maths only reads garmentConfigs[x].back, not the ready flag,
+    // so their provisional numbers should already behave correctly.
+    for (const id of ['crewneck', 'hoodie', 'sweatshirt', 'longsleeve', 'ladies', 'polo']) {
       const f = m.centerChestPlacement(id, 'front');
       const b = m.centerChestPlacement(id, 'back');
       const fView = m.garmentView(id, 'front');
@@ -166,6 +172,18 @@ const diff = (a, b) => {
   const backScaleAgain = await p.evaluate(() => +document.getElementById('scale-slider').value);
   if (backScaleAgain !== backScale) fail(`back lost its placement across a flip (${backScaleAgain}, expected ${backScale})`);
   else ok('back placement survived a round trip through the front');
+
+  console.log('\nnot-ready back entries stay hidden');
+  // Ladies tee has a `back` entry (provisional printArea, for the placement
+  // maths above) but ready: false — no photo yet. The toggle must not appear
+  // for it, the same as a garment with no `back` entry at all, or clicking it
+  // would 404.
+  await p.click('[data-garment="ladies"]');
+  await sleep(900);
+  const ladiesToggleShown = await p.evaluate(() =>
+    getComputedStyle(document.getElementById('garment-side-group')).display !== 'none');
+  if (ladiesToggleShown) fail('toggle shown for ladies tee, whose back entry is not ready');
+  else ok('toggle stays hidden for a scaffolded-but-not-ready back entry (ladies tee)');
 
   console.log('\nfallback for garments with no back view');
   // Tank top has no back entry at all. Selecting it while the back is showing
