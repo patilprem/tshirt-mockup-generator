@@ -61,9 +61,14 @@ per-use cost needs a very good reason.
 7. **Video mockups.** Slow zoom/pan or garment color-cycle rendered client-side to WebM/MP4
    (canvas + MediaRecorder). Placeit's video mockups are a flagship *paid* feature; free video
    mockups have almost no supply and real search volume. Exports directly usable as Etsy video.
-8. **Back print + sleeve print.** Second print area per garment (needs back-side garment photos —
-   generate with the same asset pipeline as the banners). Unlocks "front and back mockup"
+8. **Back print + sleeve print.** Second print area per garment. Unlocks "front and back mockup"
    searches and matches how real POD listings work.
+   *Back print is scaffolded and waiting on art:* the engine, the per-side print areas, the
+   editor toggle and the batch/export naming all landed for hoodie, crewneck, sweatshirt and
+   long sleeve, gated behind `back.ready` in `garmentConfigs`. What remains per garment is the
+   photograph — prompts in `scratch/BACK-VIEW-PROMPTS.md`, then `crop_garment.cjs`,
+   then recalibrate the provisional `printArea` with `calibrate_print_areas.cjs` and flip
+   `ready: true`. Sleeve print is untouched.
 9. **Scene presets.** One-click styled compositions (current props + new ones arranged as
    "Cozy", "Streetwear", "Summer") so a non-designer gets the gallery look in one click.
 

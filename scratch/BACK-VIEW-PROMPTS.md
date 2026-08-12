@@ -167,11 +167,34 @@ way down the garment. Drawstrings are front-only and must not appear.
 
 ## After generating
 
-1. Save each as a PNG and run it through the existing crop/key step:
+The code side is already in place — `garmentConfigs` in
+`src/scripts/flatlay-engine.js` carries a `back` entry for all four garments,
+and the editor toggle, per-side placement and batch naming all read it. Each
+entry is gated behind `ready: false` until its photograph exists, so the
+remaining work per garment is:
+
+1. Save the generation as a PNG and run it through the existing crop/key step,
+   using exactly the filename the config already expects:
    `node scratch/crop_garment.cjs <src.png> public/assets/processed/tshirt_<name>_back.png`
-2. Calibrate the print area with `scratch/calibrate_print_areas.cjs` — the back
-   print area is larger and higher than the front for every one of these
-   garments (no collar dip to clear, no pocket to clear), so the front numbers
-   must not be reused.
-3. Check the keyed result has no holes in deep folds and no grey halo at the
-   edges before wiring it into `garmentConfigs`.
+   — `tshirt_flatlay_back.png` (crewneck), `tshirt_longsleeve_back.png`,
+   `tshirt_hoodie_back.png`, `tshirt_sweatshirt_back.png`.
+2. Check the keyed result has no holes in deep folds and no grey halo at the
+   edges. Holes mean the fold shadows went darker than the RGB 110 key
+   threshold — regenerate with flatter light rather than patching the PNG.
+3. Recalibrate `printArea` with `scratch/calibrate_print_areas.cjs`. **The
+   numbers currently in the `back` entries are provisional estimates, not
+   measurements** — they were reasoned from the front rects (back areas run
+   taller and start higher, with no collar dip or pocket to clear) so the
+   feature had something to render against, and every one of them needs
+   replacing with a measured value.
+4. Check `pxPerIn` for the side. It is inherited from the front and usually
+   correct, since it is the same garment in the same size — but `crop_garment.cjs`
+   scales to the detected bounding box, so a back view with a different spread
+   (the hoodie's flattened hood especially) can land at a different scale and
+   needs its own value in the `back` entry.
+5. Flip `ready: true` in that garment's `back` entry. The toggle appears for
+   that garment on the next load; nothing else needs changing.
+
+`test_garment_side.cjs` covers the wiring end to end and stands in a mirrored
+front asset to do it, so it passes before the real art lands and keeps passing
+after.

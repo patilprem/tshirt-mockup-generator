@@ -19,16 +19,57 @@ import { SEL_ROT_GAP, SEL_LINE, SEL_COLOUR, drawSelectionChrome } from './select
 // hoodie hood, and the hoodie/sweatshirt kangaroo pockets).
 // pxPerIn: pixels per real-world inch, from torso width ÷ chest width of a
 // standard size M — lets placements be expressed in inches per garment.
+//
+// `back` is an optional override layer, not a second config: a back view is the
+// same garment in the same size under the same lights, so it inherits yFlat,
+// pxPerIn, label and the rest, and states only what genuinely differs — its own
+// photograph and its own printable rect. Reading it through garmentView() below
+// rather than spreading it here keeps one source for what a side is.
+//
+// `ready: false` means the asset has not been produced yet. The entry is still
+// carried so the print areas have somewhere to live and the UI has something to
+// disable, rather than the side being invisible until someone remembers to add
+// it. Flip it to true in the same commit that adds the PNG.
 export const garmentConfigs = {
-  'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230, label: 'Crewneck Tee', printArea: { x: 310, y: 265, w: 384, h: 365 }, pxPerIn: 25.5 },
+  'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230, label: 'Crewneck Tee', printArea: { x: 310, y: 265, w: 384, h: 365 }, pxPerIn: 25.5,
+    back: { ready: false, path: '/assets/processed/tshirt_flatlay_back.png', chestY: 445, printArea: { x: 310, y: 250, w: 384, h: 395 } } },
   'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225, label: 'Ladies Tee', printArea: { x: 302, y: 225, w: 396, h: 375 }, pxPerIn: 30.8 },
   'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225, label: 'Polo Shirt', printArea: { x: 306, y: 400, w: 402, h: 245 }, pxPerIn: 25.3 },
-  'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230, label: 'Long Sleeve', printArea: { x: 327, y: 265, w: 353, h: 375 }, pxPerIn: 23.3 },
-  'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230, label: 'Hoodie', printArea: { x: 346, y: 340, w: 312, h: 310 }, pxPerIn: 18.7 },
-  'sweatshirt': { chestY: 410, centerY: 480, bellyY: 570, defaultScale: 0.33, path: '/assets/processed/tshirt_sweatshirt.png', yFlat: 235, label: 'Sweatshirt', printArea: { x: 333, y: 265, w: 334, h: 305 }, pxPerIn: 20.0 },
+  'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230, label: 'Long Sleeve', printArea: { x: 327, y: 265, w: 353, h: 375 }, pxPerIn: 23.3,
+    back: { ready: false, path: '/assets/processed/tshirt_longsleeve_back.png', chestY: 450, printArea: { x: 327, y: 250, w: 353, h: 400 } } },
+  'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230, label: 'Hoodie', printArea: { x: 346, y: 340, w: 312, h: 310 }, pxPerIn: 18.7,
+    back: { ready: false, path: '/assets/processed/tshirt_hoodie_back.png', chestY: 530, printArea: { x: 340, y: 355, w: 320, h: 350 } } },
+  'sweatshirt': { chestY: 410, centerY: 480, bellyY: 570, defaultScale: 0.33, path: '/assets/processed/tshirt_sweatshirt.png', yFlat: 235, label: 'Sweatshirt', printArea: { x: 333, y: 265, w: 334, h: 305 }, pxPerIn: 20.0,
+    back: { ready: false, path: '/assets/processed/tshirt_sweatshirt_back.png', chestY: 445, printArea: { x: 333, y: 255, w: 334, h: 380 } } },
   'vneck': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.35, path: '/assets/processed/tshirt_vneck.png', yFlat: 225, label: 'V-Neck Tee', printArea: { x: 296, y: 270, w: 409, h: 370 }, pxPerIn: 26.9 },
   'tanktop': { chestY: 380, centerY: 460, bellyY: 550, defaultScale: 0.35, path: '/assets/processed/tshirt_tanktop.png', yFlat: 235, label: 'Tank Top', printArea: { x: 310, y: 330, w: 380, h: 310 }, pxPerIn: 33.5 }
 };
+
+// --- garment sides ----------------------------------------------------------
+// Every read of a garment's photograph or print area goes through here, so the
+// side is resolved in exactly one place. Callers that never had a side pass
+// nothing and get the front, which is what the whole app meant before back
+// views existed.
+export function garmentView(garmentType, side = 'front') {
+  const cfg = garmentConfigs[garmentType];
+  if (!cfg) return null;
+  if (side !== 'back' || !cfg.back) return cfg;
+  // The override wins over the shared base, and `back`/`ready` are dropped so a
+  // resolved view is a plain garment config and nothing downstream can ask a
+  // side for its own sides.
+  const { back, ...base } = cfg;
+  const { ready, ...override } = back;
+  return { ...base, ...override };
+}
+
+// Whether a garment can currently be shown from the back. False both for
+// garments that will never have a back view and for those whose asset has not
+// landed yet — the caller wants to know if it can render one, and those two
+// cases are the same answer to that question.
+export function hasBackView(garmentType) {
+  const cfg = garmentConfigs[garmentType];
+  return !!(cfg && cfg.back && cfg.back.ready);
+}
 
 // A fresh object per caller rather than one shared literal: these entries are
 // mutated in place as props are dragged, scaled and rotated, so the editor and
@@ -519,9 +560,11 @@ function clampVal(val, lo, hi) {
 
 // A placement expressed against the garment's own print area, so switching
 // garment keeps the print where it looked rather than where its raw
-// coordinates happened to land.
-export function placementToRelative(pos, scaleVal, garmentType) {
-  const pa = garmentConfigs[garmentType].printArea;
+// coordinates happened to land. Sides are the same problem one step in: a back
+// print area is taller and higher than its front, so the same relative
+// placement carries across a side flip too.
+export function placementToRelative(pos, scaleVal, garmentType, side = 'front') {
+  const pa = garmentView(garmentType, side).printArea;
   return {
     u: (pos.x - pa.x) / pa.w,
     v: (pos.y - pa.y) / pa.h,
@@ -529,8 +572,8 @@ export function placementToRelative(pos, scaleVal, garmentType) {
   };
 }
 
-export function placementFromRelative(rel, garmentType) {
-  const pa = garmentConfigs[garmentType].printArea;
+export function placementFromRelative(rel, garmentType, side = 'front') {
+  const pa = garmentView(garmentType, side).printArea;
   const size = Math.min(rel.size, 1); // never wider than the print area
   const half = (size * pa.w) / 2;
   const x = clampVal(pa.x + rel.u * pa.w, pa.x + half, pa.x + pa.w - half);
@@ -540,11 +583,23 @@ export function placementFromRelative(rel, garmentType) {
 
 // Standards-accurate center chest: 11″ wide print (clamped to the print
 // area), top edge ~0.75″ below the top of the printable area.
-export function centerChestPlacement(garmentType) {
-  const cfg = garmentConfigs[garmentType];
+//
+// The back's default is a different standard, not the same one measured from a
+// different rect: a full back print runs wider than a chest print and hangs
+// further below the collar, which is why the numbers are named per side rather
+// than shared. Both still clamp into the print area, so a garment whose back
+// area is narrow gets a print that fits instead of one that is nominally 12″.
+const SIDE_DEFAULTS = {
+  front: { widthIn: 11, topGapIn: 0.75 },
+  back: { widthIn: 12, topGapIn: 3 },
+};
+
+export function centerChestPlacement(garmentType, side = 'front') {
+  const cfg = garmentView(garmentType, side);
+  const std = SIDE_DEFAULTS[side] || SIDE_DEFAULTS.front;
   const pa = cfg.printArea;
-  const wPx = Math.min(11 * cfg.pxPerIn, pa.w);
+  const wPx = Math.min(std.widthIn * cfg.pxPerIn, pa.w);
   const half = wPx / 2;
-  const y = clampVal(pa.y + 0.75 * cfg.pxPerIn + half, pa.y + half, pa.y + pa.h - half);
+  const y = clampVal(pa.y + std.topGapIn * cfg.pxPerIn + half, pa.y + half, pa.y + pa.h - half);
   return { pos: { x: pa.x + pa.w / 2, y }, scale: wPx / 500 };
 }

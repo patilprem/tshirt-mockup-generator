@@ -90,6 +90,20 @@ import KofiSupport from './KofiSupport.astro';
           </button>
         </div>
       </div>
+      <!-- Which side of the garment is being printed. Hidden entirely for
+           garments that have no back view rather than shown disabled: an
+           always-dead control on six of eight garments reads as broken. -->
+      <div class="control-group" id="garment-side-group" style="display: none;">
+        <label class="control-label">Print Side</label>
+        <div class="style-toggle" id="garment-side-toggle">
+          <button class="style-btn active" data-side="front" type="button">
+            <span class="style-name">Front</span>
+          </button>
+          <button class="style-btn" data-side="back" type="button">
+            <span class="style-name">Back</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Section 1: T-Shirt Color -->
@@ -517,7 +531,7 @@ import KofiSupport from './KofiSupport.astro';
     buildOnModelComposed, onModelHighlightCanvas, onModelClipCanvas, onModelShadeCanvas, buildDesignBuffer,
   } from '../scripts/onmodel-engine.js';
   import {
-    garmentConfigs, defaultPropConfigs, loadProp as loadPropImage,
+    garmentConfigs, garmentView, hasBackView, defaultPropConfigs, loadProp as loadPropImage,
     buildShirtLayers, drawFlatlayBackground, drawProps, drawFlatlayScene,
     designBoxSize, placementToRelative, placementFromRelative, centerChestPlacement,
     propTransformMetrics, hitProps, hitPropHandles, drawPropChrome,
@@ -929,6 +943,15 @@ import KofiSupport from './KofiSupport.astro';
     let startPropAspect = 1.0;
 
     let activeGarmentType = 'crewneck';
+    // Which side of the garment is on the artboard. Only ever 'back' for a
+    // garment whose back asset has shipped — every path that could set it
+    // checks hasBackView first, so nothing downstream has to re-check.
+    let activeSide = 'front';
+    // Each side keeps its own placement, because they are two different prints
+    // on one garment rather than one print seen twice: a chest logo and a full
+    // back graphic have no reason to share a size or a position, and carrying
+    // one across the toggle would silently overwrite the other.
+    const sidePlacements = { front: null, back: null };
     let shirtColor = '#212121';
     let designImage = null;
     let designSrc = '/assets/designs/minimal_rose.png';
@@ -1143,11 +1166,22 @@ import KofiSupport from './KofiSupport.astro';
     // designPos in an image onload callback, so anything set before that fires
     // is silently overwritten. Every other call site ignores the return, as it
     // did when this was void.
-    function loadGarment(type) {
-      const config = garmentConfigs[type];
+    // opts.keepPlacement leaves the design exactly where it is and swaps only
+    // the garment underneath it. Callers that are about to write a placement of
+    // their own — a side flip restoring a remembered one, a mode switch that
+    // has already clamped the design into its new range — pass it so this does
+    // not first reset to the garment default and undo them.
+    function loadGarment(type, side = 'front', opts = {}) {
+      // A garment without the requested side falls back to its front rather
+      // than refusing to load: switching from a garment that has a back to one
+      // that does not is an ordinary click, and it must leave something on the
+      // artboard.
+      if (side === 'back' && !hasBackView(type)) side = 'front';
+      const config = garmentView(type, side);
       if (!config) return Promise.resolve();
 
       activeGarmentType = type;
+      activeSide = side;
       isShirtLoaded = false;
 
       // Show loading spinner
@@ -1173,14 +1207,18 @@ import KofiSupport from './KofiSupport.astro';
           if (canvasLoading) canvasLoading.style.display = 'none';
 
           // Set layout variables based on garment config (if scale was not manually adjusted)
-          if (!userHasManuallyScaled) {
-            designScale = config.defaultScale;
-            scaleSlider.value = Math.round(designScale * 100);
-            scaleManual.value = Math.round(designScale * 100);
+          if (!opts.keepPlacement) {
+            if (!userHasManuallyScaled) {
+              designScale = config.defaultScale;
+              scaleSlider.value = Math.round(designScale * 100);
+              scaleManual.value = Math.round(designScale * 100);
+            }
+
+            designPos.x = 500;
+            designPos.y = config.chestY; // default to chest placement (per side)
           }
 
-          designPos.x = 500;
-          designPos.y = config.chestY; // default to chest placement
+          syncSideToggle();
 
           // If design is already loaded, re-render, otherwise load it
           if (designImage) {
@@ -1198,18 +1236,72 @@ import KofiSupport from './KofiSupport.astro';
       });
     }
 
+    // --- print side -------------------------------------------------------
+    // Shows the toggle only where there is a choice to make, and keeps the
+    // pressed button honest about which side is actually on the artboard —
+    // loadGarment can silently fall back to the front, and the control has to
+    // follow that rather than keep claiming Back.
+    function syncSideToggle() {
+      const group = document.getElementById('garment-side-group');
+      if (group) group.style.display = hasBackView(activeGarmentType) ? '' : 'none';
+      document.querySelectorAll('#garment-side-toggle .style-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.side === activeSide);
+      });
+    }
+
+    async function setGarmentSide(side) {
+      if (side === activeSide) return;
+      if (side === 'back' && !hasBackView(activeGarmentType)) return;
+
+      // Park the placement the outgoing side was showing before anything
+      // overwrites it, so flipping back and forth is lossless.
+      sidePlacements[activeSide] = { pos: { ...designPos }, scale: designScale, rotation: designRotation };
+
+      // A side opened for the first time gets that side's own standard —
+      // centre chest at 11″ on the front, a full 12″ back print sitting below
+      // the collar on the back — rather than whatever the other side happened
+      // to be showing.
+      const placement = sidePlacements[side] || (() => {
+        const p = centerChestPlacement(activeGarmentType, side);
+        return { pos: p.pos, scale: p.scale, rotation: 0 };
+      })();
+
+      await loadGarment(activeGarmentType, side, { keepPlacement: true });
+
+      designPos.x = placement.pos.x;
+      designPos.y = placement.pos.y;
+      designScale = placement.scale;
+      designRotation = placement.rotation;
+
+      const pct = Math.round(designScale * 100);
+      if (scaleSlider) scaleSlider.value = pct;
+      if (scaleManual) scaleManual.value = pct;
+      const rdeg = Math.round(designRotation * 180 / Math.PI);
+      if (rotateSlider) rotateSlider.value = rdeg;
+      if (rotateManual) rotateManual.value = rdeg;
+
+      syncSideToggle();
+      render();
+      trackEvent('garment_side', { garment: activeGarmentType, side });
+    }
+
     function loadProp(type) {
       return loadPropImage(propConfigs[type]);
     }
 
-    // Initial load — honor ?garment= deep links from the landing pages
+    // Initial load — honor ?garment= and ?side= deep links from the landing pages
     const validGarments = ['crewneck', 'ladies', 'polo', 'longsleeve', 'hoodie', 'sweatshirt', 'vneck', 'tanktop'];
     let initialGarment = 'crewneck';
+    let initialSide = 'front';
     try {
-      const requested = new URLSearchParams(window.location.search).get('garment');
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get('garment');
       if (requested && validGarments.includes(requested)) {
         initialGarment = requested;
       }
+      // loadGarment falls back to the front for a garment with no back asset,
+      // so a stale ?side=back link opens on something rather than nothing.
+      if (params.get('side') === 'back') initialSide = 'back';
     } catch (e) { /* no-op: fall back to crewneck */ }
 
     if (initialGarment !== 'crewneck') {
@@ -1218,7 +1310,7 @@ import KofiSupport from './KofiSupport.astro';
       if (requestedCard) requestedCard.classList.add('active');
     }
     applyCanvasAspect();
-    loadGarment(initialGarment);
+    loadGarment(initialGarment, initialSide);
     initOnModel();
 
     // Re-fit the canvas box on viewport changes (orientation flip, browser
@@ -1474,7 +1566,7 @@ import KofiSupport from './KofiSupport.astro';
     // Pure with respect to editor state so batch export can process garments
     // other than the active one (results cached per garment type).
     function preProcessShirt() {
-      const config = garmentConfigs[activeGarmentType];
+      const config = garmentView(activeGarmentType, activeSide);
       const layers = buildShirtLayers(rawShirtImage, config ? (config.yFlat || 215) : 215);
       processedShirtMask = layers.mask;
       processedShirtShadows = layers.shadows;
@@ -2007,10 +2099,19 @@ import KofiSupport from './KofiSupport.astro';
         const inBox = designPos.x >= 100 && designPos.x <= 900
                    && designPos.y >= 100 && designPos.y <= 900;
         if (!inBox) {
-          const cfg = garmentConfigs[activeGarmentType];
+          const cfg = garmentView(activeGarmentType, activeSide);
           designPos.x = 500;
           designPos.y = cfg && Number.isFinite(cfg.chestY) ? cfg.chestY : 420;
         }
+      }
+      // On-model templates are photographs of a model facing the camera, so
+      // there is no back to show. Returning to the front is not cosmetic: the
+      // flat-lay mask still on screen is whichever side was last loaded, and
+      // leaving activeSide on 'back' would have the next flat-lay render reach
+      // for a back print area against a front garment.
+      if (style === 'onmodel' && activeSide !== 'front') {
+        sidePlacements.back = { pos: { ...designPos }, scale: designScale, rotation: designRotation };
+        await loadGarment(activeGarmentType, 'front', { keepPlacement: true });
       }
       document.querySelectorAll('#mockup-style-toggle .style-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.style === style);
@@ -3086,7 +3187,19 @@ import KofiSupport from './KofiSupport.astro';
       card.classList.add('active');
 
       const garmentType = card.dataset.garment;
-      loadGarment(garmentType);
+      // Placements are remembered per side of one garment, not across garments
+      // — loadGarment already resets the visible placement to the new
+      // garment's default, and keeping the old garment's parked placement
+      // would restore it onto a print area it was never measured against.
+      sidePlacements.front = null;
+      sidePlacements.back = null;
+      // The side is kept across the switch where the new garment can honour it;
+      // loadGarment falls back to the front where it cannot.
+      loadGarment(garmentType, activeSide);
+    });
+
+    document.querySelectorAll('#garment-side-toggle .style-btn').forEach(btn => {
+      btn.addEventListener('click', () => setGarmentSide(btn.dataset.side));
     });
 
     // Helper function for bidirectional binding between sliders and manual inputs
@@ -3170,7 +3283,9 @@ import KofiSupport from './KofiSupport.astro';
       const defaultCard = garmentSelector.querySelector('[data-garment="crewneck"]');
       if (defaultCard) defaultCard.classList.add('active');
       userHasManuallyScaled = false;
-      loadGarment('crewneck');
+      sidePlacements.front = null;
+      sidePlacements.back = null;
+      loadGarment('crewneck', 'front');
 
       selectedElement = 'design';
 
@@ -3472,11 +3587,15 @@ import KofiSupport from './KofiSupport.astro';
       });
     }
 
-    async function getGarmentLayers(type) {
-      if (garmentLayerCache.has(type)) return garmentLayerCache.get(type);
-      const cfg = garmentConfigs[type];
+    // Keyed by garment AND side: the two sides are different photographs with
+    // different fold maps, so one cache entry per garment would hand a back
+    // export the front's mask.
+    async function getGarmentLayers(type, side = 'front') {
+      const key = `${type}:${side}`;
+      if (garmentLayerCache.has(key)) return garmentLayerCache.get(key);
+      const cfg = garmentView(type, side);
       const promise = loadImageAsync(cfg.path).then((img) => buildShirtLayers(img, cfg.yFlat || 215));
-      garmentLayerCache.set(type, promise);
+      garmentLayerCache.set(key, promise);
       return promise;
     }
 
@@ -3630,8 +3749,9 @@ import KofiSupport from './KofiSupport.astro';
       buildBatchGarmentGrid();
       buildBatchColorGrid();
       const cfg = garmentConfigs[activeGarmentType];
+      const sideLabel = activeSide === 'back' ? ' (back)' : '';
       batchTemplateSummary.textContent =
-        `Each design is placed on your current template: ${cfg.label}, current fabric color, background and design position.`;
+        `Each design is placed on your current template: ${cfg.label}${sideLabel}, current fabric color, background and design position.`;
       batchProgress.style.display = 'none';
       batchStartBtn.style.display = '';
 
@@ -3663,19 +3783,27 @@ import KofiSupport from './KofiSupport.astro';
       const garments = [...batchGarmentsGrid.querySelectorAll('input:checked')].map((i) => i.value);
       const colors = [...batchColorsGrid.querySelectorAll('input:checked')].map((i) => ({ hex: i.value, name: i.dataset.name }));
       const placementMode = batchModal.querySelector('input[name="batch-placement"]:checked').value;
-      const rel = placementToRelative(designPos, designScale, activeGarmentType);
+      const rel = placementToRelative(designPos, designScale, activeGarmentType, activeSide);
 
       const jobs = [];
       for (const garment of garments) {
+        // Batch runs the side that is on screen, over whichever of the chosen
+        // garments can show it. A garment with no back asset exports its front
+        // rather than being dropped from the ZIP — the user picked it, and a
+        // silently missing file is worse than a front one.
+        const side = activeSide === 'back' && hasBackView(garment) ? 'back' : 'front';
         const placement = placementMode === 'center-chest'
-          ? centerChestPlacement(garment)
-          : placementFromRelative(rel, garment);
+          ? centerChestPlacement(garment, side)
+          : placementFromRelative(rel, garment, side);
         for (const color of colors) {
           jobs.push({
             garmentType: garment,
+            side,
             color: color.hex,
             placement,
-            fileName: `${slugify(garmentConfigs[garment].label)}-${slugify(color.name)}.png`,
+            // The side is only in the name when it is the back, so every
+            // existing front filename is byte-for-byte what it was.
+            fileName: `${slugify(garmentConfigs[garment].label)}${side === 'back' ? '-back' : ''}-${slugify(color.name)}.png`,
           });
         }
       }
@@ -3741,7 +3869,7 @@ import KofiSupport from './KofiSupport.astro';
           const base = currentScene();
           for (const job of jobs) {
             if (batchCancelled) break;
-            const layers = await getGarmentLayers(job.garmentType);
+            const layers = await getGarmentLayers(job.garmentType, job.side);
             await renderJobToZip({
               ...base,
               shirtMask: layers.mask,
@@ -3771,7 +3899,7 @@ import KofiSupport from './KofiSupport.astro';
               designImage: img,
               designBuffer: processed.buffer,
               isDesignTransparent: processed.isTransparent,
-            }, `${slugify(baseName)}-${slugify(garmentConfigs[activeGarmentType].label)}.png`);
+            }, `${slugify(baseName)}-${slugify(garmentConfigs[activeGarmentType].label)}${activeSide === 'back' ? '-back' : ''}.png`);
             done++;
             setProgress(done, total);
             await new Promise((r) => setTimeout(r, 0));
