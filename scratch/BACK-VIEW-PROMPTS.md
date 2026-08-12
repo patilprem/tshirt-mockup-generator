@@ -236,48 +236,46 @@ light — that's expected and shouldn't be corrected away.
 ## Status
 
 **Shipped and live** (`back.ready: true` in `garmentConfigs`): crewneck, long
-sleeve, hoodie, sweatshirt.
+sleeve, hoodie, sweatshirt, ladies tee, polo.
 
 - `public/assets/processed/tshirt_flatlay_back.png`,
   `tshirt_longsleeve_back.png`, `tshirt_hoodie_back.png`,
-  `tshirt_sweatshirt_back.png` — generated, run through
-  `scratch/crop_garment.cjs`, checked for key holes and edge halos.
+  `tshirt_sweatshirt_back.png`, `tshirt_ladies_back.png`,
+  `tshirt_polo_back.png` — generated, run through `scratch/crop_garment.cjs`,
+  checked for key holes and edge halos.
 - `printArea` for each measured with `scratch/calibrate_back_areas.cjs`
   (an XY-grid overlay read by eye, the same way the front table in
   `scratch/calibrate_print_areas.cjs` was hand-tuned) — not provisional
   estimates.
+- The ladies tee's back print area is sized to its narrowest point (the
+  waist taper, ~460px wide around y=600) rather than its widest (the
+  shoulders, ~540px) — a rect sized to the shoulders would run past the
+  fitted silhouette lower down.
 - `pxPerIn` on the hoodie's `back` entry is overridden (18.7 → 19.6): its back
   photo's garment bounding box measures ~4.6% wider in the 1000×1000 frame
   than the front's (834px vs 797px) — the hood spreads out laid flat behind
   the shoulders more than it projects from the front — so the same physical
-  inches span more pixels. The other three inherit pxPerIn unchanged; their
-  front/back bounding-box widths matched within noise.
-
-**Scaffolded, waiting on art** (`back.ready: false`): ladies tee, polo.
-`garmentConfigs` already carries a `back` entry for both — prompts above,
-`chestY` and `printArea` are provisional estimates (reasoned from the front
-rects, not measured) so the placement maths has something real to compute
-against before the photo exists. The Print Side toggle stays hidden for both
-until `ready` flips to `true`; `test_garment_side.cjs` checks that it does.
+  inches span more pixels. Every other garment (including ladies and polo)
+  inherits pxPerIn unchanged; their front/back bounding-box widths matched
+  within ~1% noise.
 
 **No `back` entry at all:** v-neck, tank top.
 
 ## Landing a photo once generated
 
-Same steps for any of the above, ladies/polo (flip the flag) or v-neck/tank
-top (add the entry first):
+Same steps for extending this to v-neck or tank top:
 
-1. Generate and run through `scratch/crop_garment.cjs`:
-   `node scratch/crop_garment.cjs <src.png> public/assets/processed/tshirt_<name>_back.png`
-   — `tshirt_ladies_back.png`, `tshirt_polo_back.png` for these two.
+1. Adapt the shared style block and a garment-specific prompt (see the six
+   above for the pattern) to the cut, generate, and run through
+   `scratch/crop_garment.cjs`:
+   `node scratch/crop_garment.cjs <src.png> public/assets/processed/tshirt_<name>_back.png`.
 2. Check the keyed result has no holes in deep folds and no grey halo at the
    edges. Holes mean the fold shadows went darker than the RGB 110 key
    threshold — regenerate with flatter light rather than patching the PNG.
 3. Measure `printArea` — copy `scratch/calibrate_back_areas.cjs`'s `BACKS` list
-   and grid-overlay approach, or extend it in place, and replace the
-   provisional rect in `garmentConfigs`.
+   and grid-overlay approach, or extend it in place.
 4. Check `pxPerIn` the way the hoodie needed: compare the front/back bounding
    box width (see the note above) and override if they diverge more than ~1%.
-5. Flip that garment's `back.ready` to `true` (or add the `back` entry, for
-   v-neck/tank top). Nothing else needs changing — the toggle, placement
-   memory and batch export all key off `hasBackView()`.
+5. Add a `back: { ready: true, ... }` entry to that garment in `garmentConfigs`
+   (`src/scripts/flatlay-engine.js`). Nothing else needs changing — the
+   toggle, placement memory and batch export all key off `hasBackView()`.

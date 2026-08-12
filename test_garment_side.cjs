@@ -1,16 +1,13 @@
 // Exercises the front/back print-side toggle in the editor.
 //
-// The back assets for crewneck, hoodie, sweatshirt and long sleeve are real,
-// shipped PNGs (ready: true in garmentConfigs) — this hits them directly
-// rather than standing in for anything. Ladies tee and polo carry a `back`
-// entry too, but ready: false (no photo yet) — their config shape and
-// placement maths are checked the same way, but the UI toggle is expected to
-// stay hidden for them until a photo lands and flips the flag.
+// All six garments with a `back` entry — crewneck, long sleeve, hoodie,
+// sweatshirt, ladies tee, polo — ship real photos (ready: true in
+// garmentConfigs) and are hit directly here, not stood in for.
 //
 // What it checks: the toggle appears only where a back view is ready, flipping
 // it changes the pixels, each side keeps its own placement across a flip, and
-// a garment with no back view (tank top) falls back to the front instead of
-// blanking.
+// a garment with no back view (tank top, v-neck) falls back to the front
+// instead of blanking.
 //
 // Needs the dev server: npm run dev, then node test_garment_side.cjs
 const { chromium } = require('playwright');
@@ -41,8 +38,8 @@ const diff = (a, b) => {
   await sleep(1200);
 
   console.log('\nside toggle visibility');
-  // crewneck, longsleeve, hoodie and sweatshirt ship real back assets; the
-  // other four garments have no `back` entry at all.
+  // crewneck, longsleeve, hoodie, sweatshirt, ladies and polo ship real back
+  // assets; v-neck and tank top have no `back` entry at all.
   const readyCount = await p.evaluate(async () => {
     const m = await import('/src/scripts/flatlay-engine.js');
     return Object.keys(m.garmentConfigs).filter(k => m.hasBackView(k)).length;
@@ -51,7 +48,7 @@ const diff = (a, b) => {
   // so the toggle should already be showing.
   const toggleShown = await p.evaluate(() =>
     getComputedStyle(document.getElementById('garment-side-group')).display !== 'none');
-  if (readyCount !== 4) fail(`expected 4 ready back views, got ${readyCount}`);
+  if (readyCount !== 6) fail(`expected 6 ready back views, got ${readyCount}`);
   else if (!toggleShown) fail('toggle hidden for the crewneck, which has a ready back view');
   else ok(`toggle shown with ${readyCount} ready back assets (default garment is crewneck)`);
 
@@ -96,9 +93,6 @@ const diff = (a, b) => {
   const placeCheck = await p.evaluate(async () => {
     const m = await import('/src/scripts/flatlay-engine.js');
     const out = [];
-    // Includes ladies/polo even though their back isn't ready yet — the
-    // placement maths only reads garmentConfigs[x].back, not the ready flag,
-    // so their provisional numbers should already behave correctly.
     for (const id of ['crewneck', 'hoodie', 'sweatshirt', 'longsleeve', 'ladies', 'polo']) {
       const f = m.centerChestPlacement(id, 'front');
       const b = m.centerChestPlacement(id, 'back');
@@ -173,17 +167,38 @@ const diff = (a, b) => {
   if (backScaleAgain !== backScale) fail(`back lost its placement across a flip (${backScaleAgain}, expected ${backScale})`);
   else ok('back placement survived a round trip through the front');
 
-  console.log('\nnot-ready back entries stay hidden');
-  // Ladies tee has a `back` entry (provisional printArea, for the placement
-  // maths above) but ready: false — no photo yet. The toggle must not appear
-  // for it, the same as a garment with no `back` entry at all, or clicking it
-  // would 404.
-  await p.click('[data-garment="ladies"]');
-  await sleep(900);
-  const ladiesToggleShown = await p.evaluate(() =>
-    getComputedStyle(document.getElementById('garment-side-group')).display !== 'none');
-  if (ladiesToggleShown) fail('toggle shown for ladies tee, whose back entry is not ready');
-  else ok('toggle stays hidden for a scaffolded-but-not-ready back entry (ladies tee)');
+  console.log('\nladies tee and polo (newest two)');
+  // Same live-toggle check as the hoodie above, run against the two garments
+  // added most recently — catches anything specific to their print areas
+  // (the ladies tee's waist taper, the polo's collar-band shape) that the
+  // generic config-shape checks above wouldn't.
+  for (const id of ['ladies', 'polo']) {
+    await p.click(`[data-garment="${id}"]`);
+    await sleep(900);
+    const shown = await p.evaluate(() =>
+      getComputedStyle(document.getElementById('garment-side-group')).display !== 'none');
+    if (!shown) { fail(`${id}: toggle stayed hidden despite a ready back view`); continue; }
+
+    // Garment selection carries over whatever side was already active (by
+    // design — see the garmentSelector click handler), and the previous block
+    // left the toggle on "back". Force it to front explicitly before taking
+    // the "before" shot, or a click on "back" below is a same-side no-op and
+    // the diff comes out zero for reasons that have nothing to do with the
+    // garment.
+    await p.click('#garment-side-toggle [data-side="front"]');
+    await sleep(900);
+    const front = await shot(p);
+    await p.click('#garment-side-toggle [data-side="back"]');
+    await sleep(1200);
+    const active = await p.evaluate(() =>
+      document.querySelector('#garment-side-toggle .style-btn.active')?.dataset.side);
+    if (active !== 'back') { fail(`${id}: toggle did not move to back (active=${active})`); continue; }
+
+    const back = await shot(p);
+    const changedPx = diff(front, back);
+    if (changedPx < 500) fail(`${id}: flipping to back barely changed the canvas (${changedPx} px)`);
+    else ok(`${id}: toggle works, flip redrew ${changedPx} px`);
+  }
 
   console.log('\nfallback for garments with no back view');
   // Tank top has no back entry at all. Selecting it while the back is showing
