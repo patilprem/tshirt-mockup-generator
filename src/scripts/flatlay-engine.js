@@ -33,8 +33,18 @@ import { SEL_ROT_GAP, SEL_LINE, SEL_COLOUR, drawSelectionChrome } from './select
 export const garmentConfigs = {
   'crewneck': { chestY: 420, centerY: 480, bellyY: 570, defaultScale: 0.35, path: '/assets/processed/tshirt_flatlay.png', yFlat: 230, label: 'Crewneck Tee', printArea: { x: 310, y: 265, w: 384, h: 365 }, pxPerIn: 25.5,
     back: { ready: true, path: '/assets/processed/tshirt_flatlay_back.png', chestY: 406, printArea: { x: 290, y: 180, w: 420, h: 645 } } },
-  'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225, label: 'Ladies Tee', printArea: { x: 302, y: 225, w: 396, h: 375 }, pxPerIn: 30.8 },
-  'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225, label: 'Polo Shirt', printArea: { x: 306, y: 400, w: 402, h: 245 }, pxPerIn: 25.3 },
+  'ladies': { chestY: 380, centerY: 460, bellyY: 540, defaultScale: 0.33, path: '/assets/processed/tshirt_ladies.png', yFlat: 225, label: 'Ladies Tee', printArea: { x: 302, y: 225, w: 396, h: 375 }, pxPerIn: 30.8,
+    // The fitted cut pinches in at the waist (silhouette narrows to ~460px
+    // around y=600 vs ~540 at the armpit), so the width here is sized to the
+    // narrowest point with margin, not the widest — a wider rect would clear
+    // the shoulders fine but run past the waist taper further down.
+    back: { ready: true, path: '/assets/processed/tshirt_ladies_back.png', chestY: 415, printArea: { x: 305, y: 170, w: 390, h: 650 } } },
+  'polo': { chestY: 430, centerY: 500, bellyY: 580, defaultScale: 0.32, path: '/assets/processed/tshirt_polo.png', yFlat: 225, label: 'Polo Shirt', printArea: { x: 306, y: 400, w: 402, h: 245 }, pxPerIn: 25.3,
+    // Unlike the front rect (306,400,402,245 — short and low, boxed in by the
+    // placket and collar), the back has neither, so this is sized like a full
+    // back print (closer to the crewneck/sweatshirt back shape) rather than
+    // the front polo's shape nudged down.
+    back: { ready: true, path: '/assets/processed/tshirt_polo_back.png', chestY: 417, printArea: { x: 290, y: 190, w: 420, h: 650 } } },
   'longsleeve': { chestY: 420, centerY: 490, bellyY: 580, defaultScale: 0.33, path: '/assets/processed/tshirt_longsleeve.png', yFlat: 230, label: 'Long Sleeve', printArea: { x: 327, y: 265, w: 353, h: 375 }, pxPerIn: 23.3,
     back: { ready: true, path: '/assets/processed/tshirt_longsleeve_back.png', chestY: 412, printArea: { x: 340, y: 230, w: 320, h: 520 } } },
   'hoodie': { chestY: 440, centerY: 510, bellyY: 600, defaultScale: 0.30, path: '/assets/processed/tshirt_hoodie.png', yFlat: 230, label: 'Hoodie', printArea: { x: 346, y: 340, w: 312, h: 310 }, pxPerIn: 18.7,

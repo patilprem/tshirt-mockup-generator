@@ -28,8 +28,8 @@ The downstream pipeline, not taste, sets most of these rules:
 
 ## Shared style block
 
-Every prompt below ends with this same block, kept identical so all four
-garments key and relight consistently:
+Every prompt below ends with this same block, kept identical so every garment
+keys and relights consistently:
 
 > Shot straight down from directly overhead, perfectly flat and symmetric, laid
 > on a seamless pure black background. The garment is pure white matte cotton,
@@ -165,35 +165,109 @@ way down the garment. Drawstrings are front-only and must not appear.
 
 ---
 
-## Status: shipped
+## 5. Ladies fitted tee — back
 
-All four assets landed and are live (`back.ready: true` in `garmentConfigs`
-for crewneck, long sleeve, hoodie, sweatshirt):
+```
+A plain white ladies' fitted crew-neck t-shirt photographed from the BACK,
+laid flat. The back panel is one broad unbroken piece of fabric from the
+shoulder seams down to the straight hem, with no neckline dip — the back
+collar is a narrow, shallow, evenly curved ribbed band sitting high across the
+top, much higher and flatter than a front neckline. The silhouette follows a
+slim feminine cut: the side seams curve in gently at the waist and back out
+toward the hem, narrower through the middle than the crew-neck tee, but still
+lying smooth and flat with no pull lines or stretched creases. Short set-in
+sleeves lie flat and symmetric, angled slightly down and away from the body.
+
+Shot straight down from directly overhead, perfectly flat and symmetric, laid
+on a seamless pure black background. The garment is pure white matte cotton,
+evenly and softly lit with no hard shadow line, no colour cast and no hotspot;
+fold shadows stay soft mid-grey and never darken toward black. Gentle natural
+fabric folds only, no heavy wrinkles or creases. Absolutely no print, logo,
+text, graphic, brand mark, neck label, care tag, hanger, pins, props or
+background objects of any kind. Sharp focus edge to edge, garment centred with
+even margin on all four sides, square 1:1 framing, highest available
+resolution.
+```
+
+**Watch for:** the waist curve reads as a crease rather than the cut, unlike
+the straight-sided crewneck — a deep concave pinch at the waist means the print
+area needs to stay clear of it, not that the shot is wrong, but an *asymmetric*
+curve (one side pinched more than the other) means the garment isn't laid flat
+and square, and should be rejected. Also watch for the fitted cut producing
+tighter, more numerous folds than the regular-fit tees — ask for flatter light
+if shadows start crushing toward black.
+
+---
+
+## 6. Polo shirt — back
+
+```
+A plain white polo shirt photographed from the BACK, laid flat. The back
+panel is one broad completely smooth unbroken rectangle of fabric from the
+shoulder seams down to the straight hem — no button placket, no collar
+points, no collar tipping and no branding of any kind, all of which are
+front-only details that must not appear. The back of the collar is a narrow
+ribbed band standing a little taller than a crew-neck tee's, evenly curved and
+symmetric, sitting flat against the back of the neck. Short set-in sleeves lie
+flat and symmetric, angled slightly down and away from the body. Matte cotton
+piqué knit texture, classic regular fit, straight body, not oversized or boxy.
+If the hem has small side vents they are closed and lie flat, not flared open.
+
+Shot straight down from directly overhead, perfectly flat and symmetric, laid
+on a seamless pure black background. The garment is pure white matte cotton,
+evenly and softly lit with no hard shadow line, no colour cast and no hotspot;
+fold shadows stay soft mid-grey and never darken toward black. Gentle natural
+fabric folds only, no heavy wrinkles or creases. Absolutely no print, logo,
+text, graphic, brand mark, neck label, care tag, hanger, pins, props or
+background objects of any kind. Sharp focus edge to edge, garment centred with
+even margin on all four sides, square 1:1 framing, highest available
+resolution.
+```
+
+**Watch for:** the generator drifting toward the FRONT view, since a polo's
+most recognisable feature — the placket and buttons — is a front-only detail
+it may default to including. Reject any take with buttons, a placket opening,
+or collar points visible; the back of a polo collar is a plain closed band. A
+piqué knit's texture reads slightly more textured than jersey under the same
+light — that's expected and shouldn't be corrected away.
+
+---
+
+## Status
+
+**Shipped and live** (`back.ready: true` in `garmentConfigs`): crewneck, long
+sleeve, hoodie, sweatshirt, ladies tee, polo.
 
 - `public/assets/processed/tshirt_flatlay_back.png`,
   `tshirt_longsleeve_back.png`, `tshirt_hoodie_back.png`,
-  `tshirt_sweatshirt_back.png` — generated, run through
-  `scratch/crop_garment.cjs`, checked for key holes and edge halos.
+  `tshirt_sweatshirt_back.png`, `tshirt_ladies_back.png`,
+  `tshirt_polo_back.png` — generated, run through `scratch/crop_garment.cjs`,
+  checked for key holes and edge halos.
 - `printArea` for each measured with `scratch/calibrate_back_areas.cjs`
   (an XY-grid overlay read by eye, the same way the front table in
-  `scratch/calibrate_print_areas.cjs` was hand-tuned) — not the provisional
-  estimates this doc originally shipped with.
+  `scratch/calibrate_print_areas.cjs` was hand-tuned) — not provisional
+  estimates.
+- The ladies tee's back print area is sized to its narrowest point (the
+  waist taper, ~460px wide around y=600) rather than its widest (the
+  shoulders, ~540px) — a rect sized to the shoulders would run past the
+  fitted silhouette lower down.
 - `pxPerIn` on the hoodie's `back` entry is overridden (18.7 → 19.6): its back
   photo's garment bounding box measures ~4.6% wider in the 1000×1000 frame
   than the front's (834px vs 797px) — the hood spreads out laid flat behind
   the shoulders more than it projects from the front — so the same physical
-  inches span more pixels. The other three inherit pxPerIn unchanged; their
-  front/back bounding-box widths matched within noise.
+  inches span more pixels. Every other garment (including ladies and polo)
+  inherits pxPerIn unchanged; their front/back bounding-box widths matched
+  within ~1% noise.
 
-`test_garment_side.cjs` runs against these real assets end to end.
+**No `back` entry at all:** v-neck, tank top.
 
-## Extending to the other four garments
+## Landing a photo once generated
 
-Ladies tee, polo, v-neck and tank top have no `back` entry yet. The same
-pipeline applies, adapting the shared style block and garment-specific prompt
-above to each cut:
+Same steps for extending this to v-neck or tank top:
 
-1. Generate and run through `scratch/crop_garment.cjs`:
+1. Adapt the shared style block and a garment-specific prompt (see the six
+   above for the pattern) to the cut, generate, and run through
+   `scratch/crop_garment.cjs`:
    `node scratch/crop_garment.cjs <src.png> public/assets/processed/tshirt_<name>_back.png`.
 2. Check the keyed result has no holes in deep folds and no grey halo at the
    edges. Holes mean the fold shadows went darker than the RGB 110 key
@@ -203,5 +277,5 @@ above to each cut:
 4. Check `pxPerIn` the way the hoodie needed: compare the front/back bounding
    box width (see the note above) and override if they diverge more than ~1%.
 5. Add a `back: { ready: true, ... }` entry to that garment in `garmentConfigs`
-   (`src/scripts/flatlay-engine.js`). Nothing else needs changing — the toggle,
-   placement memory and batch export all key off `hasBackView()`.
+   (`src/scripts/flatlay-engine.js`). Nothing else needs changing — the
+   toggle, placement memory and batch export all key off `hasBackView()`.
