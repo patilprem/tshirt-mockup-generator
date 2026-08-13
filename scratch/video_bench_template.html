@@ -1,0 +1,730 @@
+<title>Tracked Print Bench</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ground: #f2f4f4;
+    --surface: #ffffff;
+    --surface-sunk: #e8ecec;
+    --line: #d3dad9;
+    --line-strong: #b9c3c2;
+    --ink: #10171a;
+    --ink-soft: #47585c;
+    --ink-faint: #6f8184;
+    --accent: #0e6f6a;
+    --accent-ink: #0a5450;
+    --accent-wash: #dcece9;
+    --pass: #276b45;
+    --pass-wash: #dcece1;
+    --fail: #a53f2b;
+    --fail-wash: #f4e2dd;
+    --violet: #8b3a9c;
+    --violet-wash: #f0e2f3;
+    --readout: #0d1416;
+    --readout-ink: #d6e4e3;
+    --readout-faint: #6e8785;
+    --shadow: 0 1px 1px rgba(16, 23, 26, .04), 0 10px 26px -16px rgba(16, 23, 26, .3);
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0c1113;
+      --surface: #141b1d;
+      --surface-sunk: #1b2426;
+      --line: #263133;
+      --line-strong: #354346;
+      --ink: #e8efee;
+      --ink-soft: #a2b4b4;
+      --ink-faint: #7b8f8f;
+      --accent: #4bc0b5;
+      --accent-ink: #7fd6cd;
+      --accent-wash: #10312f;
+      --pass: #63bd8b;
+      --pass-wash: #102a1d;
+      --fail: #e08a72;
+      --fail-wash: #2e1712;
+      --violet: #c07fd0;
+      --violet-wash: #2a1730;
+      --readout: #080d0e;
+      --readout-ink: #cfe0de;
+      --readout-faint: #5f7674;
+      --shadow: 0 1px 1px rgba(0, 0, 0, .4), 0 14px 30px -18px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0c1113;
+    --surface: #141b1d;
+    --surface-sunk: #1b2426;
+    --line: #263133;
+    --line-strong: #354346;
+    --ink: #e8efee;
+    --ink-soft: #a2b4b4;
+    --ink-faint: #7b8f8f;
+    --accent: #4bc0b5;
+    --accent-ink: #7fd6cd;
+    --accent-wash: #10312f;
+    --pass: #63bd8b;
+    --pass-wash: #102a1d;
+    --fail: #e08a72;
+    --fail-wash: #2e1712;
+    --violet: #c07fd0;
+    --violet-wash: #2a1730;
+    --readout: #080d0e;
+    --readout-ink: #cfe0de;
+    --readout-faint: #5f7674;
+    --shadow: 0 1px 1px rgba(0, 0, 0, .4), 0 14px 30px -18px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 28px 20px 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+
+  header { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(24px, 3.4vw, 33px);
+    letter-spacing: -.022em;
+    font-weight: 620;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-soft);
+    font-size: 15.5px;
+  }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  .console {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 306px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { .console { grid-template-columns: minmax(0, 1fr); } }
+
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .screen {
+    position: relative;
+    background: var(--surface-sunk);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    min-height: 260px;
+  }
+  canvas#out { display: block; max-width: 100%; height: auto; }
+  .badge-live {
+    position: absolute; top: 10px; left: 10px;
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(8, 13, 14, .82);
+    color: #d6e4e3;
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: .07em; text-transform: uppercase;
+    padding: 5px 9px; border-radius: 999px;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #63bd8b;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+  .stage-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .frame-tick { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+  .rail { display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card > .label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  button, .filebtn {
+    font: inherit;
+    font-size: 13.5px;
+    border-radius: 7px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 8px 13px;
+    cursor: pointer;
+  }
+  button:hover, .filebtn:hover { border-color: var(--accent); color: var(--accent-ink); }
+  button:focus-visible, .filebtn:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .filebtn {
+    display: block; text-align: center;
+    border-style: dashed;
+    color: var(--ink-soft);
+    padding: 14px 10px;
+  }
+  .filebtn input { display: none; }
+  .filebtn strong { color: var(--ink); font-weight: 600; }
+  .filebtn.drag { border-color: var(--accent); background: var(--accent-wash); }
+
+  .colorline { display: flex; gap: 8px; align-items: center; }
+  input[type="color"] {
+    inline-size: 42px; block-size: 34px; padding: 2px;
+    border: 1px solid var(--line-strong); border-radius: 6px;
+    background: var(--surface); cursor: pointer;
+  }
+  input[type="text"] {
+    flex: 1; min-width: 0;
+    font-family: var(--mono); font-size: 12.5px;
+    padding: 8px 9px; border-radius: 6px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink);
+    text-transform: uppercase;
+  }
+  .swatches { display: flex; gap: 7px; flex-wrap: wrap; }
+  .swatches button {
+    inline-size: 30px; block-size: 30px; padding: 0;
+    border-radius: 6px; border: 1px solid var(--line-strong);
+  }
+
+  .toggle {
+    display: flex; align-items: flex-start; gap: 9px;
+    font-size: 13.5px; color: var(--ink-soft); cursor: pointer;
+    line-height: 1.45;
+  }
+  .toggle input { margin: 3px 0 0; accent-color: var(--accent); flex: none; }
+  .toggle b { color: var(--ink); font-weight: 600; }
+
+  .readout {
+    background: var(--readout);
+    border-color: transparent;
+    color: var(--readout-ink);
+  }
+  .readout > .label { color: var(--readout-faint); }
+  .readout dl {
+    margin: 0; display: grid;
+    grid-template-columns: auto 1fr; gap: 5px 12px;
+    font-family: var(--mono); font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout dt { color: var(--readout-faint); }
+  .readout dd { margin: 0; text-align: right; }
+  .chip-violet {
+    display: inline-block; inline-size: 9px; block-size: 9px;
+    border-radius: 2px; background: var(--violet); vertical-align: -1px; margin-inline-end: 6px;
+  }
+
+  .verdicts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 800px) { .verdicts { grid-template-columns: minmax(0, 1fr); } }
+  .verdict {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 15px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .verdict .quote {
+    font-size: 13.5px; color: var(--ink-soft); font-style: italic;
+    border-inline-start: 2px solid var(--line-strong);
+    padding-inline-start: 10px;
+  }
+  .verdict .metric {
+    font-family: var(--mono); font-size: 21px; font-weight: 600;
+    letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .verdict .metric small { font-size: 12px; font-weight: 400; color: var(--ink-faint); letter-spacing: 0; }
+  .verdict p { margin: 0; font-size: 13.2px; color: var(--ink-soft); }
+  .tag {
+    align-self: flex-start;
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--pass-wash); color: var(--pass);
+  }
+
+  .note {
+    font-size: 13.2px; color: var(--ink-soft);
+    max-width: 74ch; line-height: 1.65;
+  }
+  .note code {
+    font-family: var(--mono); font-size: 12px;
+    background: var(--surface-sunk); padding: 1.5px 5px; border-radius: 4px;
+  }
+  .note h2 {
+    font-size: 15px; letter-spacing: -.01em; margin: 0 0 6px;
+    color: var(--ink); font-weight: 620;
+  }
+  .caveat {
+    border-inline-start: 3px solid var(--fail);
+    background: var(--fail-wash);
+    padding: 11px 14px; border-radius: 0 7px 7px 0;
+    color: var(--ink); font-size: 13.2px;
+  }
+  .loading {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    background: var(--surface-sunk); color: var(--ink-faint);
+    font-family: var(--mono); font-size: 12px;
+  }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+  /* The clip itself is the content, so it keeps playing under reduced motion;
+     only the decorative status pulse stands down. */
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">On-model video · mask + tracking</span>
+    <h1>The print is tracked to the shirt, frame by frame</h1>
+    <p class="lede">
+      Every frame of the clip is analysed by the <b>same mask pipeline the still templates use</b> —
+      so the garment is keyed wherever it actually is, not inside a fixed rectangle — and the print
+      quad is re-measured from each frame's own torso. Recolour and design print live below; nothing
+      leaves your browser.
+    </p>
+  </header>
+
+  <div class="console">
+    <section class="stage">
+      <div class="screen">
+        <canvas id="out" width="400" height="711"></canvas>
+        <div class="badge-live" id="liveBadge"><span class="dot"></span><span id="badgeText">loading</span></div>
+        <div class="loading" id="loading">decoding frames…</div>
+      </div>
+      <div class="stage-bar">
+        <span class="frame-tick" id="tick">frame —</span>
+        <button id="playBtn" type="button">Pause</button>
+      </div>
+    </section>
+
+    <aside class="rail">
+      <div class="card">
+        <span class="label">Design</span>
+        <label class="filebtn" id="drop">
+          <input type="file" id="designFile" accept="image/png,image/jpeg,image/webp" />
+          <strong>Upload a design</strong><br />or drop a PNG/JPG
+        </label>
+        <span class="frame-tick" id="designName">sample design loaded</span>
+      </div>
+
+      <div class="card">
+        <span class="label">Garment colour</span>
+        <div class="colorline">
+          <input type="color" id="colorPick" value="#1F3A5F" />
+          <input type="text" id="colorHex" value="#1F3A5F" spellcheck="false" />
+        </div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <div class="card">
+        <span class="label">Compare</span>
+        <label class="toggle">
+          <input type="checkbox" id="pinPrint" />
+          <span><b>Pin the print</b> — hold the first frame's quad for the whole clip, the way the
+          first version did. The shirt moves; the print doesn't.</span>
+        </label>
+      </div>
+
+      <div class="card readout">
+        <span class="label">Clip calibration</span>
+        <dl>
+          <dt><span class="chip-violet"></span>hue</dt><dd id="roHue">—</dd>
+          <dt>v_ref</dt><dd id="roVref">—</dd>
+          <dt>violet base</dt><dd id="roBase">—</dd>
+          <dt>from frame</dt><dd id="roFrame">—</dd>
+        </dl>
+      </div>
+    </aside>
+  </div>
+
+  <section class="verdicts">
+    <article class="verdict">
+      <span class="quote">“purple patch is visible in some places”</span>
+      <span class="metric" id="vViolet">__VIOLET__<small> px / frame</small></span>
+      <span class="tag" id="tagViolet">fixed</span>
+      <p>Residual garment hue anywhere in the frame, counted on a white shirt — the worst case, since
+      white is the furthest a target can sit from violet. Measured across the whole clip, not inside a box.</p>
+    </article>
+    <article class="verdict">
+      <span class="quote">“design is not placed on tshirt &amp; not moving with tshirt”</span>
+      <span class="metric" id="vTravel">—<small> px travel</small></span>
+      <span class="tag">fixed</span>
+      <p>How far the print quad moves over the clip, measured from each frame's own garment. The first
+      version held one rectangle in canvas space, so this distance was zero by construction.</p>
+    </article>
+    <article class="verdict">
+      <span class="quote">“mask is not clear where hairs meets at tshirt”</span>
+      <span class="metric" id="vHair">__HAIR__<small>% of edge band</small></span>
+      <span class="tag">fixed</span>
+      <p>Violet surviving in the band where mask coverage is partial — which is where hair crosses the
+      garment. The boundary now follows individual strands rather than stepping in 2–4px blocks.</p>
+    </article>
+  </section>
+
+  <div class="note">
+    <h2>What actually changed</h2>
+    <p>
+      The first cut ran a hand-rolled hue key in the browser, live, inside a hardcoded torso rectangle.
+      All three faults follow from that one decision: a sleeve swinging outside the rectangle kept its
+      violet, the print was pinned to the canvas rather than to the body, and a key that simple has
+      nothing to say about hair. This version runs the repo's real analysis
+      (<code>scratch/lib/onmodel-analyze.js</code>, now shared with the still baker rather than copied)
+      over every frame, offline. Three clip-specific additions sit on top: one calibration for the whole
+      loop so the colour can't breathe, a print quad re-measured per frame and smoothed over time, and
+      frames resampled to the resolution the analysis's own constants were tuned at.
+    </p>
+  </div>
+
+  <div class="caveat">
+    <b>Before this ships:</b> the source clip carries a <b>Grok watermark</b> in the bottom-right corner,
+    visible in every frame here. Template clips for a paid feature need generating without it.
+  </div>
+</div>
+
+<script id="packData" type="application/json">__PACK__</script>
+<script>
+(function () {
+  "use strict";
+
+  var PACK = JSON.parse(document.getElementById("packData").textContent);
+  var DEFAULT_DESIGN = "__DESIGN__";
+
+  var canvas = document.getElementById("out");
+  var ctx = canvas.getContext("2d", { willReadFrequently: true });
+  var loadingEl = document.getElementById("loading");
+  var badgeText = document.getElementById("badgeText");
+  var tickEl = document.getElementById("tick");
+  var playBtn = document.getElementById("playBtn");
+  var pinPrint = document.getElementById("pinPrint");
+  var colorPick = document.getElementById("colorPick");
+  var colorHex = document.getElementById("colorHex");
+  var swatchesEl = document.getElementById("swatches");
+  var designFile = document.getElementById("designFile");
+  var designName = document.getElementById("designName");
+  var drop = document.getElementById("drop");
+
+  var W = PACK.width, H = PACK.height, N = W * H;
+  canvas.width = W; canvas.height = H;
+
+  document.getElementById("roHue").textContent = PACK.shirtHue + "°";
+  document.getElementById("roVref").textContent = PACK.vRef.toFixed(4);
+  document.getElementById("roBase").textContent = PACK.violetBase.map(function (v) { return Math.round(v); }).join(", ");
+  document.getElementById("roFrame").textContent = "#" + PACK.calibratedOnFrame;
+  document.getElementById("vTravel").innerHTML = PACK.qa.printTravelPx.toFixed(0) + "<small> px travel</small>";
+
+  // ---- relight LUT, identical to src/scripts/onmodel-engine.js ----
+  function relightLut(rgb) {
+    var ar = PACK.ambientTint[0], ag = PACK.ambientTint[1], ab = PACK.ambientTint[2];
+    var relMax = PACK.relMax || 1.45;
+    var tLum = (rgb[0] + rgb[1] + rgb[2]) / 765;
+    var GAMMA = 1 - 0.55 * tLum, TINT = 0.35 * tLum, SPEC = 0.28;
+    var lut = new Float32Array(256 * 3);
+    for (var sb = 0; sb < 256; sb++) {
+      var rel = (sb / 255) * relMax;
+      var diff = Math.pow(Math.min(rel, 1), GAMMA);
+      var wgt = (1 - diff) * TINT;
+      var r = rgb[0] * diff * (1 - wgt + wgt * ar);
+      var g = rgb[1] * diff * (1 - wgt + wgt * ag);
+      var b = rgb[2] * diff * (1 - wgt + wgt * ab);
+      if (rel > 1) {
+        var sp = Math.min(1, (rel - 1) / (relMax - 1)) * SPEC;
+        r += (255 - r) * sp; g += (255 - g) * sp; b += (255 - b) * sp;
+      }
+      lut[sb * 3] = r; lut[sb * 3 + 1] = g; lut[sb * 3 + 2] = b;
+    }
+    return lut;
+  }
+  var lutV = relightLut(PACK.violetBase);
+  var lutT = relightLut([0x1F, 0x3A, 0x5F]);
+  var lastHex = "#1F3A5F";
+
+  function hexToRgb(hex) {
+    hex = hex.replace("#", "");
+    return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+  }
+
+  // ---- decode every frame's photo + maps once ----
+  var FRAMES = [];
+  function loadImage(src) {
+    return new Promise(function (res, rej) {
+      var i = new Image();
+      i.onload = function () { res(i); };
+      i.onerror = rej;
+      i.src = src;
+    });
+  }
+  var scratch = document.createElement("canvas");
+  scratch.width = W; scratch.height = H;
+  var sctx = scratch.getContext("2d", { willReadFrequently: true });
+
+  function decodeFrame(f) {
+    return Promise.all([loadImage(f.photo), loadImage(f.weight), loadImage(f.shade)])
+      .then(function (imgs) {
+        sctx.clearRect(0, 0, W, H);
+        sctx.drawImage(imgs[0], 0, 0, W, H);
+        var photo = new Uint8ClampedArray(sctx.getImageData(0, 0, W, H).data);
+        sctx.clearRect(0, 0, W, H);
+        sctx.drawImage(imgs[1], 0, 0, W, H);
+        var wRGBA = sctx.getImageData(0, 0, W, H).data;
+        sctx.clearRect(0, 0, W, H);
+        sctx.drawImage(imgs[2], 0, 0, W, H);
+        var sRGBA = sctx.getImageData(0, 0, W, H).data;
+        var wArr = new Uint8Array(N), clipArr = new Uint8Array(N), ownArr = new Uint8Array(N), shade = new Uint8Array(N);
+        for (var p = 0; p < N; p++) {
+          wArr[p] = wRGBA[p * 4];
+          clipArr[p] = wRGBA[p * 4 + 1];
+          ownArr[p] = wRGBA[p * 4 + 2];
+          shade[p] = sRGBA[p * 4];
+        }
+        return { photo: photo, w: wArr, clip: clipArr, own: ownArr, shade: shade, quad: f.quad };
+      });
+  }
+
+  // ---- design ----
+  var designImg = null, designCanvas = document.createElement("canvas");
+  var designCtx = designCanvas.getContext("2d", { willReadFrequently: true });
+  var designRect = null, designPixels = null, designKey = "";
+
+  // Opaque uploads get their flat background keyed out, exactly as
+  // buildDesignBuffer does for the editor — keyed at the design's natural
+  // size, before any scaling, so the padding introduced by fitting it into a
+  // print rect can never be mistaken for existing transparency.
+  var keyedCanvas = document.createElement("canvas");
+  var keyedCtx = keyedCanvas.getContext("2d", { willReadFrequently: true });
+  function keyDesign(img) {
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    keyedCanvas.width = iw; keyedCanvas.height = ih;
+    keyedCtx.clearRect(0, 0, iw, ih);
+    keyedCtx.drawImage(img, 0, 0);
+    var data = keyedCtx.getImageData(0, 0, iw, ih);
+    var d = data.data, hasAlpha = false;
+    for (var i = 3; i < d.length; i += 4) { if (d[i] < 240) { hasAlpha = true; break; } }
+    if (hasAlpha) return;
+    var visited = new Uint8Array(iw * ih), queue = [], head = 0;
+    function push(x, y) {
+      if (x < 0 || y < 0 || x >= iw || y >= ih) return;
+      var idx = y * iw + x;
+      if (!visited[idx]) { visited[idx] = 1; queue.push(idx); }
+    }
+    for (var x = 0; x < iw; x++) { push(x, 0); push(x, ih - 1); }
+    for (var y = 0; y < ih; y++) { push(0, y); push(iw - 1, y); }
+    while (head < queue.length) {
+      var idx2 = queue[head++], o = idx2 * 4;
+      if (d[o] < 35 && d[o + 1] < 35 && d[o + 2] < 35) {
+        d[o + 3] = 0;
+        var px = idx2 % iw, py = (idx2 / iw) | 0;
+        push(px + 1, py); push(px - 1, py); push(px, py + 1); push(px, py - 1);
+      }
+    }
+    keyedCtx.putImageData(data, 0, 0);
+  }
+
+  // The design is rasterised into THIS frame's quad. That is the whole fix
+  // for "not moving with the tshirt": the rect is re-derived every frame from
+  // the garment the analysis found in that frame.
+  function rasterDesign(quad) {
+    if (!designImg) { designPixels = null; return; }
+    var qcx = (quad.tl[0] + quad.tr[0] + quad.br[0] + quad.bl[0]) / 4;
+    var qcy = (quad.tl[1] + quad.tr[1] + quad.br[1] + quad.bl[1]) / 4;
+    var qw = Math.hypot(quad.tr[0] - quad.tl[0], quad.tr[1] - quad.tl[1]);
+    var qh = Math.hypot(quad.bl[0] - quad.tl[0], quad.bl[1] - quad.tl[1]);
+    var aspect = keyedCanvas.width / keyedCanvas.height;
+    var dw = qw, dh = dw / aspect;
+    if (aspect <= 1) { dh = qh; dw = dh * aspect; }
+    var x0 = Math.round(qcx - dw / 2), y0 = Math.round(qcy - dh / 2);
+    var rw = Math.max(1, Math.round(dw)), rh = Math.max(1, Math.round(dh));
+    var key = x0 + ":" + y0 + ":" + rw + ":" + rh + ":" + designKey;
+    if (designRect && designRect.key === key) return;
+    designCanvas.width = rw; designCanvas.height = rh;
+    designCtx.clearRect(0, 0, rw, rh);
+    designCtx.drawImage(keyedCanvas, 0, 0, rw, rh);
+    designPixels = designCtx.getImageData(0, 0, rw, rh).data;
+    designRect = { x: x0, y: y0, w: rw, h: rh, key: key };
+  }
+
+  function ensureLut() {
+    if (colorHex.value !== lastHex) {
+      lastHex = colorHex.value;
+      lutT = relightLut(hexToRgb(lastHex));
+    }
+  }
+
+  var frameIdx = 0, playing = true, lastStamp = 0;
+  var outImage = null;
+
+  function drawFrame(fi) {
+    var F = FRAMES[fi];
+    if (!F) return;
+    ensureLut();
+    if (!outImage) outImage = ctx.createImageData(W, H);
+    var d = outImage.data;
+    d.set(F.photo);
+
+    // recolour: out = photo + w * (T(shade) - own*photo - (1-own)*V(shade))
+    for (var i = 0; i < N; i++) {
+      var wv = F.w[i];
+      if (wv === 0) continue;
+      var ww = wv / 255, cl = F.own[i] / 255, sb = F.shade[i] * 3, o = i * 4;
+      d[o] = d[o] + ww * (lutT[sb] - cl * d[o] - (1 - cl) * lutV[sb]);
+      d[o + 1] = d[o + 1] + ww * (lutT[sb + 1] - cl * d[o + 1] - (1 - cl) * lutV[sb + 1]);
+      d[o + 2] = d[o + 2] + ww * (lutT[sb + 2] - cl * d[o + 2] - (1 - cl) * lutV[sb + 2]);
+    }
+
+    var quad = pinPrint.checked ? FRAMES[0].quad : F.quad;
+    rasterDesign(quad);
+
+    if (designPixels && designRect) {
+      var R = designRect;
+      for (var y = 0; y < R.h; y++) {
+        var fy = R.y + y;
+        if (fy < 0 || fy >= H) continue;
+        for (var x = 0; x < R.w; x++) {
+          var fx = R.x + x;
+          if (fx < 0 || fx >= W) continue;
+          var dq = (y * R.w + x) * 4;
+          var da = designPixels[dq + 3] / 255;
+          if (da <= 0.004) continue;
+          var pi = fy * W + fx;
+          // Clipped to the garment's own coverage, so the print cannot spill
+          // onto skin, hair or background — the same clip channel the editor uses.
+          var alpha = da * (F.clip[pi] / 255);
+          if (alpha <= 0.004) continue;
+          // Fold shading, lifted toward white so mid illumination is neutral:
+          // the print darkens into creases instead of sitting flat on top.
+          var sm = (150 + (F.shade[pi] / 255) * 105) / 255;
+          var oo = pi * 4;
+          d[oo] = d[oo] * (1 - alpha) + designPixels[dq] * sm * alpha;
+          d[oo + 1] = d[oo + 1] * (1 - alpha) + designPixels[dq + 1] * sm * alpha;
+          d[oo + 2] = d[oo + 2] * (1 - alpha) + designPixels[dq + 2] * sm * alpha;
+        }
+      }
+    }
+    ctx.putImageData(outImage, 0, 0);
+    tickEl.textContent = "frame " + (fi + 1) + " / " + FRAMES.length +
+      "  ·  print x " + ((quad.tl[0] + quad.tr[0]) / 2).toFixed(1) + "px";
+  }
+
+  var interval = 1000 / (PACK.fps || 6);
+  function loop(stamp) {
+    if (playing && stamp - lastStamp >= interval) {
+      lastStamp = stamp;
+      frameIdx = (frameIdx + 1) % FRAMES.length;
+      drawFrame(frameIdx);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  playBtn.addEventListener("click", function () {
+    playing = !playing;
+    playBtn.textContent = playing ? "Pause" : "Play";
+    badgeText.textContent = playing ? "live" : "paused";
+  });
+  pinPrint.addEventListener("change", function () { drawFrame(frameIdx); });
+
+  function syncColor(hex) {
+    colorPick.value = hex;
+    colorHex.value = hex.toUpperCase();
+    drawFrame(frameIdx);
+  }
+  colorPick.addEventListener("input", function () { syncColor(colorPick.value); });
+  colorHex.addEventListener("change", function () {
+    var v = colorHex.value.trim();
+    if (/^#?[0-9a-fA-F]{6}$/.test(v)) syncColor(v[0] === "#" ? v : "#" + v);
+    else colorHex.value = colorPick.value.toUpperCase();
+  });
+  ["#1F3A5F", "#FFFFFF", "#1A1A1A", "#2F5D43", "#8A2035", "#C9A227"].forEach(function (hex) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.style.background = hex;
+    b.title = hex;
+    b.setAttribute("aria-label", "Set garment colour " + hex);
+    b.addEventListener("click", function () { syncColor(hex); });
+    swatchesEl.appendChild(b);
+  });
+
+  function useDesign(src, name) {
+    loadImage(src).then(function (img) {
+      designImg = img;
+      keyDesign(img);
+      designKey = name + ":" + img.naturalWidth + "x" + img.naturalHeight;
+      designRect = null;
+      designName.textContent = name;
+      drawFrame(frameIdx);
+    });
+  }
+  designFile.addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function (ev) { useDesign(ev.target.result, f.name); };
+    reader.readAsDataURL(f);
+  });
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("drag"); });
+  drop.addEventListener("dragleave", function () { drop.classList.remove("drag"); });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault();
+    drop.classList.remove("drag");
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function (ev) { useDesign(ev.target.result, f.name); };
+    reader.readAsDataURL(f);
+  });
+
+  (function decodeAll(i) {
+    if (i >= PACK.frames.length) {
+      loadingEl.style.display = "none";
+      badgeText.textContent = "live";
+      useDesign(DEFAULT_DESIGN, "sample design");
+      drawFrame(0);
+      requestAnimationFrame(loop);
+      return;
+    }
+    decodeFrame(PACK.frames[i]).then(function (F) {
+      FRAMES.push(F);
+      loadingEl.textContent = "decoding frames… " + (i + 1) + " / " + PACK.frames.length;
+      decodeAll(i + 1);
+    });
+  })(0);
+})();
+</script>
