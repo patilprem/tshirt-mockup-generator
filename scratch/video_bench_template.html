@@ -119,11 +119,14 @@
 
   .console {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 306px;
+    /* The stage is capped rather than stretched: the frames are 400px wide
+       and pushing them much past that only magnifies codec mush. */
+    grid-template-columns: minmax(0, 468px) 306px;
+    justify-content: center;
     gap: 20px;
     align-items: start;
   }
-  @media (max-width: 860px) { .console { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 860px) { .console { grid-template-columns: minmax(0, 468px); } }
 
   .stage {
     background: var(--surface);
@@ -144,7 +147,7 @@
     justify-content: center;
     min-height: 260px;
   }
-  canvas#out { display: block; max-width: 100%; height: auto; }
+  canvas#out { display: block; width: 100%; height: auto; }
   .badge-live {
     position: absolute; top: 10px; left: 10px;
     display: inline-flex; align-items: center; gap: 7px;
@@ -282,6 +285,31 @@
     padding: 3px 8px; border-radius: 999px;
     background: var(--pass-wash); color: var(--pass);
   }
+  .tag-warn { background: var(--accent-wash); color: var(--accent-ink); }
+
+  figure.ab {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 15px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  figure.ab h2 { font-size: 15px; margin: 0; font-weight: 620; letter-spacing: -.01em; }
+  .ab-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 620px) { .ab-pair { grid-template-columns: minmax(0, 1fr); } }
+  .ab-pair figcaption {
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 6px;
+  }
+  .ab-pair img {
+    display: block; width: 100%; height: auto;
+    border-radius: 5px; border: 1px solid var(--line);
+    image-rendering: pixelated;
+  }
+  figure.ab p { margin: 0; font-size: 13.2px; color: var(--ink-soft); max-width: 74ch; }
 
   .note {
     font-size: 13.2px; color: var(--ink-soft);
@@ -387,19 +415,45 @@
     </article>
     <article class="verdict">
       <span class="quote">“design is not placed on tshirt &amp; not moving with tshirt”</span>
-      <span class="metric" id="vTravel">—<small> px travel</small></span>
+      <span class="metric" id="vTravel">__TRAVEL__<small> px across</small></span>
       <span class="tag">fixed</span>
-      <p>How far the print quad moves over the clip, measured from each frame's own garment. The first
-      version held one rectangle in canvas space, so this distance was zero by construction.</p>
+      <p>How far the print's centre travels over the clip, measured from each frame's own garment (it
+      also drops 32px). The first version held one rectangle in canvas space, so this distance was zero
+      by construction — tick the box on the right to put that back and watch the shirt leave the print
+      behind.</p>
     </article>
     <article class="verdict">
       <span class="quote">“mask is not clear where hairs meets at tshirt”</span>
       <span class="metric" id="vHair">__HAIR__<small>% of edge band</small></span>
-      <span class="tag">fixed</span>
+      <span class="tag tag-warn">improved</span>
       <p>Violet surviving in the band where mask coverage is partial — which is where hair crosses the
-      garment. The boundary now follows individual strands rather than stepping in 2–4px blocks.</p>
+      garment. No violet left there, and the blocky stepping along the hair edge softens considerably —
+      though it does not vanish. Judge it yourself in the comparison below.</p>
     </article>
   </section>
+
+  <figure class="ab">
+    <h2>Hair against fabric, same frame, same crop, 5×</h2>
+    <div class="ab-pair">
+      <figure>
+        <figcaption>analysed at clip resolution</figcaption>
+        <img src="__CMP720__" alt="Hair meeting the shoulder of a white shirt, with the mask boundary stepping in blocks" />
+      </figure>
+      <figure>
+        <figcaption>analysed at the tuned scale</figcaption>
+        <img src="__CMP900__" alt="The same boundary, following individual hair strands" />
+      </figure>
+    </div>
+    <p>
+      Both are the real pipeline on the real clip, on a white shirt with no design; the only difference
+      is the resolution the analysis ran at. Its spatial constants were chosen against 1600px stills,
+      and hair against fabric is the finest discrimination it makes — so it is the first thing to break
+      when every constant silently covers 1.5× more of the subject. On the left the boundary breaks
+      into blocks two to four pixels across; on the right it resolves to a finer, softer edge. It is
+      better, not perfect — some stepping survives along the lower strands. The soft grey spreading
+      down the shirt is the shadow the hair genuinely casts, which is meant to stay.
+    </p>
+  </figure>
 
   <div class="note">
     <h2>What actually changed</h2>
@@ -412,6 +466,16 @@
       over every frame, offline. Three clip-specific additions sit on top: one calibration for the whole
       loop so the colour can't breathe, a print quad re-measured per frame and smoothed over time, and
       frames resampled to the resolution the analysis's own constants were tuned at.
+    </p>
+    <h2 style="margin-top:16px">One thing this found that you didn't report</h2>
+    <p>
+      A hairline of green traces the garment's silhouette — the mint cast the still pipeline fails a
+      build over, left where modelled violet is subtracted from a pixel that is mostly background.
+      It covers <b>__GREEN__%</b> of the boundary band, peaks at __GREENMAX__/255, and is one pixel wide:
+      invisible at native size, and I could only see it at 11× magnification. I have not fixed it,
+      because the obvious fix — a despill clamp on the band — needs validating across every garment
+      colour before it goes near the composite, and a fix I can't check is worse than a number you know
+      about. Sleeve edges against the potted plant are where to look first if it ever does show.
     </p>
   </div>
 
@@ -450,7 +514,6 @@
   document.getElementById("roVref").textContent = PACK.vRef.toFixed(4);
   document.getElementById("roBase").textContent = PACK.violetBase.map(function (v) { return Math.round(v); }).join(", ");
   document.getElementById("roFrame").textContent = "#" + PACK.calibratedOnFrame;
-  document.getElementById("vTravel").innerHTML = PACK.qa.printTravelPx.toFixed(0) + "<small> px travel</small>";
 
   // ---- relight LUT, identical to src/scripts/onmodel-engine.js ----
   function relightLut(rgb) {

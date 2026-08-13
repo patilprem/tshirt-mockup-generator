@@ -158,6 +158,7 @@ const fs = require('fs');
       // tidy 193x195 hotspot, which was the cat.
       const printed = printedAlpha;
       let violet = 0, violetEdge = 0, edgePx = 0, skipped = 0;
+      let greenEdge = 0, greenWorst = 0;
       let vminX = w, vminY = h, vmaxX = -1, vmaxY = -1;
       const heat = octx.createImageData(w, h);
       for (let p = 0; p < n; p++) {
@@ -169,6 +170,15 @@ const fs = require('fs');
         // crossing the garment is the dominant occupant of that band.
         const partial = wArr[p] > 20 && wArr[p] < 235;
         if (partial) edgePx++;
+        // Green excess in the boundary band: the mint fringe left when
+        // modelled violet is subtracted from a pixel that is mostly
+        // background. Restricted to pixels the mask actually touched —
+        // counted over the whole frame it is dominated by the potted plant
+        // and the foliage through the window, which are supposed to be green.
+        if (partial) {
+          const exc = od[o + 1] - Math.max(od[o], od[o + 2]);
+          if (exc > 6) { greenEdge++; if (exc > greenWorst) greenWorst = exc; }
+        }
         if (isViolet) {
           violet++;
           if (partial) violetEdge++;
@@ -187,7 +197,7 @@ const fs = require('fs');
       return {
         png: out.toDataURL('image/png'),
         heat: heatCv.toDataURL('image/png'),
-        violet, violetEdge, edgePx, n, skipped,
+        violet, violetEdge, edgePx, n, skipped, greenEdge, greenWorst,
         violetBox: vmaxX < 0 ? null : { x: vminX, y: vminY, w: vmaxX - vminX, h: vmaxY - vminY },
         printCx: (q => (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4)(quad),
         printCy: (q => (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4)(quad),
@@ -222,6 +232,8 @@ const fs = require('fs');
     violetPctOfFrame: +(100 * totalViolet / (stats.length * stats[0].n)).toFixed(4),
     pixelsUnderPrintExcluded: stats.reduce((a, s) => a + s.skipped, 0),
     hairBandVioletPct: +(100 * edgeViolet / Math.max(1, edgeTotal)).toFixed(3),
+    greenFringePctOfBand: +(100 * stats.reduce((a, s) => a + s.greenEdge, 0) / Math.max(1, edgeTotal)).toFixed(3),
+    greenFringeWorstExcess: Math.max(...stats.map(s => s.greenWorst)),
     printTravelXpx: +(Math.max(...cxs) - Math.min(...cxs)).toFixed(1),
     printTravelYpx: +(Math.max(...cys) - Math.min(...cys)).toFixed(1),
   };
