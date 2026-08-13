@@ -1856,3 +1856,13 @@ input[type="range"]:focus-visible,
   align-items: center;
   justify-content: center;
 }
+
+/* These containers center their emoji-turned-SVG icon via an inherited
+   text-align: center on an ancestor. .lc's display: block would ignore
+   that (block boxes don't respect text-align), so keep the icon inline
+   here to preserve the centering the emoji got for free. */
+.step-icon .lc,
+.page-hero-icon .lc,
+.form-success-icon .lc {
+  display: inline-block;
+}
