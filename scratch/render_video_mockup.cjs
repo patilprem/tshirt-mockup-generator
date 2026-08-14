@@ -60,7 +60,7 @@ const fs = require('fs');
     const files = manifest.frameFiles[i];
     const b64 = k => fs.readFileSync(path.join(bakeDir, files[k])).toString('base64');
     const r = await page.evaluate(async (args) => {
-      const { photo, weight, shade, meta, quad, hex, designB64 } = args;
+      const { photo, weight, shade, meta, quad, hex, designB64, trunkW } = args;
       const E = window.__engine;
       const load = s => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = s; });
       const [photoImg, weightImg, shadeImg] = await Promise.all([
@@ -108,22 +108,140 @@ const fs = require('fs');
         const qcy = (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4;
         const quadW = Math.hypot(q.tr[0] - q.tl[0], q.tr[1] - q.tl[1]);
         const quadH = Math.hypot(q.bl[0] - q.tl[0], q.bl[1] - q.tl[1]);
-        const aspect = dImg.width / dImg.height;
-        let dW = quadW, dH = dW / aspect;
-        if (aspect <= 1) { dH = quadH; dW = dH * aspect; }
+        // CONTAIN, not fit-by-one-axis. The old rule picked the axis from the
+        // design's aspect alone — landscape fits width, anything else fits
+        // height — which ignores the quad's own aspect and overflows whenever
+        // the design is squarer than the print area. This print area is 264x320,
+        // so a square design was scaled to 320x320: 21% wider than the area it
+        // is supposed to sit inside, which is most of why the graphic read as
+        // too big for the chest.
+        const scale = Math.min(quadW / dImg.width, quadH / dImg.height);
+        const dW = dImg.width * scale, dH = dImg.height * scale;
 
-        const layer = document.createElement('canvas');
-        layer.width = w; layer.height = h;
-        const lc = layer.getContext('2d');
         // Drawn in the QUAD's axes, not the canvas's. The tracked quad now
         // carries the torso's lean, and an axis-aligned drawImage would throw
         // that away and leave the print upright on a body that is not — the
         // rotation being tracked has to reach the pixels to be worth tracking.
         const ux = [(q.tr[0] - q.tl[0]) / quadW, (q.tr[1] - q.tl[1]) / quadW];
         const uy = [(q.bl[0] - q.tl[0]) / quadH, (q.bl[1] - q.tl[1]) / quadH];
-        lc.setTransform(ux[0], ux[1], uy[0], uy[1], qcx, qcy);
-        lc.drawImage(buffer, -dW / 2, -dH / 2, dW, dH);
-        lc.setTransform(1, 0, 0, 1, 0, 0);
+
+        // ---- the print is SAMPLED onto the fabric, not pasted onto it ----
+        //
+        // A single drawImage into a parallelogram is geometrically flat, and
+        // flat is what reads as a sticker. Two things a real print does that
+        // one drawImage cannot:
+        //
+        //   1. It wraps a torso, which is a cylinder seen from the front. A
+        //      point at angle t off the centre line sits at R*sin(t) in the
+        //      image, so equal steps of PRINTED distance are unequal steps of
+        //      IMAGE distance, compressing toward the sides. The radius is not
+        //      guessed: it comes from the trunk width the tracker already
+        //      measures each frame.
+        //
+        //   2. It rides over folds. The shade map is the garment's own
+        //      shading, so its gradient points across every crease; offsetting
+        //      the sample position along that gradient makes the graphic dip
+        //      into the folds the fabric actually has. The map is blurred
+        //      first, hard, because the wanted signal is the fold and not the
+        //      weave — displacing by unblurred shading modulates the print at
+        //      pixel scale and reads as noise, not cloth.
+        //
+        // Both are inverse maps, so the design is sampled per output pixel
+        // rather than transformed as a bitmap.
+        const dW2 = dW / 2, dH2 = dH / 2;
+        const R = Math.max(dW2 * 1.05, (trunkW || quadW * 1.7) / 2);
+        const kMax = Math.min(0.97, dW2 / R);
+        const sMax = Math.asin(kMax);
+        // Fold displacement scales with the print, so it is the same physical
+        // effect whatever size the design is placed at.
+        const DISP = dW * 0.04;
+        const BLUR = Math.max(2, Math.round(w * 0.012));
+
+        const shadeCv = E.onModelShadeCanvas(entry);
+        const sctx2 = shadeCv.getContext('2d', { willReadFrequently: true });
+        const sdata = sctx2.getImageData(0, 0, w, h).data;
+        // separable box blur of the shade channel, twice for a near-gaussian
+        let sh = new Float32Array(n);
+        for (let p = 0; p < n; p++) sh[p] = sdata[p * 4];
+        const blurPass = (src2) => {
+          const tmp2 = new Float32Array(n), out2 = new Float32Array(n);
+          for (let y = 0; y < h; y++) {
+            let acc = 0;
+            for (let x = -BLUR; x <= BLUR; x++) acc += src2[y * w + Math.max(0, Math.min(w - 1, x))];
+            for (let x = 0; x < w; x++) {
+              tmp2[y * w + x] = acc / (2 * BLUR + 1);
+              acc -= src2[y * w + Math.max(0, Math.min(w - 1, x - BLUR))];
+              acc += src2[y * w + Math.max(0, Math.min(w - 1, x + BLUR + 1))];
+            }
+          }
+          for (let x = 0; x < w; x++) {
+            let acc = 0;
+            for (let y = -BLUR; y <= BLUR; y++) acc += tmp2[Math.max(0, Math.min(h - 1, y)) * w + x];
+            for (let y = 0; y < h; y++) {
+              out2[y * w + x] = acc / (2 * BLUR + 1);
+              acc -= tmp2[Math.max(0, Math.min(h - 1, y - BLUR)) * w + x];
+              acc += tmp2[Math.max(0, Math.min(h - 1, y + BLUR + 1)) * w + x];
+            }
+          }
+          return out2;
+        };
+        sh = blurPass(blurPass(sh));
+
+        // design pixels, read once
+        const dcv = document.createElement('canvas');
+        dcv.width = buffer.width; dcv.height = buffer.height;
+        const dcx = dcv.getContext('2d', { willReadFrequently: true });
+        dcx.drawImage(buffer, 0, 0);
+        const dPix = dcx.getImageData(0, 0, buffer.width, buffer.height).data;
+        const dw = buffer.width, dh = buffer.height;
+
+        const layer = document.createElement('canvas');
+        layer.width = w; layer.height = h;
+        const lc = layer.getContext('2d');
+        const lay = lc.createImageData(w, h);
+
+        // bounding box of the quad, padded for the displacement
+        const xs = [q.tl[0], q.tr[0], q.br[0], q.bl[0]], ys = [q.tl[1], q.tr[1], q.br[1], q.bl[1]];
+        const pad = DISP + 4;
+        const x0 = Math.max(0, Math.floor(Math.min(...xs) - pad)), x1 = Math.min(w - 1, Math.ceil(Math.max(...xs) + pad));
+        const y0 = Math.max(0, Math.floor(Math.min(...ys) - pad)), y1 = Math.min(h - 1, Math.ceil(Math.max(...ys) + pad));
+
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            const p = y * w + x;
+            const ddx = x - qcx, ddy = y - qcy;
+            // into the quad's own axes
+            let a = ddx * ux[0] + ddy * ux[1];
+            let b = ddx * uy[0] + ddy * uy[1];
+
+            // fold displacement: gradient of the blurred shading, taken in the
+            // same axes so it survives the garment's lean
+            const gx = (sh[p + 1] - sh[p - 1]) * 0.5;
+            const gy = (sh[p + w] - sh[p - w]) * 0.5;
+            const ga = gx * ux[0] + gy * ux[1];
+            const gb = gx * uy[0] + gy * uy[1];
+            a += (ga / 255) * DISP;
+            b += (gb / 255) * DISP;
+
+            if (Math.abs(a) > dW2 || Math.abs(b) > dH2) continue;
+            // cylinder: image offset -> printed offset
+            const t = Math.asin(Math.max(-1, Math.min(1, (a / dW2) * kMax))) / sMax;
+            const su = (t * 0.5 + 0.5) * dw;
+            const sv = (b / dH2 * 0.5 + 0.5) * dh;
+            // bilinear sample of the design
+            const iu = Math.floor(su), iv = Math.floor(sv);
+            if (iu < 0 || iv < 0 || iu >= dw - 1 || iv >= dh - 1) continue;
+            const fu = su - iu, fv = sv - iv;
+            const o00 = (iv * dw + iu) * 4, o10 = o00 + 4, o01 = o00 + dw * 4, o11 = o01 + 4;
+            const wq = [(1 - fu) * (1 - fv), fu * (1 - fv), (1 - fu) * fv, fu * fv];
+            const o = p * 4;
+            for (let ch = 0; ch < 4; ch++) {
+              lay.data[o + ch] = dPix[o00 + ch] * wq[0] + dPix[o10 + ch] * wq[1]
+                + dPix[o01 + ch] * wq[2] + dPix[o11 + ch] * wq[3];
+            }
+          }
+        }
+        lc.putImageData(lay, 0, 0);
         const printAlpha = document.createElement('canvas');
         printAlpha.width = w; printAlpha.height = h;
         printAlpha.getContext('2d').drawImage(layer, 0, 0);
@@ -217,6 +335,9 @@ const fs = require('fs');
         ambientTint: manifest.ambientTint, relMax: manifest.relMax, shirtHue: manifest.shirtHue,
       },
       quad: manifest.quads[i], hex, designB64,
+      // the tracker already measures the trunk each frame; the cylinder the
+      // print wraps has that width, so its radius is not a tuned constant
+      trunkW: manifest.torso && manifest.torso[i] ? manifest.torso[i].w : null,
     });
 
     fs.writeFileSync(path.join(outDir, `out_${String(i).padStart(4, '0')}.png`), Buffer.from(r.png.split(',')[1], 'base64'));

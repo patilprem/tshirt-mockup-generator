@@ -1233,6 +1233,67 @@
         if (!crevice[i] && evAny[i] < 0.05 && mConf[i] < 0.1) wMap[i] = 0;
       }
 
+      // ---- de-speckle the boundary ----
+      //
+      // Everything above this point is finished writing to wMap, and several of
+      // the last stages write through HARD thresholds: a pixel is zeroed if its
+      // distance transform never reached it, or if its evidence and matte
+      // confidence both fall under a constant. Those are the right decisions,
+      // but a threshold applied per pixel along a boundary that runs diagonally
+      // through the grid does not produce a clean line — it produces a ragged
+      // one, with isolated zeros scattered a pixel or two into fabric that is
+      // otherwise fully covered.
+      //
+      // Against violet that is invisible. Against white it is the defect that
+      // reads as "the edges look fake": at 4x the sleeve boundary is a
+      // staircase with a broken dark line threading through it, where the
+      // photograph has a smooth two-pixel gradient.
+      //
+      // A 3x3 MEDIAN is the specific tool for impulse noise, and unlike a blur
+      // it does not move an edge — a pixel surrounded by fabric becomes fabric,
+      // a pixel surrounded by background stays background, and a pixel on a
+      // genuine straight boundary keeps its own value because the median of its
+      // neighbourhood is its own side. It runs only where the neighbourhood is
+      // actually mixed, so solid interiors and clean background are untouched
+      // and a lone hair strand crossing the hem is not filled in: a strand's
+      // neighbourhood is mostly strand.
+      {
+        const src2 = Float32Array.from(wMap);
+        const nb = new Float64Array(9);
+        for (let y = 1; y < H - 1; y++) {
+          for (let x = 1; x < W - 1; x++) {
+            const i = y * W + x;
+            let k = 0, lo = 0, hi = 0;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+              const v = src2[i + dy * W + dx];
+              nb[k++] = v;
+              if (v < 0.15) lo++; else if (v > 0.85) hi++;
+            }
+            // only where the 3x3 straddles the boundary
+            if (lo < 2 || hi < 2) continue;
+            nb.sort();
+            // MONOTONE: the median may only raise a weight, never lower one.
+            // Applied both ways it rounds off convex corners on the fabric
+            // side — a median cuts corners, that is what it is for — and every
+            // pixel it takes off the garment is a pixel of violet left
+            // un-recoloured. Measured: residual violet went from ~0 to 73-158
+            // px/frame, all of it in this band. Raising only, it fills the
+            // isolated zeros the thresholds punched into covered fabric, which
+            // is the whole defect, and can leave violet nowhere by
+            // construction.
+            if (nb[4] > wMap[i]) wMap[i] = nb[4];
+          }
+        }
+      }
+      // No second mean pass here, though the step it would soften is real. A
+      // blur moves weight OFF the fabric side of the boundary as readily as it
+      // moves it on, and the weight it takes off is violet left un-recoloured:
+      // adding one cost 63-146 px/frame of residual violet, all of it in this
+      // band, for a softening the eye cannot find. The ramp the runtime mixes
+      // through is already built upstream, by the matte and by the blur at the
+      // top of the weight assembly; what was wrong here was speckle, not
+      // sharpness.
+
       // The own-value blend, computed once and shared by the weight map's B
       // channel and the chroma QA gate below. One array rather than the same
       // expression written twice: the gate exists to catch this value going
