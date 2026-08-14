@@ -87,6 +87,34 @@
         wRaw[i] = wh * smooth(s, 0.08, 0.22) * smooth(v, 0.05, 0.12);
       }
 
+      // Violet's one pose-independent signature: BLUE ABOVE GREEN.
+      //
+      // The neutralisation passes further down decide whether a pixel carries
+      // violet worth removing, and they decided it by hue distance. That does
+      // not work at this hue. The garment key sits at ~315, and the entire warm
+      // family — skin, lips, hair, wood — sits only 60-75 degrees away, which is
+      // inside any corridor wide enough to also hold violet's own shading
+      // spread. So a corridor that catches a mauve seam mix also catches the
+      // model's mouth: lips at hue 3 and saturation 0.50 measured 48 degrees
+      // out, took a 46% pull toward luminance IN THE BAKED PHOTO, and came out
+      // grey under every target colour. The same rule desaturated the hair lying
+      // across the shoulders, which is invisible against violet and reads as
+      // grey mush against white.
+      //
+      // Channel ORDER separates them where hue distance cannot. Violet fabric
+      // has blue above green at every value it takes — lit face, fold shadow,
+      // bloom scattered onto a wall — because dimming scales all three channels
+      // together and cannot reorder them. Warm subjects are the opposite
+      // ordering by construction. A mixture inherits the fabric's ordering once
+      // the violet fraction is meaningful: skin at (200,150,130) blended with
+      // this garment's violet crosses over at about a third fabric, which is
+      // also about where the tint first becomes visible.
+      //
+      // The floor is 3 levels rather than 0 so 4:2:0 chroma noise on flat skin
+      // cannot drift a pixel into partial neutralisation.
+      const vSig = new Float32Array(N);
+      for (let i = 0; i < N; i++) vSig[i] = smooth(src[i * 4 + 2] - src[i * 4 + 1], 3, 14);
+
       // connected components over confident pixels; keep fragments near the
       // main body (a raised arm can split the garment)
       const vis = new Uint8Array(N), blobs = [];
@@ -344,7 +372,12 @@
         const lim2 = d2 >= 0 ? 65 : 45 + 25 * (1 - smooth(vA[i], 0.10, 0.30));
         const a2 = Math.abs(d2);
         const hueClose = a2 <= 30 ? 1 : a2 >= lim2 ? 0 : 0.5 + 0.5 * Math.cos((a2 - 30) / (lim2 - 30) * Math.PI);
-        const evChroma = hueClose * smooth(sA[i], 0.05, 0.18);
+        // vSig, not hue proximity alone: hueClose still reads 0.46 on rosy
+        // lips, which are 48 degrees from this garment's hue and saturated
+        // enough to clear the floor. Requiring blue above green costs nothing
+        // on real bloom — scattered violet light keeps the ordering — and
+        // takes the mouth out of the corridor entirely.
+        const evChroma = hueClose * smooth(sA[i], 0.05, 0.18) * vSig[i];
         const o = i * 4;
         // green-deficit: violet content pushes both R and B above G; skin,
         // foliage and warm walls never do. Catches mauve seam mixes whose
@@ -354,7 +387,12 @@
           : d2 > 70 && d2 < 90 ? 0.5 + 0.5 * Math.cos((d2 - 70) / 20 * Math.PI)
           : d2 < -10 && d2 > -25 ? 0.5 + 0.5 * Math.cos((-10 - d2) / 15 * Math.PI)
           : 0;
-        const evMix = hueMix * smooth(gd, 0.015, 0.07) * smooth(clip[i], 0.01, 0.12);
+        // gd is red-inclusive, so warm subjects clear it on red dominance
+        // alone: dark hair at (81,51,40) scores 0.35 with no violet in it at
+        // all, and the clip ramp reaches the hair lying on the shoulders. The
+        // ordering test is what the comment above this block already claims
+        // this rule tests for, so it is now actually tested for.
+        const evMix = hueMix * smooth(gd, 0.015, 0.07) * smooth(clip[i], 0.01, 0.12) * vSig[i];
         const tap = smooth(wRaw[i], 0.008, 0.05);
         // A deep underarm or hem crevice is GARMENT in shadow, not an edge
         // mix: the strict key drops it (hue drifts and the value floor
@@ -1207,6 +1245,28 @@
           clip[i],
           unrel[i],
           outside[i] ? 1 - cf : 0,
+          // COVERAGE itself. The runtime's own comment states the rule —
+          // "inside solid coverage the pixel's own value IS the violet;
+          // subtracting it exactly cancels every local chroma variation the
+          // fixed model can't track" — but until now nothing here supplied it.
+          // The three terms above answer other questions: where the design
+          // prints, where the pixel is information-free, how well the matte
+          // solved. A solidly covered pixel that simply falls outside the print
+          // area inherited its blend from `clip`, landing near 0.5, so half the
+          // MODEL's violet was subtracted from fabric whose local violet
+          // differs from it — a fold edge, a seam, a shade estimate a few
+          // levels off. Violet's green sits far below its red and blue, so
+          // over-stating the violet under-subtracts green and the pixel goes
+          // mint: the 1px rim that traced the whole silhouette on white, 3.7%
+          // of the boundary band at up to 29 levels of green excess.
+          //
+          // Ramping over 0.40-0.90 rather than reaching further down: at 0.25
+          // coverage a pixel is not solid by any reading, and the extra reach
+          // buys the last 0.3% of green at more than double the cost in
+          // residual violet lean. Measured over 8 frames, white: green band
+          // 3.72% -> 0.28%, worst excess 29 -> 19, mean violet lean 8.28 ->
+          // 8.73 levels, residual violet unchanged at 1.1px/frame.
+          smooth(wMap[i], 0.40, 0.90),
         )));
       }
 
@@ -1234,7 +1294,14 @@
           // chroma is neutralised as before and nothing is lost by it: there is no
           // saturation there for the operation to move, so the crease residue this rule
           // exists to remove is still removed in full.
-          const offHue = smooth(ad(hA[i], shirtHue), 45, 90);
+          //
+          // offHue alone was not enough of a spare. It only reaches 1 at 90
+          // degrees out, and dark hair sits at ~70, so hair over the shoulders
+          // kept 41% of the neutralisation and went grey — the same defect the
+          // arm had, one step further from the key. Blue-above-green settles it
+          // outright: hair, skin and wood all fail it, every shade of the
+          // garment passes it.
+          const offHue = Math.max(smooth(ad(hA[i], shirtHue), 45, 90), 1 - vSig[i]);
           const dark = (1 - smooth(vA[i], 0.22, 0.42))
             * (1 - offHue * smooth(sA[i], 0.06, 0.16));
           const kk = Math.min(1, (1 - wMap[i]) * dark);
@@ -1355,6 +1422,107 @@
       const cTop = centreAt[topY] != null ? centreAt[topY] : mnX + bw / 2;
       const cBot = centreAt[botY] != null ? centreAt[botY] : mnX + bw / 2;
       const quad = { tl: [cTop - hw, topY], tr: [cTop + hw, topY], br: [cBot + hw, botY], bl: [cBot - hw, botY] };
+
+      // ---- torso tracking frame (for clips; a still has nothing to compare
+      // itself against, so nothing above changes) ----
+      //
+      // Every number the quad above is built from is an EXTENT or a run edge:
+      // mnY, mxY, the median row run, the traced centre. Each is decided by a
+      // handful of boundary pixels, so each moves the moment a sleeve swings or
+      // the hem sways — and the print, whose size and vertical position are
+      // fractions of bh, jumps with them. Over a clip that reads as the design
+      // swimming on fabric that is not moving the same way.
+      //
+      // So the clip does not track the silhouette. It tracks the mask's MASS.
+      // Quantiles replace min and max: yLo is the height above which a tenth of
+      // the garment lies, not the topmost lit pixel, and it takes half the mask
+      // moving to shift it. The horizontal interquartile range does the same job
+      // for width AND drops the sleeves for free — at chest height they are the
+      // outer fifth of the mass on each side, which is exactly what the middle
+      // 50% excludes. The lean comes from the trimmed covariance's major axis,
+      // which for a shape this much taller than wide is well conditioned and
+      // gives the print a rotation to follow; the quad above has none, so it
+      // stays upright while the model does not.
+      //
+      // These are estimates over ~10^5 pixels rather than over ~10, and that
+      // ratio is the whole point: the noise floor falls by roughly its square
+      // root.
+      const torso = (() => {
+        const rowN = new Float64Array(H);
+        let area = 0;
+        for (let i = 0; i < N; i++) if (core[i]) { rowN[(i / W) | 0]++; area++; }
+        if (area < 64) return null;
+        const yQuant = q => {
+          const want = area * q;
+          let acc = 0;
+          for (let y = 0; y < H; y++) { acc += rowN[y]; if (acc >= want) return y; }
+          return H - 1;
+        };
+        const yLo = yQuant(0.10), yHi = yQuant(0.90);
+        // x quantiles within that band
+        const colN = new Float64Array(W);
+        let bandN = 0;
+        for (let y = yLo; y <= yHi; y++) for (let x = 0; x < W; x++) if (core[y * W + x]) { colN[x]++; bandN++; }
+        if (bandN < 64) return null;
+        const xQuant = q => {
+          const want = bandN * q;
+          let acc = 0;
+          for (let x = 0; x < W; x++) { acc += colN[x]; if (acc >= want) return x; }
+          return W - 1;
+        };
+        // TRUNK, not silhouette. The moments have to come off the part of the
+        // garment the print sits on, and a chest-height row of a t-shirt is
+        // trunk AND both sleeves in one connected run, so no run rule
+        // separates them. What does separate them is how far down they go: the
+        // trunk spans the whole band by definition, the sleeves stop around
+        // its upper third. So a column counts as trunk when it is covered
+        // through most of the band's height.
+        //
+        // The interquartile range does NOT do this job, which is worth
+        // recording because it looks as though it should. The middle 50% of
+        // the column mass at chest height is about half the FULL width,
+        // sleeves included, so trimming to any multiple of it near 1 keeps the
+        // sleeves and trims the trunk.
+        const bandRows = yHi - yLo + 1;
+        const colRows = new Float64Array(W);
+        for (let y = yLo; y <= yHi; y++) for (let x = 0; x < W; x++) if (core[y * W + x]) colRows[x]++;
+        let tx0 = -1, tx1 = -1;
+        for (let x = 0; x < W; x++) if (colRows[x] >= bandRows * 0.8) { if (tx0 < 0) tx0 = x; tx1 = x; }
+        if (tx0 < 0 || tx1 - tx0 < 8) return null;
+
+        let sw = 0, sx = 0, sy = 0;
+        for (let y = yLo; y <= yHi; y++) for (let x = tx0; x <= tx1; x++) {
+          if (!core[y * W + x]) continue;
+          sw++; sx += x; sy += y;
+        }
+        if (sw < 64) return null;
+        const cx2 = sx / sw, cy2 = sy / sw;
+        let syy = 0, sxy = 0;
+        for (let y = yLo; y <= yHi; y++) for (let x = tx0; x <= tx1; x++) {
+          if (!core[y * W + x]) continue;
+          const dx = x - cx2, dy = y - cy2;
+          syy += dy * dy; sxy += dx * dy;
+        }
+        // Lean is the REGRESSION SLOPE of x on y — how far the trunk's centre
+        // shifts sideways per pixel of height — not the major axis of the
+        // covariance. The major axis was the first thing tried and it reported
+        // a 14.7 degree swing on a clip of someone walking upright. Its
+        // denominator is (Syy - Sxx), and this shape is only about as tall as
+        // it is wide once the band is trimmed, so that difference is small,
+        // ill-conditioned, and inflates every real tilt by Syy/(Syy-Sxx). The
+        // slope's denominator is Syy alone: well conditioned, and it measures
+        // the thing actually wanted.
+        const lean = Math.atan2(sxy, Math.max(1e-6, syy));
+        return {
+          cx: +cx2.toFixed(3), cy: +cy2.toFixed(3),
+          // Two independent scales. Height is what a whole-body zoom changes;
+          // width is what turning changes. Reported separately so the caller
+          // can decide, rather than being averaged into one number here.
+          h: yHi - yLo, w: tx1 - tx0,
+          lean: +lean.toFixed(6),
+          area,
+        };
+      })();
 
       // QA. modelFit: mean |photo - V(shade)| over confident fabric — the
       // relight model's reproduction error, which the runtime carries over as
@@ -1565,7 +1733,7 @@
           ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue, orderEv: +orderEv[i].toFixed(3), unrel: +unrel[i].toFixed(3), clip: +clip[i].toFixed(3), conf: +confA[i].toFixed(3) };
       });
       return {
-        dbg, W, H, shirtHue, fragments, ambientTint, quad,
+        dbg, W, H, shirtHue, fragments, ambientTint, quad, torso,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
         qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
