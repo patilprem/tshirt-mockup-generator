@@ -115,7 +115,15 @@ const fs = require('fs');
         const layer = document.createElement('canvas');
         layer.width = w; layer.height = h;
         const lc = layer.getContext('2d');
-        lc.drawImage(buffer, qcx - dW / 2, qcy - dH / 2, dW, dH);
+        // Drawn in the QUAD's axes, not the canvas's. The tracked quad now
+        // carries the torso's lean, and an axis-aligned drawImage would throw
+        // that away and leave the print upright on a body that is not — the
+        // rotation being tracked has to reach the pixels to be worth tracking.
+        const ux = [(q.tr[0] - q.tl[0]) / quadW, (q.tr[1] - q.tl[1]) / quadW];
+        const uy = [(q.bl[0] - q.tl[0]) / quadH, (q.bl[1] - q.tl[1]) / quadH];
+        lc.setTransform(ux[0], ux[1], uy[0], uy[1], qcx, qcy);
+        lc.drawImage(buffer, -dW / 2, -dH / 2, dW, dH);
+        lc.setTransform(1, 0, 0, 1, 0, 0);
         const printAlpha = document.createElement('canvas');
         printAlpha.width = w; printAlpha.height = h;
         printAlpha.getContext('2d').drawImage(layer, 0, 0);
