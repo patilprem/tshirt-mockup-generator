@@ -1540,6 +1540,40 @@ const TEMPLATES = [
         if (ring[i] && wMap[i] > mLumCap[i]) wMap[i] = mLumCap[i];
       }
 
+      // ---- unmeasured paint is paid in proportion to its evidence ----
+      // Kept in step with template-studio.html.
+      // The rule below the confinement says painting a band pixel requires a
+      // reason: violet evidence, a matte solution, or the crevice machinery.
+      // It is satisfied by `evAny`, and `evAny` saturates at five percent — a
+      // pixel a twentieth violet counts the same as solid cloth. The hem's
+      // shadow on light denim measures (56,58,71): a third violet by the key,
+      // saturation 0.41 of the fabric's, no matte solution at all, and it
+      // walked through that test with weight 0.73 while the slightly lighter
+      // denim beside it took none. That difference, repeated along the hem, is
+      // the serration — and it slips the jeans gate, which wants blue clearly
+      // above red, by two levels.
+      //
+      // So where the matte could not measure the pixel, the reason has to be
+      // paid in proportion rather than waved through: weight is capped by how
+      // much the pixel actually looks like the cloth, its own saturation
+      // against the fabric's. A genuine boundary pixel is desaturated too — it
+      // is a mixture — which is exactly why this cannot apply to it, and does
+      // not: those pixels ARE matte-solved, and the cap steps aside wherever
+      // the measurement exists. It only ever lowers, and only where nothing
+      // was measured, so it can neither invent a rim nor overrule a
+      // measurement.
+      if (sRefG > 0) {
+        for (let i = 0; i < N; i++) {
+          if (!outside[i] || core[i] || pocket[i] || crevice[i]) continue;
+          if (wMap[i] <= 0.05) continue;
+          const measured = Math.max(mConfS[i], mConf[i]);
+          if (measured > 0.30) continue;
+          const looksLikeCloth = smooth(sA[i] / sRefG, 0.45, 0.95);
+          const allowed = Math.max(looksLikeCloth, orderEv[i]);
+          if (wMap[i] > allowed) wMap[i] = allowed;
+        }
+      }
+
       for (let i = 0; i < N; i++) {
         if (!outside[i] || envelope[i]) continue;
         if (distC[i] === -1) { wMap[i] = 0; continue; }
