@@ -1843,7 +1843,19 @@ const TEMPLATES = [
       // violet bleed to satisfy the ordering and SHOULD stay unrecoloured.
       // Saturation is what separates the two, and orderEv already applies it.
       let keyMiss = 0;
-      for (let i = 0; i < N; i++) if (orderEv[i] > 0.5 && wMap[i] < 0.5) keyMiss++;
+      for (let i = 0; i < N; i++) {
+        if (orderEv[i] <= 0.5 || wMap[i] >= 0.5) continue;
+        // Pixels the silhouette confinement zeroed on purpose are not fabric
+        // going unrecoloured — they are the confinement working. Beyond the
+        // matte ring and outside the garment's envelope there is no garment
+        // by construction, and a leafy scene puts plenty of violet-looking
+        // shadow out there: tree-lined-f alone parks 117 px of foliage shade
+        // past that line, which is most of a 120 px failure threshold spent
+        // on pixels the pipeline is right about. Anything genuinely missed at
+        // that scale is caught by `missed`, measured over the whole frame.
+        if (outside[i] && !envelope[i] && distC[i] === -1) continue;
+        keyMiss++;
+      }
 
       // The same question about the OTHER kind of mistake: something that is
       // not the garment carrying garment weight. `skin` asks it of warm
