@@ -219,6 +219,87 @@ const TEMPLATES = [
       for (let i = 0; i < CR; i++) cl = ero(cl);
       for (let i = 0; i < N; i++) core[i] = (cl[i] && plausible[i]) ? 1 : 0;
 
+      // ---- solid fabric has to look like the fabric: a mix is not core ----
+      // The strict key asks only "is this hue violet, with some saturation",
+      // and a pixel that is half fabric and half bright background answers
+      // yes. In the open that costs nothing: such a pixel is border-
+      // connected, the matte solves its coverage against the background it
+      // can reach, and the runtime reconstructs the exact blend. In a
+      // channel SEALED by the garment — an arm resting against the torso —
+      // it costs everything: the mix joins the core, and from that moment
+      // every later stage treats it as 100% fabric. No matte runs on core,
+      // no audit questions core, and on a white target those pixels render
+      // up to 130 levels brighter than the photograph. That is the pale rim
+      // that follows an arm-torso gap in every light colour, and nothing
+      // downstream can remove it because by then the pipeline no longer
+      // believes there is anything to remove.
+      //
+      // Telling a mix from fabric needs no scene knowledge, only the physics
+      // the rest of this file leans on: illumination is MULTIPLICATIVE, so
+      // dimming or brightening fabric leaves its saturation where it was,
+      // while mixing it with an achromatic background dilutes saturation in
+      // proportion to the background's share. A pixel no brighter than the
+      // fabric's diffuse white point, yet carrying a fraction of the
+      // saturation the fabric measures, cannot be solid fabric.
+      //
+      // Demotion is not a verdict of "background": it hands the pixel to the
+      // boundary machinery built for this exact question, where the matte
+      // measures its coverage and the ordering floor can hand back full
+      // weight if it really is shadowed fabric. Only within a few pixels of
+      // a non-core pixel, because a mix needs something to mix WITH — the
+      // garment's interior can read however it likes and stays core.
+      // Kept in step with template-studio.html.
+      let sRefG = 0;
+      {
+        let inner = core;
+        for (let k = 0; k < Math.max(2, CR); k++) inner = ero(inner);
+        const sIn = [];
+        for (let i = 0; i < N; i++) if (inner[i]) sIn.push(sA[i]);
+        if (sIn.length > 500) {
+          sIn.sort((a, b) => a - b);
+          const sRef = sIn[sIn.length >> 1];
+          sRefG = sRef;
+          // Wide enough to span the codec's chroma bleed AND a channel the
+          // core closing has bridged (radius CR), whose nearest non-core
+          // pixel sits further out than bleed alone would put it.
+          const MIXBAND = Math.max(4, CR + Math.round(W / 220));
+          const dOut = new Int16Array(N).fill(-1);
+          {
+            const q = new Int32Array(N);
+            let qh = 0, qt = 0;
+            for (let i = 0; i < N; i++) if (!core[i]) { dOut[i] = 0; q[qt++] = i; }
+            while (qh < qt) {
+              const i = q[qh++];
+              const d = dOut[i];
+              if (d >= MIXBAND) continue;
+              const x = i % W;
+              for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+                if (ni < 0 || ni >= N || dOut[ni] !== -1) continue;
+                dOut[ni] = d + 1; q[qt++] = ni;
+              }
+            }
+          }
+          // Only a NEAR-BLOWN pixel is exempt. The obvious guard — exempt
+          // everything above the fabric's diffuse white point — is wrong in
+          // the one direction that matters: a pixel is bright there BECAUSE
+          // it is mostly background, so that guard protects exactly the
+          // mixes this test exists to catch. Matte fabric has no business
+          // above 0.92, and the blown-highlight gate fails an image that
+          // puts it there.
+          //
+          // 0.62 of the fabric's own saturation is roughly three quarters
+          // coverage against a background twice the fabric's brightness —
+          // where a pixel stops looking like shaded fabric and starts
+          // looking like the wall behind it.
+          for (let i = 0; i < N; i++) {
+            if (!core[i] || dOut[i] < 0 || dOut[i] > MIXBAND) continue;
+            if (vA[i] < 0.30 || vA[i] > 0.92) continue;
+            if (sA[i] >= 0.62 * sRef) continue;
+            core[i] = 0;
+          }
+        }
+      }
+
       const FEATHER = Math.max(1, Math.round(W / 1000));
       function boxBlur(srcArr, R) {
         const tmp = new Float32Array(N), dst = new Float32Array(N);
@@ -365,15 +446,32 @@ const TEMPLATES = [
       // recolour. The bgPaint audit is outside-only too, so the defect ships
       // while the audit reads single digits.
       //
-      // Decided per REGION, not per pixel, and only for regions whose own
-      // colour carries an answer: a pocket whose pixels are bright enough to
-      // read and overwhelmingly non-violet is background, however it is
-      // enclosed. Dark pockets carry no information and stay with the
-      // crevice machinery, whose whole design is about exactly them.
-      // Near-blown regions also stay — a highlight burning through fabric
-      // must not be punched out of the garment.
+      // A region qualifies on POSITIVE evidence, either of two kinds. The
+      // first is a real patch of pixels that are plainly background. The
+      // second is for a channel too narrow for any pixel to escape the
+      // codec's chroma bleed — it has no clean pixel anywhere, yet as a
+      // whole it is bright while carrying a fraction of the fabric's
+      // saturation, and fabric cannot do that. A fold fails both at once: it
+      // is dark, and it keeps the saturation of the cloth it is folded in.
+      //
+      // Note this deliberately does not require every pixel to be clean. The
+      // fabric-side pixels of the same channel are genuine mixes and belong
+      // here too, because `outside` never meant "is background" — it means
+      // the boundary machinery decides this pixel instead of the interior
+      // rules. The clean pixels are kept because they are the only
+      // measurement of what is BEHIND the garment here, and the matte needs
+      // that endpoint to solve the channel at all.
       // Kept in step with template-studio.html.
+      const pocket = new Uint8Array(N);
+      const pocketClean = new Uint8Array(N);
       {
+        const isClean = (i) => {
+          const o = i * 4;
+          const gd = (src[o] + src[o + 2]) / 2 - src[o + 1];
+          const ordering = Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]);
+          return vA[i] >= 0.35 && vA[i] <= 0.92 && sA[i] < 0.22
+            && gd < 8 && ordering < 4 && wRaw[i] < 0.15;
+        };
         const seenP = new Uint8Array(N);
         const qP = new Int32Array(N);
         for (let s0 = 0; s0 < N; s0++) {
@@ -390,20 +488,32 @@ const TEMPLATES = [
               seenP[ni] = 1; qP[qt++] = ni;
             }
           }
-          // Too small to read as a region: JPEG noise decides the vote, and a
-          // wrong relabel of a few fabric pixels punches visible pinholes.
+          // Too small to read as a region: codec noise decides the vote, and
+          // a wrong relabel of a few fabric pixels punches visible pinholes.
           if (mem.length < 16) continue;
-          let violetN = 0;
-          const vs = [];
+          let cleanN = 0;
+          const vs = [], ss = [];
           for (const i of mem) {
-            vs.push(vA[i]);
-            if (wRaw[i] > 0.30 || orderEv[i] > 0.15
-              || (ad(hA[i], shirtHue) < 45 && sA[i] > 0.18 && vA[i] > 0.10)) violetN++;
+            if (isClean(i)) cleanN++;
+            vs.push(vA[i]); ss.push(sA[i]);
           }
-          vs.sort((a, b) => a - b);
-          const medV = vs[vs.length >> 1];
-          if (violetN / mem.length <= 0.15 && medV >= 0.35 && medV <= 0.90)
-            for (const i of mem) outside[i] = 1;
+          vs.sort((a, b) => a - b); ss.sort((a, b) => a - b);
+          const medV = vs[vs.length >> 1], medS = ss[ss.length >> 1];
+          const looksLikeFabric = !(medV >= 0.35 && (sRefG > 0 ? medS < 0.62 * sRefG : medS < 0.22));
+          if ((cleanN < 8 || cleanN < mem.length * 0.15) && looksLikeFabric) continue;
+          for (const i of mem) {
+            outside[i] = 1;
+            pocket[i] = 1;
+            if (isClean(i)) pocketClean[i] = 1;
+            // Solid garment coverage is what clip means, and there is none
+            // here: this is background the garment happens to enclose.
+            // Leaving the blurred core's clip in place would floor the
+            // weight by the interior rules, print the design onto the
+            // background seen through the gap, and drive the own-value blend
+            // to 1 — which is what turns residual weight into a pixel
+            // blended toward the target instead of a mix.
+            clip[i] = 0;
+          }
         }
       }
 
@@ -657,7 +767,15 @@ const TEMPLATES = [
         }
         return { c: out, fd };
       };
-      const bgF = diffuseInto(i => outside[i] && !ring[i]);
+      // A sealed pocket seeds its OWN background. The ordinary rule takes
+      // background from beyond the matte ring, which for a channel narrower
+      // than twice the ring simply does not exist — every pixel in it is
+      // ring, no seed is reachable, and the matte is left without a
+      // background endpoint exactly where it is needed most. Confidence then
+      // dies, the own-value blend goes to 1, and any residual weight blends
+      // the pixel toward the target: the pale rim. The pocket's own clean
+      // pixels ARE that endpoint, measured rather than guessed.
+      const bgF = diffuseInto(i => (outside[i] && !ring[i]) || pocketClean[i]);
       const fgF = diffuseInto(i => !outside[i]);
       const bgC = bgF.c, fgC = fgF.c;
 
@@ -1285,6 +1403,73 @@ const TEMPLATES = [
         if (fl > wMap[i]) wMap[i] = fl;
       }
 
+      // ---- invention, capped: paint only what was measured ----
+      // Two rules with one purpose, placed after every floor and before the
+      // photo bake — after the floors so nothing can put the paint back, and
+      // before the bake because the neutralisation there spends its strength
+      // in proportion to (1 - weight). It exists to take the violet cast out
+      // of a pixel the recolour is NOT going to cover, so it has to see the
+      // final weight, or a pixel dropped to zero here keeps a violet speck
+      // the bake thought was about to be painted over.
+      //
+      // The first rule: in a sealed background pocket the matte is the only
+      // authority. Everywhere else the envelope's verdict is sound — a
+      // channel bridged by fabric on both sides is the garment's own, so the
+      // completion may fill it. A pocket is the one place that reasoning
+      // fails, because the channel is bridged AND there is positive evidence
+      // of background inside it, and the envelope exempts exactly these
+      // pixels from the confinement below. That is how invention survives
+      // here and nowhere else.
+      for (let i = 0; i < N; i++) {
+        if (!pocket[i]) continue;
+        const solved = mAlphaE[i] * smooth(Math.max(0, Math.min(1, mConf[i])), 0.10, 0.30);
+        if (wMap[i] > solved) wMap[i] = solved;
+      }
+      // The second: the same rule without the topology. The pocket test has
+      // to know a region is sealed and agree about which region it is, and
+      // every one of those judgements is a place to be wrong — a channel
+      // that opens to the border after all, a region one clean pixel short
+      // of the vote, a bright wedge under an elbow that is nobody's pocket.
+      // Each wrong answer brings the rim back in a new disguise, so the
+      // guarantee is restated in the form that needs no topology at all:
+      //
+      //   a pixel that does not look like solid fabric may be painted only
+      //   as far as the matte MEASURED it against a background it could
+      //   actually reach.
+      //
+      // "Does not look like solid fabric" needs care, because saturation
+      // alone cannot carry it. Shadow is not purely multiplicative in a real
+      // scene: sky and wall bounce add an achromatic term, and fabric plus
+      // ambient fill is algebraically the same thing as fabric mixed with an
+      // achromatic background — both dilute saturation. Capping on
+      // saturation alone therefore stripped the recolour off shadowed fabric
+      // near every edge, which keyMiss caught at 1117 px: a violet stripe on
+      // white and pink, the mirror image of the defect being fixed.
+      //
+      // What separates them is BRIGHTNESS. Ambient fill lifts a shadow part
+      // of the way back; it cannot make shadowed fabric brighter than the
+      // fabric's own diffuse white point. So the rule is confined to pixels
+      // as bright as fully lit cloth that carry a fraction of its
+      // saturation — which shadow cannot produce and only mixing with
+      // something bright can. Non-core only, so the garment's interior is
+      // untouchable, and scaled continuously by how mix-like the pixel
+      // reads, so nothing turns on a threshold and no contour is printed
+      // into the weight.
+      //
+      // A capped pixel does not lose its recolour so much as its licence to
+      // invent: it keeps the photograph, and the neutralisation below takes
+      // the violet cast out of it target-independently — which is why what
+      // remains cannot glow, in any colour.
+      if (sRefG > 0) {
+        for (let i = 0; i < N; i++) {
+          if (core[i] || vA[i] < 0.90 * vRef || vA[i] > 0.92) continue;
+          const mixness = 1 - smooth(sA[i] / sRefG, 0.45, 0.75);
+          if (mixness <= 0) continue;
+          const solved = mAlphaE[i] * smooth(Math.max(0, Math.min(1, mConf[i])), 0.10, 0.30);
+          if (wMap[i] > solved) wMap[i] -= mixness * (wMap[i] - solved);
+        }
+      }
+
       // ---- silhouette confinement: the mask's universe, stated once ----
       // The garment is the violet region plus the narrow measured boundary
       // band around it (the matte ring, where edge pixels are physically
@@ -1672,6 +1857,23 @@ const TEMPLATES = [
         // the silhouette
         if (outside[i] && !crevice[i] && wMap[i] > 0.08 && evAny[i] < 0.05) bgPaint++;
       }
+      // Sealed channels, measured rather than assumed. bgPaint above cannot
+      // see these: it counts only paint carrying no violet evidence, and a
+      // channel's mixed pixels carry plenty — which is exactly why a pale
+      // rim down an arm gap passed every gate for so long. pocketPaint is
+      // the cap restated as a number and is zero unless a change has broken
+      // it; pocketBlind is a property of the PHOTOGRAPH, channel too narrow
+      // or too dark for the matte to measure, which renders as neutralised
+      // shadow instead of the background really behind it.
+      let pocketPx = 0, pocketPaint = 0, pocketBlind = 0;
+      for (let i = 0; i < N; i++) {
+        if (!pocket[i]) continue;
+        pocketPx++;
+        if (mConf[i] < 0.10) {
+          pocketBlind++;
+          if (wMap[i] > 0.08) pocketPaint++;
+        }
+      }
       const deepShadowPct = +(100 * deepN / Math.max(1, gN)).toFixed(2);
       const hairShadowPct = +(100 * deepHairN / Math.max(1, gN)).toFixed(2);
 
@@ -1691,7 +1893,8 @@ const TEMPLATES = [
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
         qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
-          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint },
+          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint,
+          pocketPx, pocketPaint, pocketBlind },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
         shade: shadeCv.toDataURL('image/jpeg', 0.92),
@@ -1804,6 +2007,29 @@ const TEMPLATES = [
       console.log(`  ! coolPaint=${r.qa.coolPaint} — above the warn line, inspect the hem and waistband on white`);
     }
 
+    // A sealed arm-torso channel painted without a matte behind it. This is
+    // the pale rim that used to follow such a gap in every light colour, and
+    // it is the one defect class every other gate here is blind to by
+    // construction: bgPaint judges border-connected background, the edge
+    // audit judges the outer silhouette, and a channel's mixed pixels carry
+    // enough violet to satisfy the evidence tests. The cap makes this zero,
+    // so a non-zero value is a pipeline regression rather than a bad photo —
+    // hence a hard failure, not a warning.
+    if (r.qa.pocketPaint > 0) {
+      console.error(`${r.W}x${r.H} pocketPaint=${r.qa.pocketPaint} — FAILS QA`);
+      console.error('  Sealed arm/torso channel is being recoloured with no matte behind it.');
+      console.error('  On white this is the pale rim down the gap; on black it goes dark.');
+      console.error('  Check the invention cap and the pocket background seeding.');
+      process.exitCode = 1;
+      continue;
+    }
+    // Not a defect in the pipeline but in the pose: a channel too narrow or
+    // too dark for the matte to resolve renders as neutral shadow rather
+    // than the background actually behind it.
+    if (r.qa.pocketPx > 400 && r.qa.pocketBlind > r.qa.pocketPx * 0.5) {
+      console.log(`  ! pocket=${r.qa.pocketPx}px blind=${r.qa.pocketBlind} — arm/torso gap mostly unresolvable, inspect it on white`);
+    }
+
     // The edge audit stays INFORMATIONAL. It was briefly gated, on the reasoning
     // that an unenforced number is how a broken hem reaches the manifest — but
     // the number it gated was mis-specified: it judged every pixel against the
@@ -1846,7 +2072,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} pocket=${r.qa.pocketPx}/${r.qa.pocketBlind}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
