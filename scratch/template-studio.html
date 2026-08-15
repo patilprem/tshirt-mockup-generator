@@ -2014,12 +2014,44 @@ function analyze(img) {
         photoData[o + 2] += (L - photoData[o + 2]) * kk;
       }
     }
+    // A pixel too weakly violet to recolour still has violet in it, and this
+    // is where that violet goes. It used to go to GREY — the pixel pulled
+    // toward its own luminance — which is safe in the sense that it can
+    // never glow, and wrong wherever what lies behind the pixel has a colour
+    // of its own. A hem against foliage, a channel over a garden path, seam
+    // pixels against skin: taking the violet out by desaturating leaves a
+    // grey smear where the eye expects green, or a grey seam beside an arm.
+    //
+    // So it goes to the NEIGHBOURHOOD instead — the background or the skin
+    // already diffused into bgC for the matte, which is the measured colour
+    // of whatever this pixel is in front of. Two properties make that safe.
+    // It is scaled to the pixel's OWN luminance, so only hue moves: the
+    // edge keeps its softness and its grain, and nothing is cut out. And it
+    // never mentions the target colour, so like the grey it replaces it
+    // cannot glow under any shirt.
+    //
+    // Grey remains the fallback where no neighbourhood was measured, and the
+    // two are crossfaded by how far the estimate had to travel — a colour
+    // fetched from far away is a guess, and a guessed hue is worse than no
+    // hue at all.
     if (neut[i] > 0) {
       const kk = Math.min(1, neut[i] * (1 - wMap[i]));
       const L = 0.299 * photoData[o] + 0.587 * photoData[o + 1] + 0.114 * photoData[o + 2];
-      photoData[o] += (L - photoData[o]) * kk;
-      photoData[o + 1] += (L - photoData[o + 1]) * kk;
-      photoData[o + 2] += (L - photoData[o + 2]) * kk;
+      let tr = L, tg = L, tb = L;
+      const fdN = bgF.fd[i];
+      if (fdN >= 0) {
+        const bl = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+        if (bl > 8) {
+          const near = 1 - smooth(fdN, RING + 1, RING2 + 2);
+          const k = L / bl;
+          tr += near * (bgC[i * 3] * k - L);
+          tg += near * (bgC[i * 3 + 1] * k - L);
+          tb += near * (bgC[i * 3 + 2] * k - L);
+        }
+      }
+      photoData[o] += (tr - photoData[o]) * kk;
+      photoData[o + 1] += (tg - photoData[o + 1]) * kk;
+      photoData[o + 2] += (tb - photoData[o + 2]) * kk;
     }
     // matting bake: the model's own mix, so the runtime cancels exactly
     if (ring[i] && confA[i] > 0) {

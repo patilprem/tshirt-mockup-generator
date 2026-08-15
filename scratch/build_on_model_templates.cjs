@@ -1563,10 +1563,39 @@ const TEMPLATES = [
             r = r + (L - r) * kk; g = g + (L - g) * kk; b = b + (L - b) * kk;
           }
         }
+        // A pixel too weakly violet to recolour still has violet in it, and
+        // this is where that violet goes. It used to go to GREY — the pixel
+        // pulled toward its own luminance — which can never glow and is
+        // wrong wherever what lies behind the pixel has a colour of its own.
+        // A hem against foliage, a channel over a garden path, seam pixels
+        // beside skin: desaturating leaves a grey smear where the eye
+        // expects green, or a grey seam against an arm.
+        //
+        // So it goes to the NEIGHBOURHOOD instead — the background or skin
+        // already diffused into bgC for the matte, which is the measured
+        // colour of whatever this pixel is in front of. Scaled to the
+        // pixel's OWN luminance, so only hue moves and the edge keeps its
+        // softness and grain rather than being cut out; and target-free, so
+        // like the grey it replaces it cannot glow under any shirt. Grey
+        // stays the fallback where no neighbourhood was measured, crossfaded
+        // by how far the estimate travelled — a hue fetched from far away is
+        // a guess, and a guessed hue is worse than none.
         if (neut[i] > 0) {
           const kk = Math.min(1, neut[i] * (1 - wMap[i]));
           const L = 0.299 * r + 0.587 * g + 0.114 * b;
-          r = r + (L - r) * kk; g = g + (L - g) * kk; b = b + (L - b) * kk;
+          let tr = L, tg = L, tb = L;
+          const fdN = bgF.fd[i];
+          if (fdN >= 0) {
+            const bl = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+            if (bl > 8) {
+              const near = 1 - smooth(fdN, RING + 1, RING2 + 2);
+              const k = L / bl;
+              tr += near * (bgC[i * 3] * k - L);
+              tg += near * (bgC[i * 3 + 1] * k - L);
+              tb += near * (bgC[i * 3 + 2] * k - L);
+            }
+          }
+          r = r + (tr - r) * kk; g = g + (tg - g) * kk; b = b + (tb - b) * kk;
         }
         // matting bake: replace the pixel with the model's own mix so the
         // runtime subtraction cancels exactly, leaving (1-a)*bg + a*target
