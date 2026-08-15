@@ -270,7 +270,10 @@
           </div>
         </div>
       </div>
-      <label class="f" style="margin-top:12px">Scene (describe the background — nothing violet, purple or lilac in it)
+      <label class="f" style="margin-top:12px">Scene preset (or leave on Custom and write your own)
+        <select id="pScenePreset"></select>
+      </label>
+      <label class="f" style="margin-top:10px">Scene (describe the background — nothing violet, purple or lilac in it)
         <input type="text" id="pScene" value="a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus">
       </label>
       <div class="row">
@@ -523,6 +526,77 @@ const GARMENTS = [
   },
 ];
 
+// Scenes that have been through the gates, grouped by setting. The text field
+// below stays the source of truth — this only writes into it — so a reference
+// image, a hand-typed scene and a preset all reach the prompt by one path, and
+// the id derived in Step 4 keeps reading the same field it always has.
+//
+// A few carry the gate they strain in their own wording rather than in a note:
+// "flat overcast light" on the autumn path is what keeps a low sun out of the
+// frame, and "no lit string lights" is the whole reason the festive interior is
+// usable at all. Editing those clauses out is how the scene starts failing.
+const SCENE_PRESETS = [
+  ['Neutral & studio', [
+    ['Off-white room', 'a bright minimal room with smooth off-white walls and soft daylight from a large window out of shot, background softly out of focus'],
+    ['Warm plaster', 'a warm cream plaster wall in soft natural daylight, background softly out of focus'],
+    ['Sage wall', 'a soft sage-green painted wall in gentle indirect daylight, background softly out of focus'],
+    ['Sand stucco', 'a warm sand-toned stucco wall in open shade, background softly out of focus'],
+    ['Soft grey seamless', 'a plain mid-grey studio backdrop lit evenly by a large diffused softbox, no visible seam, background completely smooth'],
+  ]],
+  ['Home & interior', [
+    ['Living room', 'a bright living room with a pale linen sofa and soft daylight, background softly out of focus'],
+    ['Home kitchen', 'a tidy home kitchen with pale wood cabinets and soft window light, background softly out of focus'],
+    ['Home office', 'a sunlit home office with a plain pale desk and neutral shelves far behind, background softly out of focus'],
+    ['Craft room', 'a quiet craft room with pale shelves of neutral supplies far behind, background softly out of focus'],
+  ]],
+  ['Cafe, shop & social', [
+    ['Coffee shop', 'a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus'],
+    ['Bookshop aisle', 'a quiet bookshop aisle with warm wooden shelves far behind in even indoor light, background softly out of focus'],
+    ['Plant shop', 'a bright plant shop with soft green foliage far behind, background softly out of focus'],
+    ['Bakery counter', 'a modern bakery counter with pale tiles and warm daylight, background softly out of focus'],
+    ['Farmers market', 'a farmers market walkway with pale canvas awnings and neutral produce crates far behind, background softly out of focus'],
+  ]],
+  ['Urban exterior', [
+    ['Stone street', 'a sunlit street with pale stone buildings far behind, the model standing in open shade, background softly out of focus'],
+    ['Residential street', 'a quiet residential street with soft green trees far behind, background softly out of focus'],
+    ['Concrete wall', 'a smooth concrete wall in even shaded light with nothing else in frame, background softly out of focus'],
+    ['Rooftop, overcast', 'a rooftop terrace under a soft overcast sky with the city far behind and low in frame, background softly out of focus'],
+  ]],
+  ['Nature & outdoors', [
+    ['Park path', 'a leafy park path with soft green foliage far behind, background softly out of focus'],
+    ['Forest trail', 'a forest trail in flat overcast light with soft green and brown foliage far behind, no dappled sunlight, background softly out of focus'],
+    ['Open meadow', 'an open grassy meadow under a soft overcast sky, background softly out of focus'],
+    ['Lakeside clearing', 'a lakeside clearing with calm flat water and soft green trees far behind, background softly out of focus'],
+    ['Wheat field', 'a wheat field in soft even morning light with no direct sun, background softly out of focus'],
+    ['Pasture fence', 'a weathered wooden fence with open pasture far behind in flat light, background softly out of focus'],
+    ['Desert trail', 'a desert trail with pale sand and distant hills under a soft overcast haze, background softly out of focus'],
+    ['Autumn path', 'an autumn park path in flat overcast light with soft amber and brown foliage far behind, background softly out of focus'],
+  ]],
+  ['Coastal & water', [
+    ['Sandy beach', 'a sandy beach with calm sea and pale open sky far behind, background softly out of focus'],
+    ['Open sky', 'open pale blue sky in soft daylight with nothing else in frame, background completely smooth'],
+    ['Boardwalk', 'a coastal boardwalk with pale weathered wood and open overcast sky, background softly out of focus'],
+    ['Harbour walkway', 'a harbour walkway with pale moored boats far behind, background softly out of focus'],
+  ]],
+  ['Active & sport', [
+    ['Bright gym', 'a bright modern gym with pale grey walls and large windows, equipment far behind and softly out of focus'],
+    ['Yoga studio', 'a yoga studio with a pale wooden floor and soft even daylight, background softly out of focus'],
+    ['Running track', 'a running track in flat overcast light with an empty field far behind, background softly out of focus'],
+    ['Golf fairway', 'a golf course fairway in soft overcast light with distant green far behind, background softly out of focus'],
+  ]],
+  ['Work & trade', [
+    ['Garage workshop', 'a clean garage workshop with pale walls and tools neatly hung far behind, even indoor light, background softly out of focus'],
+    ['Classroom', 'a bright classroom with a plain pale wall and soft daylight, desks far behind and softly out of focus'],
+    ['Clinic corridor', 'a bright clinic corridor with plain pale walls and soft even light, background softly out of focus'],
+    ['Barn interior', 'a barn interior with warm weathered wood and soft daylight from an open door out of shot, background softly out of focus'],
+  ]],
+  ['Seasonal', [
+    ['Snowy path', 'a snowy path in flat overcast winter light with pale bare trees far behind, background softly out of focus'],
+    ['Pumpkin porch', 'a porch with pale painted boards and orange pumpkins low in frame, soft overcast light, background softly out of focus'],
+    ['Evergreen interior', 'a bright living room with a plain evergreen tree far behind, soft daylight and no lit string lights, background softly out of focus'],
+  ]],
+];
+
 const pModel = document.getElementById('pModel');
 const pPose = document.getElementById('pPose');
 const pHair = document.getElementById('pHair');
@@ -559,6 +633,26 @@ function showFieldNote() {
 }
 pLook.innerHTML = LOOKS.map((l, i) => `<option value="${i}">${l[0]}</option>`).join('');
 pRace.innerHTML = RACES.map(r => `<option value="${r[1]}">${r[0]}</option>`).join('');
+// The preset writes the scene text and nothing else. Whenever that text is set
+// by something other than the preset — typed by hand, or drafted from a
+// reference image — the picker drops back to Custom, so it never claims credit
+// for wording it did not produce.
+const pScenePreset = document.getElementById('pScenePreset');
+const pSceneField = document.getElementById('pScene');
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+pScenePreset.innerHTML = '<option value="">Custom — write it below</option>' +
+  SCENE_PRESETS.map(([group, items]) =>
+    `<optgroup label="${esc(group)}">` +
+    items.map(([label, text]) => `<option value="${esc(text)}">${esc(label)}</option>`).join('') +
+    '</optgroup>').join('');
+pScenePreset.addEventListener('change', () => {
+  if (pScenePreset.value) pSceneField.value = pScenePreset.value;
+});
+pSceneField.addEventListener('input', () => { pScenePreset.value = ''; });
+// The scene the page opens on is one of the presets, so show it as selected
+// rather than as Custom.
+pScenePreset.value = [...pScenePreset.options].some(o => o.value === pSceneField.value)
+  ? pSceneField.value : '';
 pModel.addEventListener('change', fillPoses);
 pGarment.addEventListener('change', showFieldNote);
 pRace.addEventListener('change', showFieldNote);
@@ -731,6 +825,7 @@ function runInspiration(img, url) {
     darkBg: 'a softly lit interior with a deep neutral backdrop' + blurTail,
   };
   document.getElementById('pScene').value = SCENES[top] || SCENES.white;
+  pScenePreset.value = '';   // drafted from the image, not a preset
   document.getElementById('pBottoms').value = bottoms;
 
   // Framing, from how much of the frame the subject occupies. Measured against
@@ -792,7 +887,7 @@ function runInspiration(img, url) {
 // one the pipeline cannot handle. Copying it would defeat the point.
 function applyInspLock() {
   const on = document.getElementById('inspLock').checked;
-  for (const id of ['pScene', 'pBottoms', 'pFraming']) {
+  for (const id of ['pScene', 'pScenePreset', 'pBottoms', 'pFraming']) {
     const el = document.getElementById(id);
     el.disabled = on;
     const lbl = el.closest('label.f');
