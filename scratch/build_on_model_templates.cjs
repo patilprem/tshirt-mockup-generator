@@ -473,7 +473,16 @@ const TEMPLATES = [
           const o = i * 4;
           const gd = (src[o] + src[o + 2]) / 2 - src[o + 1];
           const ordering = Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]);
-          return vA[i] >= 0.35 && vA[i] <= 0.92 && sA[i] < 0.22
+          // "Clean" means CARRIES NO VIOLET, not "is grey". Requiring low
+          // saturation looked equivalent and is not: a garden path, foliage, a
+          // blue sky are all saturated backgrounds, and demanding greyness
+          // rejected every one of them. The pocket then had no endpoint to seed
+          // the matte with, half its pixels went unresolved, and the channel
+          // edge came out ragged instead of smooth — trading the rim for a torn
+          // edge. The two ordering tests below are violet-specific and settle it
+          // at any saturation: violet puts green strictly lowest, foliage puts
+          // it highest, and skin and wood put blue lowest.
+          return vA[i] >= 0.35 && vA[i] <= 0.92
             && gd < 8 && ordering < 4 && wRaw[i] < 0.15;
         };
         const seenP = new Uint8Array(N);
