@@ -1116,7 +1116,10 @@ function analyze(img) {
   // BEHIND the garment here, and the matte needs that endpoint to solve the
   // channel's mixed pixels at all.
   const pocket = new Uint8Array(N);
-  const pocketClean = new Uint8Array(N);
+  // Every plainly-non-violet pixel on the background side, sealed pocket or
+  // open silhouette. This is the matte's background endpoint everywhere, so
+  // it is collected once for the whole image rather than per region.
+  const cleanBg = new Uint8Array(N);
   {
     const isClean = (i) => {
       const o = i * 4;
@@ -1134,6 +1137,7 @@ function analyze(img) {
       return vA[i] >= 0.35 && vA[i] <= 0.92
         && gd < 8 && ordering < 4 && wRaw[i] < 0.15;
     };
+    for (let i = 0; i < N; i++) if (outside[i] && isClean(i)) cleanBg[i] = 1;
     const seenP = new Uint8Array(N);
     const qP = new Int32Array(N);
     for (let s0 = 0; s0 < N; s0++) {
@@ -1175,7 +1179,7 @@ function analyze(img) {
       for (const i of mem) {
         outside[i] = 1;
         pocket[i] = 1;
-        if (isClean(i)) pocketClean[i] = 1;
+        if (isClean(i)) cleanBg[i] = 1;
         // Solid garment coverage is what clip means, and there is none here:
         // this is background the garment happens to enclose. Leaving the
         // blurred core's clip in place would floor the weight (interior
@@ -1395,7 +1399,7 @@ function analyze(img) {
   // to 1, and any residual weight blends the pixel toward the target: the
   // pale rim. The pocket's own clean pixels ARE that endpoint, measured
   // rather than guessed, so they seed the diffusion directly.
-  const bgF = diffuseInto(i => (outside[i] && !ring[i]) || pocketClean[i]);
+  const bgF = diffuseInto(i => (outside[i] && !ring[i]) || cleanBg[i]);
   const fgF = diffuseInto(i => !outside[i]);
   const bgC = bgF.c, fgC = fgF.c;
   // A deep crevice (underarm gap, hem fold) is enclosed by garment: no
