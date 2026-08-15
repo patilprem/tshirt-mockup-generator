@@ -234,13 +234,13 @@ import KofiSupport from '../components/KofiSupport.astro';
           <div class="gallery-header">
             <div class="section-tag">Showcase</div>
             <h2 id="gallery-heading" class="gallery-title">Your designs + our mockups = <br /><span class="gradient-text">endless possibilities</span></h2>
-            <div class="counter-container">
+            <div class="counter-container" id="mockup-counter-container" hidden>
               <div class="live-indicator">
                 <span class="live-dot"></span>
                 <span>Live</span>
               </div>
               <span class="counter-label">Mockups created:</span>
-              <span class="counter-value" id="mockup-counter">980+</span>
+              <span class="counter-value" id="mockup-counter"></span>
             </div>
           </div>
           
@@ -831,57 +831,52 @@ import KofiSupport from '../components/KofiSupport.astro';
       // Initialize mockup render
       renderHeroMockup();
 
-      // ─── LIVE MOCKUP COUNTER ANIMATION ───
-      function initCounter() {
-        const counterEl = document.getElementById('mockup-counter');
-        if (!counterEl) return;
+      // ─── MOCKUP COUNTER — real export totals from /api/export-count ───
+      // Backed by export_stats_v2 (see /stats), written every time someone
+      // actually downloads or batch-exports a mockup. No simulated growth:
+      // the number only moves when the count it reports actually changed.
+      let counterShownValue = null;
 
-        const targetCount = 1034;
-        const startCount = 980;
-        const duration = 1500; // 1.5 seconds
+      function animateCounter(el, from, to, duration = 1200) {
         const startTime = performance.now();
-
-        function update(currentTime) {
-          const elapsed = currentTime - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          
-          // Easing function (easeOutQuad)
-          const easeProgress = progress * (2 - progress);
-          const currentVal = Math.floor(startCount + (targetCount - startCount) * easeProgress);
-          
-          counterEl.innerText = currentVal.toLocaleString() + '+';
-
-          if (progress < 1) {
-            requestAnimationFrame(update);
-          } else {
-            // Start live ticking upwards
-            startLiveTicking(targetCount);
-          }
+        function step(now) {
+          const progress = Math.min((now - startTime) / duration, 1);
+          const eased = progress * (2 - progress); // easeOutQuad
+          const val = Math.floor(from + (to - from) * eased);
+          el.innerText = val.toLocaleString() + '+';
+          if (progress < 1) requestAnimationFrame(step);
         }
-
-        requestAnimationFrame(update);
+        requestAnimationFrame(step);
       }
 
-      function startLiveTicking(initialCount) {
+      async function refreshMockupCounter() {
+        const container = document.getElementById('mockup-counter-container');
         const counterEl = document.getElementById('mockup-counter');
-        if (!counterEl) return;
-        
-        let count = initialCount;
+        if (!container || !counterEl) return;
 
-        function tick() {
-          const delay = Math.random() * (7000 - 3000) + 3000; // 3 to 7 seconds
-          setTimeout(() => {
-            count += 1;
-            counterEl.innerText = count.toLocaleString() + '+';
-            tick();
-          }, delay);
+        try {
+          const res = await fetch('/api/export-count', { cache: 'no-store' });
+          if (!res.ok) throw new Error('bad status');
+          const data = await res.json();
+          if (typeof data.count !== 'number') throw new Error('no data yet');
+
+          const from = counterShownValue ?? 0;
+          if (data.count !== counterShownValue) {
+            animateCounter(counterEl, from, data.count, counterShownValue === null ? 1200 : 600);
+          }
+          counterShownValue = data.count;
+          container.hidden = false;
+        } catch {
+          // Never show a fabricated number — hide the stat instead of
+          // guessing when the API has nothing (or fails) to report.
+          if (counterShownValue === null) container.hidden = true;
         }
-
-        tick();
       }
 
-      // Initialize counter
-      initCounter();
+      refreshMockupCounter();
+      // Matches the endpoint's edge-cache TTL, so a poll is never just
+      // re-fetching the same cached value sooner than it could change.
+      setInterval(refreshMockupCounter, 120000);
 
       // Parallax mouse displacement removed to let props float via CSS animations only
     </script>
