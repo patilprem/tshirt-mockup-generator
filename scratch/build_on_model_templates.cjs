@@ -477,17 +477,27 @@ const TEMPLATES = [
           const o = i * 4;
           const gd = (src[o] + src[o + 2]) / 2 - src[o + 1];
           const ordering = Math.min(src[o] - src[o + 1], src[o + 2] - src[o + 1]);
-          // "Clean" means CARRIES NO VIOLET, not "is grey". Requiring low
-          // saturation looked equivalent and is not: a garden path, foliage, a
-          // blue sky are all saturated backgrounds, and demanding greyness
-          // rejected every one of them. The pocket then had no endpoint to seed
-          // the matte with, half its pixels went unresolved, and the channel
-          // edge came out ragged instead of smooth — trading the rim for a torn
-          // edge. The two ordering tests below are violet-specific and settle it
-          // at any saturation: violet puts green strictly lowest, foliage puts
-          // it highest, and skin and wood put blue lowest.
-          return vA[i] >= 0.35 && vA[i] <= 0.92
-            && gd < 8 && ordering < 4 && wRaw[i] < 0.15;
+// "Clean" means CARRIES NO VIOLET — not "is grey", and not "has no
+          // green deficit". Both of those looked equivalent and neither is.
+          // Requiring greyness rejected foliage, a garden path, a blue sky:
+          // saturated backgrounds that are obviously not the garment.
+          //
+          // The green deficit is the subtler trap, and it is the one that left a
+          // white rim down the armhole of every sleeveless garment. Violet has a
+          // large deficit because green is its LOWEST channel — but skin has a
+          // modest one too, purely because red dominates: pale skin measures 10,
+          // light skin 11, skin in shadow 12, all above a threshold of 8. So
+          // skin was never a clean background, a tank top borders skin along its
+          // whole silhouette, and the matte was left with no reference to
+          // measure any of it against. Confidence zero, coverage invented, rim.
+          //
+          // What actually separates them is WHICH channel is lowest. Violet puts
+          // green below both others; skin, wood and sand put blue lowest;
+          // foliage puts green highest. So the deficit only counts as violet
+          // when blue is not below green — which skin can never satisfy and
+          // violet always does.
+          const violetSig = ordering >= 4 || (gd >= 8 && src[i * 4 + 2] >= src[i * 4 + 1]);
+          return vA[i] >= 0.35 && vA[i] <= 0.92 && !violetSig && wRaw[i] < 0.15;
         };
         for (let i = 0; i < N; i++) if (outside[i] && isClean(i)) cleanBg[i] = 1;
         const seenP = new Uint8Array(N);
@@ -1854,6 +1864,19 @@ const TEMPLATES = [
         // on pixels the pipeline is right about. Anything genuinely missed at
         // that scale is caught by `missed`, measured over the whole frame.
         if (outside[i] && !envelope[i] && distC[i] === -1) continue;
+        // Nor is a pixel the matte solved and the bake rewrote. This gate
+        // names one defect — violet surviving into a pink or white shirt —
+        // and a solved pixel cannot produce it at any alpha: the bake stores
+        // a*V + (1-a)*background, the runtime adds a*(T - V), and the violet
+        // cancels exactly, leaving a*T + (1-a)*background. A boundary pixel
+        // that really is 43% fabric reads 43% recoloured and 57% skin, which
+        // is the correct picture and not a stripe. Counting it as one
+        // punished the matte for measuring a soft edge honestly — sky-f went
+        // from 15 to 73 purely on rim pixels the matte had just solved. A
+        // pixel the matte could NOT account for is still counted, which is
+        // what this gate exists for, and anything missed at scale is caught
+        // by `missed` over the whole frame.
+        if (confA[i] > 0.5) continue;
         keyMiss++;
       }
 
