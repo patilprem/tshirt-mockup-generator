@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-15 673661d +local edits</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-15 4fb6f77 +local edits</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -497,10 +497,14 @@ function analyze(img) {
           }
         }
       }
-      // 0.62 of the fabric's own saturation is roughly three quarters
-      // coverage against a background twice the fabric's brightness — the
-      // point where the pixel stops looking like shaded fabric and starts
-      // looking like the wall behind it.
+      // 0.55 of the fabric's own saturation is around two thirds coverage
+      // against a background twice the fabric's brightness — where a pixel
+      // stops looking like shaded fabric and starts looking like the wall
+      // behind it. Set by what it costs either way: at 0.62 it also took
+      // ~70%-coverage edge pixels, which the matte then measured below the
+      // keyMiss gate's half-weight line and tipped a marginal template over
+      // it, while every pixel of the rim this exists to remove sits at 0.52
+      // or below.
       // Only a NEAR-BLOWN pixel is exempt. The obvious guard — exempt
       // everything above the fabric's diffuse white point — was wrong in the
       // one direction that matters: a pixel is bright there BECAUSE it is
@@ -511,7 +515,7 @@ function analyze(img) {
       for (let i = 0; i < N; i++) {
         if (!core[i] || dOut[i] < 0 || dOut[i] > MIXBAND) continue;
         if (vA[i] < 0.30 || vA[i] > 0.92) continue;
-        if (sA[i] >= 0.62 * sRef) continue;
+        if (sA[i] >= 0.55 * sRef) continue;
         core[i] = 0;
       }
     }
@@ -1336,7 +1340,7 @@ function analyze(img) {
     if (sRefG > 0) {
       for (let i = 0; i < N; i++) {
         if (core[i] || vA[i] < 0.90 * vRef || vA[i] > 0.92) continue;
-        const mixness = 1 - smooth(sA[i] / sRefG, 0.45, 0.75);
+        const mixness = 1 - smooth(sA[i] / sRefG, 0.30, 0.55);
         if (mixness <= 0) continue;
         const solved = mAlphaE[i] * smooth(Math.max(0, Math.min(1, mConf[i])), 0.10, 0.30);
         if (wMap[i] > solved) wMap[i] -= mixness * (wMap[i] - solved);
