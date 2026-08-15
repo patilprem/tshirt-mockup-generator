@@ -241,6 +241,104 @@ const fs = require('fs');
             }
           }
         }
+        // ---- make it INK, not a decal ----
+        //
+        // Measured against the reference clip, both a light graphic on a black
+        // tee: a print edge there goes 10% to 90% over 5 pixels, ours over 1.
+        // A one-pixel step is the signature of vector art laid on a photograph.
+        // Ink on a knit cannot produce one — it wicks along the yarn before it
+        // sets, and the camera has finite resolution besides — so the edge is
+        // always a short ramp. Scaled to print width the reference is ~1.25%;
+        // this radius puts us in the same place rather than matching a pixel
+        // count measured at their resolution.
+        //
+        // Blurred PREMULTIPLIED. The design buffer's fully transparent pixels
+        // carry arbitrary colour, and blurring straight RGBA drags that colour
+        // into the ramp as a fringe around every letter.
+        // 0.005 and not 0.008. The reference's 5px rise is measured on a print
+        // ~400px wide; ours is 264px and is downscaled again on the way out, so
+        // matching their pixel count over-softens ours by half. Scaled to print
+        // width this lands at roughly their 1.25%, and it is the level at which
+        // 1px line art in a design still holds its contrast — the failure on
+        // the other side of this dial is a graphic that looks washed into the
+        // shirt rather than printed on it.
+        const INK = Math.max(1, Math.round(dW * 0.005));
+        {
+          const px = lay.data;
+          for (let p = 0; p < n; p++) {
+            const o = p * 4, a = px[o + 3] / 255;
+            px[o] *= a; px[o + 1] *= a; px[o + 2] *= a;
+          }
+          const tmpA = new Float32Array(n * 4);
+          const passH = (src2, dst2) => {
+            for (let y = y0; y <= y1; y++) {
+              for (let ch = 0; ch < 4; ch++) {
+                let acc = 0;
+                for (let k = -INK; k <= INK; k++) acc += src2[(y * w + Math.max(x0, Math.min(x1, x0 + k))) * 4 + ch];
+                for (let x = x0; x <= x1; x++) {
+                  dst2[(y * w + x) * 4 + ch] = acc / (2 * INK + 1);
+                  acc -= src2[(y * w + Math.max(x0, Math.min(x1, x - INK))) * 4 + ch];
+                  acc += src2[(y * w + Math.max(x0, Math.min(x1, x + INK + 1))) * 4 + ch];
+                }
+              }
+            }
+          };
+          const passV = (src2, dst2) => {
+            for (let x = x0; x <= x1; x++) {
+              for (let ch = 0; ch < 4; ch++) {
+                let acc = 0;
+                for (let k = -INK; k <= INK; k++) acc += src2[(Math.max(y0, Math.min(y1, y0 + k)) * w + x) * 4 + ch];
+                for (let y = y0; y <= y1; y++) {
+                  dst2[(y * w + x) * 4 + ch] = acc / (2 * INK + 1);
+                  acc -= src2[(Math.max(y0, Math.min(y1, y - INK)) * w + x) * 4 + ch];
+                  acc += src2[(Math.max(y0, Math.min(y1, y + INK + 1)) * w + x) * 4 + ch];
+                }
+              }
+            }
+          };
+          const srcF = Float32Array.from(px);
+          passH(srcF, tmpA); passV(tmpA, srcF);
+          for (let p = 0; p < n; p++) {
+            const o = p * 4;
+            const a = srcF[o + 3];
+            px[o + 3] = a;
+            if (a > 0.5) { px[o] = srcF[o] / (a / 255); px[o + 1] = srcF[o + 1] / (a / 255); px[o + 2] = srcF[o + 2] / (a / 255); }
+            else { px[o] = px[o + 1] = px[o + 2] = 0; }
+          }
+
+          // The printed surface is still the fabric's surface, so it carries
+          // the same weave and the same micro-shading. A graphic whose flat
+          // areas are perfectly uniform sits on the cloth like a clean layer
+          // over a grainy one, and the eye reads that as a paste-up even when
+          // it cannot name it. The garment's own high-frequency residual —
+          // what is left of the recoloured pixel after a small blur — is
+          // exactly that texture, so it is carried into the ink.
+          const gc = octx.getImageData(0, 0, w, h).data;
+          const lum = new Float32Array(n);
+          for (let p = 0; p < n; p++) lum[p] = gc[p * 4] * .299 + gc[p * 4 + 1] * .587 + gc[p * 4 + 2] * .114;
+          const GR = 2;
+          const lb = new Float32Array(n);
+          for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+            let s = 0, c3 = 0;
+            for (let dy = -GR; dy <= GR; dy++) for (let dx = -GR; dx <= GR; dx++) {
+              const yy = y + dy, xx = x + dx;
+              if (yy < 0 || xx < 0 || yy >= h || xx >= w) continue;
+              s += lum[yy * w + xx]; c3++;
+            }
+            lb[y * w + x] = s / c3;
+          }
+          // 0.55 rather than 1.0: ink does flatten the weave it sits on, it
+          // does not vanish into it.
+          const GRAIN = 0.55;
+          for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+            const p = y * w + x, o = p * 4;
+            if (px[o + 3] < 8) continue;
+            const hf = (lum[p] - lb[p]) * GRAIN;
+            px[o] = Math.max(0, Math.min(255, px[o] + hf));
+            px[o + 1] = Math.max(0, Math.min(255, px[o + 1] + hf));
+            px[o + 2] = Math.max(0, Math.min(255, px[o + 2] + hf));
+          }
+        }
         lc.putImageData(lay, 0, 0);
         const printAlpha = document.createElement('canvas');
         printAlpha.width = w; printAlpha.height = h;
