@@ -134,23 +134,23 @@ import KofiSupport from './KofiSupport.astro';
         </div>
         
         <div id="swatch-grid-panel" class="swatch-panel" style="display: none;">
-          <div class="swatch-tabs" id="fabric-swatch-tabs">
-            <button type="button" class="swatch-tab active" data-tab="presets">Presets</button>
-            <button type="button" class="swatch-tab" data-tab="custom">Custom</button>
+          <div class="swatch-tabs" id="fabric-swatch-tabs" role="tablist" aria-label="Fabric color source">
+            <button type="button" class="swatch-tab active" data-tab="presets" role="tab" aria-selected="true" aria-controls="fabric-presets-content">Presets</button>
+            <button type="button" class="swatch-tab" data-tab="custom" role="tab" aria-selected="false" aria-controls="fabric-custom-content">Custom</button>
           </div>
-          
-          <div class="tab-content" id="fabric-presets-content">
+
+          <div class="tab-content" id="fabric-presets-content" role="tabpanel">
             <div class="swatch-grid" id="swatch-grid"></div>
           </div>
-          
-          <div class="tab-content" id="fabric-custom-content" style="display: none;">
+
+          <div class="tab-content" id="fabric-custom-content" role="tabpanel" style="display: none;">
             <div class="picker-container">
               <div class="picker-row">
-                <div class="sl-container" id="fabric-sl-container">
+                <div class="sl-container" id="fabric-sl-container" tabindex="0" role="slider" aria-label="Fabric color saturation and brightness" aria-valuemin="0" aria-valuemax="100">
                   <canvas class="sl-canvas" width="200" height="200"></canvas>
                   <div class="sl-marker" id="fabric-sl-marker"></div>
                 </div>
-                <div class="hue-container" id="fabric-hue-container">
+                <div class="hue-container" id="fabric-hue-container" tabindex="0" role="slider" aria-label="Fabric color hue" aria-valuemin="0" aria-valuemax="360">
                   <canvas class="hue-canvas" width="20" height="200"></canvas>
                   <div class="hue-marker" id="fabric-hue-marker"></div>
                 </div>
@@ -192,23 +192,23 @@ import KofiSupport from './KofiSupport.astro';
         </div>
 
         <div id="bg-swatch-grid-panel" class="swatch-panel" style="display: none; width: 100%;">
-          <div class="swatch-tabs" id="bg-swatch-tabs">
-            <button type="button" class="swatch-tab active" data-tab="presets">Presets</button>
-            <button type="button" class="swatch-tab" data-tab="custom">Custom</button>
+          <div class="swatch-tabs" id="bg-swatch-tabs" role="tablist" aria-label="Background color source">
+            <button type="button" class="swatch-tab active" data-tab="presets" role="tab" aria-selected="true" aria-controls="bg-presets-content">Presets</button>
+            <button type="button" class="swatch-tab" data-tab="custom" role="tab" aria-selected="false" aria-controls="bg-custom-content">Custom</button>
           </div>
-          
-          <div class="tab-content" id="bg-presets-content">
+
+          <div class="tab-content" id="bg-presets-content" role="tabpanel">
             <div class="swatch-grid" id="bg-swatch-grid"></div>
           </div>
-          
-          <div class="tab-content" id="bg-custom-content" style="display: none;">
+
+          <div class="tab-content" id="bg-custom-content" role="tabpanel" style="display: none;">
             <div class="picker-container">
               <div class="picker-row">
-                <div class="sl-container" id="bg-sl-container">
+                <div class="sl-container" id="bg-sl-container" tabindex="0" role="slider" aria-label="Background color saturation and brightness" aria-valuemin="0" aria-valuemax="100">
                   <canvas class="sl-canvas" width="200" height="200"></canvas>
                   <div class="sl-marker" id="bg-sl-marker"></div>
                 </div>
-                <div class="hue-container" id="bg-hue-container">
+                <div class="hue-container" id="bg-hue-container" tabindex="0" role="slider" aria-label="Background color hue" aria-valuemin="0" aria-valuemax="360">
                   <canvas class="hue-canvas" width="20" height="200"></canvas>
                   <div class="hue-marker" id="bg-hue-marker"></div>
                 </div>
@@ -422,7 +422,7 @@ import KofiSupport from './KofiSupport.astro';
   </aside>
 
   <!-- Download Quality Options Modal -->
-  <div class="download-modal-overlay" id="download-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="download-modal-title">
+  <div class="download-modal-overlay" id="download-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="download-modal-title" tabindex="-1">
     <div class="download-modal-card">
       <h3 id="download-modal-title" class="modal-title">Select Download Quality</h3>
       
@@ -462,17 +462,17 @@ import KofiSupport from './KofiSupport.astro';
   </div>
 
   <!-- Batch Export Modal -->
-  <div class="download-modal-overlay" id="batch-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title">
+  <div class="download-modal-overlay" id="batch-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title" tabindex="-1">
     <div class="download-modal-card batch-modal-card">
       <h3 id="batch-modal-title" class="modal-title">Batch Export</h3>
 
       <div class="batch-tabs" role="tablist">
-        <button type="button" class="batch-tab active" id="batch-tab-variants" role="tab" aria-selected="true">One design &rarr; variants</button>
-        <button type="button" class="batch-tab" id="batch-tab-designs" role="tab" aria-selected="false">Many designs &rarr; this template</button>
+        <button type="button" class="batch-tab active" id="batch-tab-variants" role="tab" aria-selected="true" aria-controls="batch-panel-variants">One design &rarr; variants</button>
+        <button type="button" class="batch-tab" id="batch-tab-designs" role="tab" aria-selected="false" aria-controls="batch-panel-designs">Many designs &rarr; this template</button>
       </div>
 
       <!-- Tab 1: one design, selected garments × colors -->
-      <div class="batch-tab-panel" id="batch-panel-variants">
+      <div class="batch-tab-panel" id="batch-panel-variants" role="tabpanel">
         <div class="batch-section">
           <span class="batch-section-label">Garments</span>
           <div class="batch-garment-grid" id="batch-garments"></div>
@@ -489,7 +489,7 @@ import KofiSupport from './KofiSupport.astro';
       </div>
 
       <!-- Tab 2: many designs, current garment + color -->
-      <div class="batch-tab-panel" id="batch-panel-designs" style="display: none;">
+      <div class="batch-tab-panel" id="batch-panel-designs" role="tabpanel" style="display: none;">
         <p class="batch-template-summary" id="batch-template-summary"></p>
         <div class="upload-zone batch-upload-zone" id="batch-drop-zone" role="button" tabindex="0" aria-label="Upload designs for batch export">
           <span class="upload-icon" aria-hidden="true">&#10022;</span>
@@ -597,6 +597,41 @@ import KofiSupport from './KofiSupport.astro';
       };
       this.hueCanvas.addEventListener('mousedown', handleHueStart);
       this.hueCanvas.addEventListener('touchstart', handleHueStart, { passive: false });
+
+      // Keyboard support — the SL area and hue strip were mouse/touch-only,
+      // making the picker entirely unreachable without a pointer. Arrow keys
+      // step saturation/value (or hue) the way a native <input type="range">
+      // would; Shift steps 10x for coarser jumps; Home/End snap to the ends.
+      this.slContainer.addEventListener('keydown', (e) => {
+        const step = e.shiftKey ? 10 : 1;
+        let handled = true;
+        if (e.key === 'ArrowRight') this.s = Math.min(100, this.s + step);
+        else if (e.key === 'ArrowLeft') this.s = Math.max(0, this.s - step);
+        else if (e.key === 'ArrowUp') this.v = Math.min(100, this.v + step);
+        else if (e.key === 'ArrowDown') this.v = Math.max(0, this.v - step);
+        else if (e.key === 'Home') this.s = 0;
+        else if (e.key === 'End') this.s = 100;
+        else handled = false;
+        if (!handled) return;
+        e.preventDefault();
+        this.updateMarkerPositions();
+        this.updateInputs(true);
+      });
+
+      this.hueContainer.addEventListener('keydown', (e) => {
+        const step = e.shiftKey ? 20 : 2;
+        let handled = true;
+        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') this.h = Math.max(0, this.h - step);
+        else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') this.h = Math.min(359, this.h + step);
+        else if (e.key === 'Home') this.h = 0;
+        else if (e.key === 'End') this.h = 359;
+        else handled = false;
+        if (!handled) return;
+        e.preventDefault();
+        this.drawSlGradient();
+        this.updateMarkerPositions();
+        this.updateInputs(true);
+      });
 
       // Global move and up handlers
       window.addEventListener('mousemove', (e) => {
@@ -749,6 +784,14 @@ import KofiSupport from './KofiSupport.astro';
       const hueRect = this.hueCanvas.getBoundingClientRect();
       const hy = (this.h / 360) * (hueRect.height || 200);
       this.hueMarker.style.top = `${hy}px`;
+
+      // Keep the ARIA slider values in sync regardless of how they changed
+      // (mouse, touch, keyboard, hex input, or a preset via setColor) — this
+      // is the single choke point every state change already runs through.
+      this.slContainer.setAttribute('aria-valuenow', String(this.s));
+      this.slContainer.setAttribute('aria-valuetext', `Saturation ${this.s}%, brightness ${this.v}%`);
+      this.hueContainer.setAttribute('aria-valuenow', String(this.h));
+      this.hueContainer.setAttribute('aria-valuetext', `Hue ${this.h}°`);
     }
 
     updateInputs(triggerCallback = true, hexVal = null) {
@@ -1504,6 +1547,52 @@ import KofiSupport from './KofiSupport.astro';
       }
     });
 
+    // Roving-tabindex arrow-key navigation for tab groups. Shared by every
+    // role="tab" group in the editor (fabric/bg swatch source, batch export
+    // mode, mobile section nav) — none of them had arrow-key support before,
+    // despite already carrying the ARIA tab roles. This only manages focus
+    // and tabindex; it activates a tab by calling .click() on it, so each
+    // group's existing click handler (which does the real state switching)
+    // runs unchanged for keyboard and mouse alike.
+    function setupTabKeyboardNav(container) {
+      if (!container) return;
+      const tabs = [...container.querySelectorAll('[role="tab"]')];
+      if (!tabs.length) return;
+
+      function syncState(activeTab) {
+        tabs.forEach((t) => {
+          const selected = t === activeTab;
+          t.setAttribute('tabindex', selected ? '0' : '-1');
+          t.setAttribute('aria-selected', String(selected));
+        });
+      }
+
+      const initial = tabs.find((t) => t.classList.contains('active') || t.getAttribute('aria-selected') === 'true') || tabs[0];
+      syncState(initial);
+
+      // Capture phase: some tab groups call e.stopPropagation() in their own
+      // click handler (to stop a click from also closing an outer dropdown),
+      // which would otherwise stop this from ever seeing the click bubble up.
+      container.addEventListener('click', (e) => {
+        const tab = e.target.closest('[role="tab"]');
+        if (tab && tabs.includes(tab)) syncState(tab);
+      }, true);
+
+      container.addEventListener('keydown', (e) => {
+        const idx = tabs.indexOf(document.activeElement);
+        if (idx === -1) return;
+        let next = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = tabs[(idx + 1) % tabs.length];
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = tabs[(idx - 1 + tabs.length) % tabs.length];
+        else if (e.key === 'Home') next = tabs[0];
+        else if (e.key === 'End') next = tabs[tabs.length - 1];
+        else return;
+        e.preventDefault();
+        next.focus();
+        next.click();
+      });
+    }
+
     // Tab Switching setup helper
     function setupTabSwitching(tabContainerId, presetsContentId, customContentId, onTabShow) {
       const tabContainer = document.getElementById(tabContainerId);
@@ -1539,6 +1628,9 @@ import KofiSupport from './KofiSupport.astro';
       bgColorPicker.drawSlGradient();
       bgColorPicker.updateMarkerPositions();
     });
+
+    setupTabKeyboardNav(document.getElementById('fabric-swatch-tabs'));
+    setupTabKeyboardNav(document.getElementById('bg-swatch-tabs'));
 
     // Initialize grids
     buildSwatchGrid(swatchGrid, (color, hex) => {
@@ -3391,6 +3483,61 @@ import KofiSupport from './KofiSupport.astro';
     });
 
     // ----------------------------------------------------
+    // Modal accessibility: focus trap, Escape-to-close, focus restore.
+    // Shared by the download-quality modal and the batch-export modal —
+    // both already close on backdrop click; this adds the keyboard half.
+    // ----------------------------------------------------
+    function setupModalA11y(overlay, { canClose = () => true, onClose } = {}) {
+      let lastTrigger = null;
+
+      function getFocusable() {
+        return [...overlay.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )].filter((el) => el.offsetParent !== null);
+      }
+
+      overlay.addEventListener('keydown', (e) => {
+        if (overlay.style.display === 'none') return;
+        if (e.key === 'Escape') {
+          if (canClose()) {
+            e.stopPropagation();
+            onClose && onClose();
+          }
+          return;
+        }
+        if (e.key !== 'Tab') return;
+        const focusable = getFocusable();
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      });
+
+      return {
+        open() {
+          lastTrigger = document.activeElement;
+          // Give display:flex a tick to take effect before focusing.
+          requestAnimationFrame(() => {
+            const focusable = getFocusable();
+            (focusable[0] || overlay).focus();
+          });
+        },
+        close() {
+          if (lastTrigger && typeof lastTrigger.focus === 'function') {
+            lastTrigger.focus();
+          }
+          lastTrigger = null;
+        },
+      };
+    }
+
+    // ----------------------------------------------------
     // 9. Download Options Modal & Quality Export Handler
     // ----------------------------------------------------
     const downloadModal = document.getElementById('download-modal');
@@ -3398,6 +3545,7 @@ import KofiSupport from './KofiSupport.astro';
     const modalDownloadBtn = document.getElementById('modal-download-btn');
     const optionHighCard = document.getElementById('option-high-card');
     const optionExtraHighCard = document.getElementById('option-extra-high-card');
+    const downloadModalA11y = setupModalA11y(downloadModal, { onClose: () => closeDownloadModal() });
 
     // The modal exists to ask one question: 1x or 2x. Plenty of presets have
     // no second answer to offer — a platform preset that opts out of 2x, or an
@@ -3439,6 +3587,7 @@ import KofiSupport from './KofiSupport.astro';
         // No card to hide any more: the one-option case never reaches here, so
         // both are always real choices by the time the modal is on screen.
         downloadModal.style.display = 'flex';
+        downloadModalA11y.open();
       }
     });
 
@@ -3446,6 +3595,7 @@ import KofiSupport from './KofiSupport.astro';
     const closeDownloadModal = () => {
       if (downloadModal) {
         downloadModal.style.display = 'none';
+        downloadModalA11y.close();
       }
     };
 
@@ -3623,6 +3773,12 @@ import KofiSupport from './KofiSupport.astro';
     let batchFiles = []; // File objects for the designs tab
     let batchRunning = false;
     let batchCancelled = false;
+    // Mid-export, Escape must not close the modal out from under a running
+    // job — same guard closeBatchModal already applies to backdrop click.
+    const batchModalA11y = setupModalA11y(batchModal, {
+      canClose: () => !batchRunning,
+      onClose: () => closeBatchModal(),
+    });
 
     function slugify(str) {
       return String(str).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'design';
@@ -3771,11 +3927,13 @@ import KofiSupport from './KofiSupport.astro';
 
       updateBatchEstimate();
       batchModal.style.display = 'flex';
+      batchModalA11y.open();
     }
 
     function closeBatchModal() {
       if (batchRunning) return;
       batchModal.style.display = 'none';
+      batchModalA11y.close();
     }
 
     // --- Job building ---------------------------------------------------------
@@ -3949,6 +4107,7 @@ import KofiSupport from './KofiSupport.astro';
       batchBtn.addEventListener('click', openBatchModal);
       batchTabVariants.addEventListener('click', () => setBatchMode('variants'));
       batchTabDesigns.addEventListener('click', () => setBatchMode('designs'));
+      setupTabKeyboardNav(document.querySelector('.batch-tabs'));
 
       batchCancelBtn.addEventListener('click', () => {
         if (batchRunning) {
@@ -4062,6 +4221,8 @@ import KofiSupport from './KofiSupport.astro';
           btn.setAttribute('aria-selected', 'true');
         });
       });
+
+      setupTabKeyboardNav(mobileNavBar);
     }
 
   });

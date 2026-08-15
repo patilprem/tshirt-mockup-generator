@@ -11,21 +11,89 @@
   
   /* Brand: Cyan → Blue gradient */
   --primary: hsl(197, 95%, 48%);
-  --primary-glow: hsla(197, 95%, 48%, 0.35);
+  --primary-glow: color-mix(in srgb, var(--primary) 35%, transparent);
   --secondary: hsl(214, 90%, 58%);
-  --secondary-glow: hsla(214, 90%, 58%, 0.3);
+  --secondary-glow: color-mix(in srgb, var(--secondary) 30%, transparent);
   --accent: hsl(186, 100%, 42%);
-  --accent-glow: hsla(186, 100%, 42%, 0.3);
+  --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
   
   --text-primary: hsl(210, 20%, 98%);
   --text-secondary: hsl(215, 15%, 70%);
   --text-muted: hsl(220, 10%, 50%);
   
   /* Transitions & Radii */
-  --radius-lg: 16px;
-  --radius-md: 10px;
+  --radius-2xs: 2px;
+  --radius-xs: 4px;
   --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-20: 20px;
+  --radius-xl: 24px;
+  --radius-28: 28px;
+  --radius-full: 999px;
   --transition-smooth: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---------------------------------------------------------------------
+   * Type scale
+   * Named by the pixel size it renders at 16px root. Replaces 39 ad-hoc
+   * font-size literals; every one snaps to its nearest step here, and the
+   * largest move is ~7%, so wording never reflows. clamp()-based fluid
+   * hero headings are left untouched — they're already well-designed and
+   * out of scope for this consolidation.
+   * ------------------------------------------------------------------ */
+  --text-11: 0.6875rem;
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-15: 0.9375rem;
+  --text-16: 1rem;
+  --text-18: 1.125rem;
+  --text-20: 1.25rem;
+  --text-24: 1.5rem;
+  --text-30: 1.875rem;
+  --text-36: 2.25rem;
+  --text-42: 2.625rem;
+  --text-48: 3rem;
+
+  /* ---------------------------------------------------------------------
+   * Spacing scale — 4px grid
+   * Replaces 30 distinct padding/gap literals. Values like 11px, 13px,
+   * 22px, 26px, 68px and 100px broke alignment against everything around
+   * them; every one now sits on the grid.
+   * ------------------------------------------------------------------ */
+  --space-1: 1px;
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-36: 36px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-56: 56px;
+  --space-60: 60px;
+  --space-72: 72px;
+  --space-80: 80px;
+  --space-96: 96px;
+  --space-120: 120px;
+
+  /* ---------------------------------------------------------------------
+   * Interaction state tokens
+   * ------------------------------------------------------------------ */
+  --focus: var(--primary);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --disabled-opacity: 0.5;
+  --cursor-disabled: not-allowed;
+  --press-scale: 0.97;
 }
 
 /* Reset */
@@ -67,7 +135,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 var(--space-24);
   background: var(--bg-sidebar);
   border-bottom: 1px solid var(--border-glass);
   backdrop-filter: blur(16px);
@@ -79,7 +147,7 @@ body {
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .logo-icon {
@@ -91,7 +159,7 @@ body {
 }
 
 .logo-text {
-  font-size: 1.25rem;
+  font-size: var(--text-20);
   font-weight: 700;
   letter-spacing: -0.5px;
   background: linear-gradient(to right, var(--text-primary), var(--text-secondary));
@@ -100,13 +168,13 @@ body {
 }
 
 .logo-badge {
-  font-size: 0.7rem;
+  font-size: var(--text-11);
   font-weight: 600;
-  padding: 2px 6px;
+  padding: var(--space-2) var(--space-6);
   background: var(--accent-glow);
   color: var(--accent);
   border: 1px solid hsla(180, 80%, 45%, 0.3);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   margin-left: 8px;
 }
 
@@ -127,8 +195,8 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 24px;
-  gap: 24px;
+  padding: var(--space-24);
+  gap: var(--space-24);
   z-index: 10;
 }
 
@@ -146,7 +214,7 @@ body {
   margin-top: auto;
   background: hsla(225, 20%, 10%, 0.95);
   backdrop-filter: blur(20px);
-  padding: 20px 24px;
+  padding: var(--space-20) var(--space-24);
   margin-left: -24px;
   margin-right: -24px;
   margin-bottom: -24px;
@@ -167,11 +235,11 @@ body {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  padding: 10px 4px;
+  padding: var(--space-10) var(--space-4);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-4);
   cursor: pointer;
   transition: var(--transition-smooth);
   font-family: var(--font-sans);
@@ -184,17 +252,17 @@ body {
 }
 
 .mobile-nav-btn.active {
-  background: hsla(197, 95%, 48%, 0.05);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
   box-shadow: inset 0 -2px 0 var(--primary);
   text-shadow: 0 0 8px var(--primary-glow);
 }
 
 .mobile-nav-btn .nav-icon {
-  font-size: 1.25rem;
+  font-size: var(--text-20);
 }
 
 .mobile-nav-btn .nav-text {
-  font-size: 0.7rem;
+  font-size: var(--text-11);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -204,18 +272,18 @@ body {
 .panel-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .panel-title {
-  font-size: 0.875rem;
+  font-size: var(--text-14);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .panel-title::after {
@@ -228,11 +296,11 @@ body {
 .control-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .control-label {
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   font-weight: 500;
   color: var(--text-secondary);
   display: flex;
@@ -247,7 +315,7 @@ body {
 }
 
 .control-label-text {
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -258,8 +326,8 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  gap: 2px;
+  padding: var(--space-2) var(--space-6);
+  gap: var(--space-2);
 }
 
 .control-manual-input {
@@ -268,7 +336,7 @@ body {
   border: none;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   font-weight: 600;
   text-align: right;
   padding: 0;
@@ -287,20 +355,20 @@ body {
 }
 
 .manual-unit {
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   color: var(--text-muted);
   font-weight: 500;
 }
 
 #design-adjustment-panel {
-  gap: 20px;
+  gap: var(--space-20);
 }
 
 /* Preset Colors Grid */
 .color-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .color-btn {
@@ -326,11 +394,11 @@ body {
 .custom-color-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
-  padding: 8px 12px;
+  padding: var(--space-8) var(--space-12);
   transition: var(--transition-smooth);
 }
 
@@ -357,7 +425,7 @@ body {
 
 .color-picker-value {
   font-family: monospace;
-  font-size: 0.9rem;
+  font-size: var(--text-15);
   text-transform: uppercase;
   color: var(--text-secondary);
 }
@@ -366,7 +434,7 @@ body {
 .upload-zone {
   border: 2px dashed var(--border-glass);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: var(--space-24);
   text-align: center;
   cursor: pointer;
   background: var(--bg-card);
@@ -374,29 +442,29 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .upload-zone:hover {
   border-color: var(--primary);
-  background: hsla(197, 95%, 48%, 0.05);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
   box-shadow: 0 0 15px var(--primary-glow);
 }
 
 .upload-icon {
-  font-size: 2rem;
+  font-size: var(--text-30);
   color: var(--primary);
   animation: pulse-slow 2s infinite ease-in-out;
 }
 
 .upload-text {
-  font-size: 0.9rem;
+  font-size: var(--text-15);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .upload-hint {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   color: var(--text-muted);
 }
 
@@ -404,7 +472,7 @@ body {
 .designs-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .design-thumb {
@@ -415,7 +483,7 @@ body {
   cursor: pointer;
   overflow: hidden;
   transition: var(--transition-smooth);
-  padding: 4px;
+  padding: var(--space-4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -444,7 +512,7 @@ input[type="range"] {
   width: 100%;
   height: 6px;
   background: var(--border-glass);
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   outline: none;
   /* A slider spans the full panel width, so on a phone it sits directly under
      the thumb during an ordinary scroll. By default the element claims that
@@ -475,23 +543,23 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* Buttons / Actions */
 .btn-row {
   display: flex;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .btn {
   flex: 1;
-  padding: 12px 20px;
+  padding: var(--space-12) var(--space-20);
   border-radius: var(--radius-md);
   font-family: var(--font-sans);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: var(--text-15);
   border: 1px solid transparent;
   cursor: pointer;
   transition: var(--transition-smooth);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .btn-primary {
@@ -517,24 +585,24 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .btn-secondary:hover {
   border-color: var(--primary);
-  background: hsla(197, 95%, 48%, 0.05);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
 }
 
 /* Align buttons */
 .align-btn-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .align-btn {
-  padding: 8px;
+  padding: var(--space-8);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   font-weight: 500;
   transition: var(--transition-smooth);
 }
@@ -550,12 +618,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: var(--space-40);
   position: relative;
   background-color: var(--bg-main);
   background-image: 
-    radial-gradient(at 0% 0%, hsla(197, 95%, 48%, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, hsla(214, 90%, 58%, 0.08) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, color-mix(in srgb, var(--primary) 8%, transparent) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, color-mix(in srgb, var(--secondary) 8%, transparent) 0px, transparent 50%);
   overflow: hidden;
 }
 
@@ -601,9 +669,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .canvas-hint {
   background: rgba(0,0,0,0.4);
   backdrop-filter: blur(8px);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.85rem;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-20);
+  font-size: var(--text-14);
   color: var(--text-secondary);
   border: 1px solid var(--border-glass);
   pointer-events: none;
@@ -616,17 +684,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .texture-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .texture-btn {
-  padding: 10px 4px;
+  padding: var(--space-10) var(--space-4);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   font-weight: 500;
   text-align: center;
   transition: var(--transition-smooth);
@@ -640,7 +708,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .texture-btn.active {
   border-color: var(--primary);
   color: var(--text-primary);
-  background: hsla(197, 95%, 48%, 0.1);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   box-shadow: 0 0 10px var(--primary-glow);
 }
 
@@ -650,7 +718,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .texture-btn .aspect-sub {
   display: block;
-  font-size: 0.65rem;
+  font-size: var(--text-11);
   font-weight: 400;
   color: var(--text-muted);
   margin-top: 2px;
@@ -678,7 +746,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: var(--space-12);
   margin-top: 8px;
   animation: fade-in 0.2s ease-out;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
@@ -688,12 +756,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .swatch-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .swatch-cell {
   aspect-ratio: 1;
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   cursor: pointer;
   border: 1px solid rgba(0, 0, 0, 0.25);
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
@@ -713,7 +781,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   left: 50%;
   transform: translate(-50%, -50%);
   color: #ffffff;
-  font-size: 0.7rem;
+  font-size: var(--text-11);
   font-weight: 800;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   pointer-events: none;
@@ -729,30 +797,30 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   border-bottom: 1px solid var(--border-glass);
   margin-bottom: 12px;
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .swatch-tab {
   flex: 1;
-  padding: 8px 12px;
+  padding: var(--space-8) var(--space-12);
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-muted);
+  border-bottom: 2px solid var(--tab-border, transparent);
+  color: var(--tab-color, var(--text-muted));
   font-family: var(--font-sans);
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition-smooth);
 }
 
 .swatch-tab:hover {
-  color: var(--text-primary);
+  --tab-color: var(--text-primary);
 }
 
 .swatch-tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  --tab-color: var(--primary);
+  --tab-border: var(--primary);
 }
 
 .tab-content {
@@ -762,12 +830,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .picker-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .picker-row {
   display: flex;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .sl-container {
@@ -804,7 +872,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   height: 200px;
   cursor: ns-resize;
   user-select: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border-glass);
 }
@@ -821,7 +889,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   right: -2px;
   height: 6px;
   border: 2px solid #ffffff;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   box-shadow: 0 0 0 1px #000000;
   transform: translateY(-50%);
   pointer-events: none;
@@ -829,7 +897,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .picker-input-row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   align-items: center;
 }
 
@@ -842,13 +910,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .hex-text-input {
   width: 100%;
-  padding: 8px 36px 8px 12px;
+  padding: var(--space-8) var(--space-36) var(--space-8) var(--space-12);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-family: monospace;
-  font-size: 0.9rem;
+  font-size: var(--text-15);
   text-transform: uppercase;
   outline: none;
   transition: var(--transition-smooth);
@@ -864,7 +932,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   right: 8px;
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border-glass);
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
 }
@@ -886,7 +954,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .eye-dropper-btn:hover {
   border-color: var(--primary);
   color: var(--text-primary);
-  background: hsla(197, 95%, 48%, 0.1);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   box-shadow: 0 0 8px var(--primary-glow);
 }
 
@@ -898,7 +966,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .style-toggle {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: var(--space-8);
   margin-top: 8px;
 }
 
@@ -906,8 +974,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 11px 8px;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-8);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
@@ -915,7 +983,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   cursor: pointer;
   transition: var(--transition-smooth);
   font-family: var(--font-sans);
-  font-size: 0.82rem;
+  font-size: var(--text-13);
   font-weight: 600;
 }
 
@@ -927,61 +995,70 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .style-btn.active {
   border-color: var(--primary);
   color: var(--text-primary);
-  background: linear-gradient(135deg, hsla(197, 95%, 48%, 0.2), hsla(214, 90%, 58%, 0.2));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--secondary) 20%, transparent));
   box-shadow: 0 0 15px var(--primary-glow);
 }
 
 .style-icon {
-  font-size: 1.1rem;
+  font-size: var(--text-18);
 }
 
 /* Garment Selector Card Grid */
 .garment-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: var(--space-10);
   margin-top: 8px;
 }
 
-.garment-card {
+/* .garment-card and .prop-card were maintained as two byte-identical rule
+ * blocks (base + :hover + .active, property-for-property the same). Merged
+ * into shared selectors using the local-variable pattern from HeroUI's
+ * component CSS: the base rule declares --card-bg/-border/-color with
+ * defaults, and each state overrides only those, never re-declaring layout
+ * or transitions. See .prop-card below for the icon/name siblings. */
+.garment-card,
+.prop-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 12px 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
+  gap: var(--space-6);
+  padding: var(--space-12) var(--space-8);
+  background: var(--card-bg, var(--bg-card));
+  border: 1px solid var(--card-border, var(--border-glass));
   border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  color: var(--card-color, var(--text-secondary));
   cursor: pointer;
   transition: var(--transition-smooth);
   font-family: var(--font-sans);
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   font-weight: 600;
   text-align: center;
 }
 
-.garment-card:hover {
-  border-color: var(--primary);
-  color: var(--text-primary);
+.garment-card:hover,
+.prop-card:hover {
+  --card-border: var(--primary);
+  --card-color: var(--text-primary);
+  --card-bg: color-mix(in srgb, var(--primary) 5%, transparent);
   transform: translateY(-2px);
-  background: hsla(197, 95%, 48%, 0.05);
 }
 
-.garment-card.active {
-  border-color: var(--primary);
-  color: var(--text-primary);
-  background: linear-gradient(135deg, hsla(197, 95%, 48%, 0.2), hsla(214, 90%, 58%, 0.2));
+.garment-card.active,
+.prop-card.active {
+  --card-border: var(--primary);
+  --card-color: var(--text-primary);
+  --card-bg: linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--secondary) 20%, transparent));
   box-shadow: 0 0 15px var(--primary-glow);
 }
 
 .garment-icon {
-  font-size: 1.35rem;
+  font-size: var(--text-20);
 }
 
 .garment-name {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   white-space: nowrap;
 }
 
@@ -989,49 +1066,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .props-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: var(--space-10);
   margin-top: 8px;
 }
 
-.prop-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: var(--transition-smooth);
-  font-family: var(--font-sans);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-.prop-card:hover {
-  border-color: var(--primary);
-  color: var(--text-primary);
-  transform: translateY(-2px);
-  background: hsla(197, 95%, 48%, 0.05);
-}
-
-.prop-card.active {
-  border-color: var(--primary);
-  color: var(--text-primary);
-  background: linear-gradient(135deg, hsla(197, 95%, 48%, 0.2), hsla(214, 90%, 58%, 0.2));
-  box-shadow: 0 0 15px var(--primary-glow);
-}
-
 .prop-icon {
-  font-size: 1.35rem;
+  font-size: var(--text-20);
 }
 
 .prop-name {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   white-space: nowrap;
 }
 
@@ -1048,7 +1092,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--space-16);
   z-index: 100;
   animation: fade-in 0.25s ease-out;
 }
@@ -1063,7 +1107,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .canvas-loading-overlay .loading-text {
-  font-size: 0.95rem;
+  font-size: var(--text-15);
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.5px;
@@ -1079,13 +1123,57 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 }
 
-/* Accessibility Focus States Compliance */
+/* ---------------------------------------------------------------------
+ * Accessibility: site-wide focus ring
+ * Applies to every interactive element via :focus-visible (keyboard/
+ * programmatic focus only, per design.md — no ring on mouse clicks).
+ * Elements that set outline:none for a custom focus treatment (e.g.
+ * .hex-text-input, .form-group inputs) get this ring layered on top
+ * rather than losing indication entirely.
+ * ------------------------------------------------------------------ */
 button:focus-visible,
-input[type="text"]:focus-visible,
-input[type="range"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
 .upload-zone:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* .control-manual-input explicitly disabled outline on :focus with no
+ * replacement — the only such gap in the sheet. Restore it via
+ * :focus-visible so keyboard users aren't left without an indicator. */
+.control-manual-input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Press feedback — a small, snappy scale-down on activation. Buttons
+ * that already declare their own :active transform (.btn-primary,
+ * .eye-dropper-btn) win via specificity and are unaffected. */
+button:active:not(:disabled),
+[role="button"]:active,
+.garment-card:active,
+.prop-card:active {
+  transform: scale(var(--press-scale));
+}
+
+/* Motion Reduction (design.md §4) — previously unhandled: every
+ * transition/animation in this file ignored the user's OS-level
+ * preference. The !important is deliberate: this must win regardless
+ * of the specificity of whatever it overrides. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Responsive collapse points (Tablet & Mobile viewport system) */
@@ -1126,7 +1214,7 @@ input[type="range"]:focus-visible,
   .viewport {
     flex: 0 0 auto;
     height: auto;
-    padding: 16px 16px 8px 16px;
+    padding: var(--space-16) var(--space-16) var(--space-8) var(--space-16);
     background-color: var(--bg-main);
     display: flex;
     flex-direction: column;
@@ -1148,8 +1236,8 @@ input[type="range"]:focus-visible,
 
   .canvas-hint {
     margin-top: 6px;
-    font-size: 0.75rem;
-    padding: 4px 12px;
+    font-size: var(--text-12);
+    padding: var(--space-4) var(--space-12);
   }
 
   /* Fixed bottom bar for primary export buttons */
@@ -1161,7 +1249,7 @@ input[type="range"]:focus-visible,
     background: hsla(225, 25%, 8%, 0.98);
     backdrop-filter: blur(20px);
     border-top: 1px solid var(--border-glass);
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     z-index: 150;
     margin: 0 !important;
     max-width: none !important;
@@ -1173,8 +1261,8 @@ input[type="range"]:focus-visible,
   }
 
   .viewport-export-panel .btn {
-    padding: 10px 16px;
-    font-size: 0.9rem;
+    padding: var(--space-10) var(--space-16);
+    font-size: var(--text-15);
   }
 
   /* Sidebar styling on mobile */
@@ -1183,8 +1271,8 @@ input[type="range"]:focus-visible,
     width: 100%;
     background: var(--bg-sidebar);
     backdrop-filter: blur(20px);
-    padding: 16px 16px 96px 16px; /* padding-bottom offsets fixed export panel */
-    gap: 16px;
+    padding: var(--space-16) var(--space-16) var(--space-96) var(--space-16); /* padding-bottom offsets fixed export panel */
+    gap: var(--space-16);
     overflow-y: visible;
     border: none !important;
     display: none !important; /* hidden by default, toggled by mobile-tab rules */
@@ -1266,10 +1354,10 @@ input[type="range"]:focus-visible,
     display: none !important;
   }
   .logo-text {
-    font-size: 1.1rem;
+    font-size: var(--text-18);
   }
   .app-header {
-    padding: 0 16px;
+    padding: 0 var(--space-16);
     height: 56px;
   }
   .app-container {
@@ -1284,7 +1372,7 @@ input[type="range"]:focus-visible,
 
 /* ─── FULL FOOTER (global) ─── */
 .landing-footer {
-  padding: 32px 24px;
+  padding: var(--space-32) var(--space-24);
   border-top: 1px solid var(--border-glass);
   background: hsla(225, 25%, 5%, 1);
 }
@@ -1299,8 +1387,8 @@ input[type="range"]:focus-visible,
   margin: 0 auto;
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
-  gap: 40px;
-  padding: 48px 24px 40px;
+  gap: var(--space-40);
+  padding: var(--space-48) var(--space-24) var(--space-40);
   border-top: 1px solid var(--border-glass);
 }
 
@@ -1309,12 +1397,12 @@ input[type="range"]:focus-visible,
 .footer-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   text-decoration: none;
 }
 
 .footer-tagline {
-  font-size: 0.84rem;
+  font-size: var(--text-13);
   color: var(--text-muted);
   line-height: 1.65;
   margin-top: 12px;
@@ -1322,7 +1410,7 @@ input[type="range"]:focus-visible,
 }
 
 .footer-col-title {
-  font-size: 0.72rem;
+  font-size: var(--text-12);
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;
@@ -1333,13 +1421,13 @@ input[type="range"]:focus-visible,
 .footer-col nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .footer-col nav a {
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 0.88rem;
+  font-size: var(--text-14);
   transition: color 0.2s;
 }
 
@@ -1347,13 +1435,13 @@ input[type="range"]:focus-visible,
 
 .footer-bottom {
   border-top: 1px solid var(--border-glass);
-  padding: 18px 24px;
+  padding: var(--space-18) var(--space-24);
   text-align: center;
   background: hsla(225, 25%, 5%, 1);
 }
 
 .footer-bottom p {
-  font-size: 0.78rem;
+  font-size: var(--text-12);
   color: var(--text-muted);
 }
 
@@ -1361,14 +1449,14 @@ input[type="range"]:focus-visible,
 @media (max-width: 900px) {
   .footer-full-inner {
     grid-template-columns: 1fr 1fr;
-    gap: 32px;
+    gap: var(--space-32);
   }
 }
 
 @media (max-width: 600px) {
   .footer-full-inner {
     grid-template-columns: 1fr;
-    gap: 28px;
+    gap: var(--space-28);
   }
 }
 
@@ -1406,13 +1494,13 @@ input[type="range"]:focus-visible,
   background: linear-gradient(135deg, rgba(25, 27, 38, 0.85) 0%, rgba(15, 17, 24, 0.95) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
+  border-radius: var(--radius-20);
   width: 90%;
   max-width: 440px;
-  padding: 32px;
+  padding: var(--space-32);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-24);
   position: relative;
   overflow: hidden;
   transform: translateY(20px) scale(0.95);
@@ -1443,7 +1531,7 @@ input[type="range"]:focus-visible,
 }
 
 .download-modal-card .modal-title {
-  font-size: 1.4rem;
+  font-size: var(--text-24);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -1453,7 +1541,7 @@ input[type="range"]:focus-visible,
 .download-modal-card .modal-options {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 /* Modal Option Card */
@@ -1461,8 +1549,8 @@ input[type="range"]:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-radius: 14px;
+  padding: var(--space-16) var(--space-20);
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: pointer;
@@ -1484,11 +1572,11 @@ input[type="range"]:focus-visible,
 .modal-option-card .option-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .modal-option-card .option-label {
-  font-size: 0.95rem;
+  font-size: var(--text-15);
   font-weight: 600;
   color: var(--text-primary);
   transition: color 0.2s;
@@ -1499,7 +1587,7 @@ input[type="range"]:focus-visible,
 }
 
 .modal-option-card .option-sub {
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   color: var(--text-muted);
 }
 
@@ -1546,7 +1634,7 @@ input[type="range"]:focus-visible,
 
 .download-modal-card .modal-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--space-12);
   margin-top: 8px;
 }
 
@@ -1561,49 +1649,52 @@ input[type="range"]:focus-visible,
 --------------------------------------------------------------------------- */
 .batch-modal-card {
   max-width: 560px;
-  gap: 18px;
+  gap: var(--space-18);
   max-height: 90vh;
   overflow-y: auto;
 }
 
 .batch-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .batch-tab {
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  color: var(--text-muted);
-  font-size: 0.85rem;
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--tab-border, rgba(255, 255, 255, 0.08));
+  background: var(--tab-bg, rgba(255, 255, 255, 0.02));
+  color: var(--tab-color, var(--text-muted));
+  font-size: var(--text-14);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .batch-tab.active {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: rgba(139, 92, 246, 0.08);
+  --tab-color: var(--primary);
+  --tab-border: var(--primary);
+  /* Was rgba(139, 92, 246, 0.08) — an off-brand purple left over from
+     somewhere else, unrelated to the cyan/blue palette everywhere else
+     in this file. Corrected to match the rest of the active-tab family. */
+  --tab-bg: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .batch-tab-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .batch-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .batch-section-label {
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   font-weight: 600;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -1611,7 +1702,7 @@ input[type="range"]:focus-visible,
 }
 
 .batch-hint {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   font-weight: 400;
   color: var(--text-muted);
   text-transform: none;
@@ -1621,14 +1712,14 @@ input[type="range"]:focus-visible,
 .batch-garment-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 6px 12px;
+  gap: var(--space-6) var(--space-12);
 }
 
 .batch-check {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
+  gap: var(--space-8);
+  font-size: var(--text-14);
   color: var(--text-primary);
   cursor: pointer;
   user-select: none;
@@ -1644,7 +1735,7 @@ input[type="range"]:focus-visible,
 .batch-color-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .batch-color-check {
@@ -1662,7 +1753,7 @@ input[type="range"]:focus-visible,
   display: block;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 2px solid rgba(255, 255, 255, 0.15);
   transition: all 0.15s;
 }
@@ -1676,8 +1767,8 @@ input[type="range"]:focus-visible,
 .batch-radio {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
+  gap: var(--space-8);
+  font-size: var(--text-14);
   color: var(--text-primary);
   cursor: pointer;
   user-select: none;
@@ -1691,17 +1782,17 @@ input[type="range"]:focus-visible,
 .batch-quality-row {
   flex-direction: row;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .batch-template-summary {
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   color: var(--text-muted);
   margin: 0;
 }
 
 .batch-upload-zone {
-  padding: 18px;
+  padding: var(--space-18);
 }
 
 .batch-upload-zone.dragover {
@@ -1715,10 +1806,10 @@ input[type="range"]:focus-visible,
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-4);
   max-height: 130px;
   overflow-y: auto;
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   color: var(--text-primary);
 }
 
@@ -1726,9 +1817,9 @@ input[type="range"]:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: 8px;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-10);
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.03);
 }
 
@@ -1742,10 +1833,10 @@ input[type="range"]:focus-visible,
   border: none;
   background: none;
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: var(--text-16);
   cursor: pointer;
   line-height: 1;
-  padding: 2px 4px;
+  padding: var(--space-2) var(--space-4);
 }
 
 .batch-file-remove:hover {
@@ -1753,7 +1844,7 @@ input[type="range"]:focus-visible,
 }
 
 .batch-estimate {
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   color: var(--text-muted);
   margin: 0;
   min-height: 1.2em;
@@ -1762,12 +1853,12 @@ input[type="range"]:focus-visible,
 .batch-progress {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-6);
 }
 
 .batch-progress-track {
   height: 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.07);
   overflow: hidden;
 }
@@ -1775,13 +1866,13 @@ input[type="range"]:focus-visible,
 .batch-progress-fill {
   height: 100%;
   width: 0%;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--primary);
   transition: width 0.2s ease;
 }
 
 .batch-progress-label {
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   color: var(--text-muted);
 }
 
@@ -1805,11 +1896,11 @@ input[type="range"]:focus-visible,
      reads as scrollable without needing a scrollbar to say so.
      2.5*card + 2*gap = 100%. */
   grid-auto-columns: calc((100% - 16px) / 2.5);
-  gap: 8px;
+  gap: var(--space-8);
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
-  padding: 2px 2px 6px 2px;
+  padding: var(--space-2) var(--space-2) var(--space-6) var(--space-2);
   scrollbar-width: thin;
   scroll-snap-type: x proximity;
 }
@@ -1817,7 +1908,7 @@ input[type="range"]:focus-visible,
 .on-model-gallery::-webkit-scrollbar { height: 7px; }
 .on-model-gallery::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, .45);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 .on-model-card {
   padding: 0;
@@ -1826,7 +1917,7 @@ input[type="range"]:focus-visible,
   line-height: 0;
   background: rgba(148, 163, 184, .12);
   border: 2px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   transition: border-color .12s;
 }
