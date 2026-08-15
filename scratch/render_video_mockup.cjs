@@ -187,13 +187,50 @@ const fs = require('fs');
         };
         sh = blurPass(blurPass(sh));
 
-        // design pixels, read once
+        // ---- prefilter the design to the scale it will actually be printed at ----
+        //
+        // The sampling loop below reads the design with bilinear interpolation,
+        // which is correct for magnification and WRONG for minification: it
+        // reads four texels and ignores everything in between. A 1066x1600
+        // design printed into a 264x320 area is a 4x reduction, so bilinear
+        // samples one pixel in sixteen and the fifteen it skips are simply
+        // lost. On flat artwork nothing shows. On anything with fine detail —
+        // a halftone, hatching, a photographic screenprint — the detail turns
+        // into sampling noise that crawls from frame to frame as the print
+        // moves, which is worse than losing it cleanly.
+        //
+        // The drawImage this replaced never had the problem because the
+        // browser filters properly on its own downscale. So the design is
+        // reduced first, by successive halving (each step averages 2x2, which
+        // is what the sampler cannot do for itself), to about twice the printed
+        // size — enough headroom for the bilinear read and the displacement,
+        // without carrying detail the print area cannot hold.
+        let dsrc = buffer;
+        {
+          const wantW = Math.max(8, Math.ceil(dW * 2)), wantH = Math.max(8, Math.ceil(dH * 2));
+          while (dsrc.width > wantW * 2 && dsrc.height > wantH * 2) {
+            const half = document.createElement('canvas');
+            half.width = Math.max(1, dsrc.width >> 1); half.height = Math.max(1, dsrc.height >> 1);
+            const hx = half.getContext('2d');
+            hx.imageSmoothingEnabled = true; hx.imageSmoothingQuality = 'high';
+            hx.drawImage(dsrc, 0, 0, half.width, half.height);
+            dsrc = half;
+          }
+          if (dsrc.width > wantW) {
+            const fin = document.createElement('canvas');
+            fin.width = wantW; fin.height = Math.max(1, Math.round(dsrc.height * wantW / dsrc.width));
+            const fx = fin.getContext('2d');
+            fx.imageSmoothingEnabled = true; fx.imageSmoothingQuality = 'high';
+            fx.drawImage(dsrc, 0, 0, fin.width, fin.height);
+            dsrc = fin;
+          }
+        }
         const dcv = document.createElement('canvas');
-        dcv.width = buffer.width; dcv.height = buffer.height;
+        dcv.width = dsrc.width; dcv.height = dsrc.height;
         const dcx = dcv.getContext('2d', { willReadFrequently: true });
-        dcx.drawImage(buffer, 0, 0);
-        const dPix = dcx.getImageData(0, 0, buffer.width, buffer.height).data;
-        const dw = buffer.width, dh = buffer.height;
+        dcx.drawImage(dsrc, 0, 0);
+        const dPix = dcx.getImageData(0, 0, dsrc.width, dsrc.height).data;
+        const dw = dsrc.width, dh = dsrc.height;
 
         const layer = document.createElement('canvas');
         layer.width = w; layer.height = h;
