@@ -2,9 +2,11 @@
 
 **Date:** 2026-08-15
 **Question:** Should TeeMockup adopt HeroUI as its design system?
-**Recommendation:** **No — not now.** Fix the specific accessibility gaps by hand instead
-(~2–3 days of work). Revisit only if the editor gets rewritten as a React app for
-independent reasons. See [Options](#options) for the full reasoning.
+**Recommendation:** **Don't install it — borrow from it.** Adopting the library means
+adopting React and Tailwind (§3–4). But HeroUI's *design decisions* are portable to plain
+CSS at zero runtime cost, and they solve real problems we have. See
+[Options](#options) for the reject case and [§8](#8-borrowing-the-design-without-the-framework)
+for what to take.
 
 ---
 
@@ -134,10 +136,10 @@ accessibility work is not a trade that makes sense.
 
 ## 6. Options
 
-**A. Don't adopt. Fix the gaps by hand. ← recommended**
-Close the four issues in §5 directly. Optionally document the existing 225 tokens as a real
-design system (`design-tokens.md`) so the implicit system becomes explicit. Keeps 0 KB
-framework JS on all 22 SEO pages. ~2–3 days.
+**A. Don't adopt the package — borrow the design. ← recommended**
+Close the four issues in §5 directly, using HeroUI's patterns as the spec rather than
+inventing our own, and adopt its token architecture in our existing CSS. Keeps 0 KB framework
+JS on all 22 SEO pages. See §8 for the concrete list. ~3–4 days.
 
 **B. Editor-only React island with HeroUI.**
 Defensible in principle — the editor is behind a route boundary, so landing pages keep their
@@ -163,6 +165,128 @@ Re-open this evaluation if any of these become true:
 
 Until then, the 225-token CSS system is the right tool: it's smaller, it's already written,
 and it costs nothing to serve.
+
+---
+
+## 8. Borrowing the design without the framework
+
+The library is MIT-licensed and its CSS ships as readable source, so its design decisions are
+ours to take. Three tiers, in descending value-per-hour.
+
+### Tier 1 — Interaction patterns (zero bytes, highest value)
+
+These are behavioral specs, not code. HeroUI gets them right via React Aria; we can implement
+the same behavior in vanilla JS and get the §5 defects fixed without shipping React. Using
+their patterns as the reference means we're copying something proven rather than inventing:
+
+- **Modal**: focus trap, Escape to dismiss, focus restore to the trigger on close, backdrop
+  click-to-close, `aria-modal` with background inert.
+- **Tabs**: roving tabindex — arrow keys move selection, Home/End jump to ends, only the
+  active tab is in the tab order.
+- **Color area / color slider**: arrow keys adjust saturation/value in 1% steps (shift = 10%),
+  `role="slider"` with `aria-valuenow`/`aria-valuetext` on each axis. This is the fix for our
+  pointer-only `CustomColorPicker`.
+- **State vocabulary**: HeroUI styles from `[data-pressed]`, `[data-focus-visible]`, and
+  `[aria-disabled]` attributes rather than ad-hoc classes. Worth adopting — it keeps the
+  accessible state and the visual state as the same source of truth, so they can't drift.
+
+### Tier 2 — Token architecture (our biggest consistency win)
+
+Our 225 tokens are a flat list of hand-tuned literals. HeroUI's are a *system*, and three of
+its ideas fix problems we measurably have:
+
+**Semantic foreground/background pairs.** Every surface token has a matched foreground:
+`--surface` / `--surface-foreground`, `--accent` / `--accent-foreground`. Contrast can't get
+mismatched because the pair travels together. Ours are unrelated tokens (`--bg-card` and
+`--text-primary` have no declared relationship).
+
+**Derived values instead of literals.** HeroUI defines one `--radius: 0.5rem` and derives
+`--field-radius: calc(var(--radius) * 1.5)`. We hardcode three unrelated radii.
+
+**`color-mix()` for state variations — the big one.** HeroUI writes
+`color-mix(in oklch, var(--foreground) 15%, transparent)` instead of a hand-tuned literal.
+Our CSS contains **78 hardcoded `hsl()`/`hsla()` literals outside `:root`, and 37 of them are
+the brand primary `197 95% 48%` restated at a different alpha**:
+
+| Literal | Occurrences |
+| :--- | ---: |
+| `hsla(197, 95%, 48%, 0.2)` | 8 |
+| `hsla(197, 95%, 48%, 0.05)` | 6 |
+| `hsla(197, 95%, 48%, 0.4)` | 5 |
+| `hsla(197, 95%, 48%, 0.1)` | 4 |
+| `hsla(197, 95%, 48%, 0.07)` | 4 |
+
+Changing the brand color today means editing 37 places and hoping none are missed. With
+`color-mix(in oklch, var(--primary) 5%, transparent)` it's one edit. This is a contained,
+mechanical refactor with an immediate payoff.
+
+Also worth lifting verbatim: explicit state tokens `--disabled-opacity: 0.5`,
+`--cursor-disabled: not-allowed`, `--ring-offset-width: 2px`.
+
+### Tier 3 — The per-component local-variable pattern
+
+The single best idea in their CSS. A component declares its own local variables, defaulting
+down a chain, and the base rule reads only those:
+
+```css
+.button {
+  --button-bg: transparent;
+  --button-bg-hover: var(--button-bg);      /* falls back to base */
+  --button-bg-pressed: var(--button-bg-hover);
+  background-color: var(--button-bg);
+}
+```
+
+Variants then override *only* the locals — never the layout, never the transitions. Compare
+our `.garment-card`, which repeats a full property block for each state:
+
+```css
+.garment-card:hover  { border-color: var(--primary); transform: translateY(-2px);
+                       background: hsla(197, 95%, 48%, 0.05); }
+.garment-card.active { border-color: var(--primary);
+                       background: linear-gradient(135deg, hsla(...), hsla(...)); }
+```
+
+`.garment-card`, `.prop-card`, `.swatch-tab`, and `.batch-tab` are four near-identical
+selectable-card components with four independently maintained hover/active blocks (21 `:hover`
+and 16 `.active` rules in `global.css`). The local-variable pattern collapses them to one base
+plus a few token overrides.
+
+### Also worth copying, specifically
+
+- **Focus ring recipe** — `--focus: var(--accent)` at 2px with a 2px offset; in plain CSS,
+  `outline: 2px solid var(--focus); outline-offset: 2px`. Apply on `:focus-visible`
+  site-wide, which closes the `landing.css`/`page.css` gap (0 focus rules today).
+- **Press feedback** — `transform: scale(0.97)` on `:active`, 250ms. Cheap, and it makes the
+  editor's 63 buttons feel responsive.
+- **Backdrop motion** — fade in 150ms, out 100ms. Asymmetric on purpose: dismissal should
+  feel faster than appearance.
+- **A real bug they document**: `motion-reduce` must come *after* the `transition` declaration
+  or specificity lets the transition win and `prefers-reduced-motion` silently breaks. Our
+  `--transition-smooth` has no reduced-motion handling at all, which `design.md` §4 requires.
+- **BEM naming** — `.modal__backdrop`, `.modal__backdrop--blur`. Optional, but it would give
+  our 3,922 lines a naming convention they currently lack.
+
+### What is *not* borrowable
+
+The component CSS source uses Tailwind's `@apply` (`@apply relative isolate inline-flex h-10
+…`), so it cannot be copy-pasted — read it as a spec, not as source. The compiled
+`heroui.min.css` is plain CSS but it's 413 KB of minified output for 75+ components; it's
+reference material, not something to vendor. Their colors are OKLCH and ours are HSL, so
+values need converting — though adopting OKLCH is itself worth considering, since it's what
+makes `color-mix` derivations stay perceptually even across hues.
+
+### Suggested order
+
+1. `color-mix` refactor of the 37 duplicated primary literals — mechanical, no visual change,
+   immediately makes rebranding a one-line edit.
+2. Site-wide `:focus-visible` ring + `prefers-reduced-motion` guard — closes two `design.md`
+   violations across all 35 pages.
+3. Modal keyboard behavior (trap, Escape, restore) — the most serious accessibility defect.
+4. Color picker keyboard support — the largest single piece, roughly half a day.
+5. Local-variable refactor of the four card/tab components — cleanup, do last.
+
+Steps 1–4 are the substance; each is independently shippable.
 
 ---
 
