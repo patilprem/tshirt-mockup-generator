@@ -1574,8 +1574,47 @@
         // slope's denominator is Syy alone: well conditioned, and it measures
         // the thing actually wanted.
         const lean = Math.atan2(sxy, Math.max(1e-6, syy));
+
+        // ---- the shoulder line ----
+        //
+        // A print is not registered from the middle of a torso. It is
+        // registered from the SHOULDERS: centred between the seams, a fixed
+        // drop below the collar. The centroid above runs all the way to the
+        // hem, so it carries the hips, and hips do not move with the chest —
+        // walking swings one against the other and turning moves them
+        // differently again. Measured over this clip the chest travels 65px
+        // while the trunk centroid travels 43, so a quad carried by the
+        // centroid slides 27px across the chest, a tenth of the print's own
+        // width. That is the design wandering off centre as the model turns.
+        //
+        // The widest garment row in the top third is the shoulder line: sleeves
+        // reach their maximum there and the arms have not yet swung clear of
+        // the body, so it belongs to the chest rather than to the silhouette.
+        let sTop = -1, sBot = -1;
+        {
+          let acc = 0;
+          for (let y = 0; y < H; y++) { acc += rowN[y]; if (sTop < 0 && acc >= area * 0.01) sTop = y; if (acc <= area * 0.99) sBot = y; }
+        }
+        let shY = -1, shW = -1, shA = 0, shB = 0;
+        if (sTop >= 0 && sBot > sTop) {
+          const lim = sTop + (sBot - sTop) * 0.34;
+          for (let y = sTop; y <= Math.min(H - 1, lim); y++) {
+            let a3 = -1, b3 = -1, cnt = 0;
+            for (let x = 0; x < W; x++) if (core[y * W + x]) { if (a3 < 0) a3 = x; b3 = x; cnt++; }
+            if (a3 < 0 || cnt < 12) continue;
+            if (b3 - a3 > shW) { shW = b3 - a3; shY = y; shA = a3; shB = b3; }
+          }
+        }
+
         return {
           cx: +cx2.toFixed(3), cy: +cy2.toFixed(3),
+          // The anchor the clip actually carries the print by. Kept alongside
+          // the centroid rather than replacing it: the centroid is still the
+          // right thing to measure scale and lean from, being an average over
+          // the whole trunk, and it is a useful control when this one is wrong.
+          shMid: shY >= 0 ? +((shA + shB) / 2).toFixed(3) : +cx2.toFixed(3),
+          shY: shY >= 0 ? shY : +cy2.toFixed(3),
+          shW: shW > 0 ? shW : 0,
           // Two independent scales. Height is what a whole-body zoom changes;
           // width is what turning changes. Reported separately so the caller
           // can decide, rather than being averaged into one number here.

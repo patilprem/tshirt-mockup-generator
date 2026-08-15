@@ -160,8 +160,18 @@ function movingAverage(values, window) {
   const round2 = v => +v.toFixed(2);
 
   const T = per.map(r => r.torso);
-  const sCx = movingAverage(T.map(t => t.cx), oddFrames(SMOOTH_POS_SEC, fps));
-  const sCy = movingAverage(T.map(t => t.cy), oddFrames(SMOOTH_POS_SEC, fps));
+  // POSITION comes from the shoulder line, SCALE and LEAN from the trunk.
+  // The shoulder line is the chest's own landmark and it is what a print is
+  // registered from; the trunk centroid is an average over ~10^5 pixels and is
+  // the better estimator of size and tilt. Using each for what it is good at
+  // beats using either for both.
+  //
+  // The shoulder line is measured from the widest row rather than from a mass
+  // average, so it is noisier — 1.0px rms against the centroid's 0.5, and 2.0px
+  // vertically, where the widest row can jump between neighbours. Its windows
+  // are correspondingly wider.
+  const sCx = movingAverage(T.map(t => t.shMid), oddFrames(SMOOTH_POS_SEC * 1.6, fps));
+  const sCy = movingAverage(T.map(t => t.shY), oddFrames(SMOOTH_POS_SEC * 2.4, fps));
   const sW = movingAverage(T.map(t => t.w), oddFrames(SMOOTH_SIZE_SEC, fps));
   const sH = movingAverage(T.map(t => t.h), oddFrames(SMOOTH_SIZE_SEC, fps));
   const sLean = movingAverage(T.map(t => t.lean), oddFrames(SMOOTH_LEAN_SEC, fps));
@@ -210,6 +220,15 @@ function movingAverage(values, window) {
   const centreY = quads.map(q => (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4);
   const meanStep = a => a.reduce((s, v, i) => i ? s + Math.abs(v - a[i - 1]) : s, 0) / Math.max(1, a.length - 1);
   const oldCx = per.map(r => (r.quad.tl[0] + r.quad.tr[0]) / 2);
+  // How far the print slides ACROSS THE CHEST over the clip. This is the
+  // number the anchor change exists to fix, and it is the one that shows the
+  // design wandering when the model turns, so it is reported rather than
+  // assumed: quad centre measured against the shoulder midpoint it should be
+  // locked to.
+  const anchorDrift = (() => {
+    const off = quads.map((q, i) => (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4 - T[i].shMid);
+    return Math.max(...off) - Math.min(...off);
+  })();
   const travel = Math.max(...centreX) - Math.min(...centreX);
   const travelY = Math.max(...centreY) - Math.min(...centreY);
   const jitterOldRaw = meanStep(oldCx);
@@ -239,6 +258,9 @@ function movingAverage(values, window) {
     quads,
     bboxes: per.map(r => r.bbox),
     torso: per.map((r, i) => ({
+      // cx/cy here are the ANCHOR the quads were carried by (the shoulder
+      // line), not the trunk centroid, so a consumer reading this back gets
+      // the frame the print is actually in.
       cx: round2(sCx[i]), cy: round2(sCy[i]),
       w: round2(sW[i]), h: round2(sH[i]), lean: +sLean[i].toFixed(5),
     })),
@@ -253,12 +275,14 @@ function movingAverage(values, window) {
       quadJitterRawPx: round2(jitterRaw),
       quadJitterSmoothedPx: round2(jitterSm),
       leanRangeDeg: round2(Math.max(...leanDeg) - Math.min(...leanDeg)),
+      printDriftAcrossChestPx: round2(anchorDrift),
     },
   };
   fs.writeFileSync(path.join(outDir, `${id}.json`), JSON.stringify(manifest, null, 2));
   console.log(`\n${id}: ${per.length} frames -> ${outDir}`);
   console.log(`  print travel over clip: ${round2(travel)}px across, ${round2(travelY)}px down; lean range ${round2(Math.max(...leanDeg) - Math.min(...leanDeg))} deg`);
   console.log(`  centre jitter px/frame: silhouette ${round2(jitterOldRaw)} -> torso ${round2(jitterRaw)} -> smoothed ${round2(jitterSm)}`);
+  console.log(`  print drift across the chest over the clip: ${round2(anchorDrift)}px`);
   console.log(`  worst keyMiss=${manifest.qa.keyMissMax} chroma=${manifest.qa.chromaPctMax}% deepShadow=${manifest.qa.deepShadowPctMax}%`);
   await browser.close();
 })();
