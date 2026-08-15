@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-11 deaa224</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-11 deaa224 +local edits</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -522,6 +522,56 @@ function analyze(img) {
     }
   }
 
+  // ---- sealed background pockets: background the border flood cannot reach ----
+  // Between an arm and the torso the garment often seals off a pocket of REAL
+  // background — a railing, a wall — that the flood above can never label,
+  // because every path from the border crosses core. Left "inside", those
+  // pixels take the clip floor as weight, the background evidence gate never
+  // runs on them (it is outside-only), and the runtime ends up subtracting
+  // modelled violet from a pixel that holds none: a green-yellow streak down
+  // the arm gap on every light recolour. The bgPaint audit is outside-only
+  // too, so the defect ships while the audit reads single digits.
+  //
+  // Decided per REGION, not per pixel, and only for regions whose own colour
+  // carries an answer: a pocket whose pixels are bright enough to read and
+  // overwhelmingly non-violet is background, however it is enclosed. Dark
+  // pockets carry no information and stay with the crevice machinery, whose
+  // whole design is about exactly them. Near-blown regions also stay — a
+  // highlight burning through fabric must not be punched out of the garment.
+  {
+    const seenP = new Uint8Array(N);
+    const qP = new Int32Array(N);
+    for (let s0 = 0; s0 < N; s0++) {
+      if (core[s0] || outside[s0] || seenP[s0]) continue;
+      let qh = 0, qt = 0;
+      qP[qt++] = s0; seenP[s0] = 1;
+      const mem = [];
+      while (qh < qt) {
+        const i = qP[qh++];
+        mem.push(i);
+        const x = i % W;
+        for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+          if (ni < 0 || ni >= N || core[ni] || outside[ni] || seenP[ni]) continue;
+          seenP[ni] = 1; qP[qt++] = ni;
+        }
+      }
+      // Too small to read as a region: JPEG noise decides the vote, and a
+      // wrong relabel of a few fabric pixels punches visible pinholes.
+      if (mem.length < 16) continue;
+      let violetN = 0;
+      const vs = [];
+      for (const i of mem) {
+        vs.push(vA[i]);
+        if (wRaw[i] > 0.30 || orderEv[i] > 0.15
+          || (ad(hA[i], shirtHue) < 45 && sA[i] > 0.18 && vA[i] > 0.10)) violetN++;
+      }
+      vs.sort((a, b) => a - b);
+      const medV = vs[vs.length >> 1];
+      if (violetN / mem.length <= 0.15 && medV >= 0.35 && medV <= 0.90)
+        for (const i of mem) outside[i] = 1;
+    }
+  }
+
   const sgn = h => ((h - shirtHue + 540) % 360) - 180;
   let wMap = new Float32Array(N);
   for (let i = 0; i < N; i++) {
@@ -631,50 +681,6 @@ function analyze(img) {
       wm2[i] = mn;
     }
     wMap = wm2;
-  }
-
-  // ---- mottle: recolour weight that varies pixel-to-pixel is not an edge ----
-  //
-  // Along a clean silhouette the weight is a smooth ramp: each step away from
-  // the fabric carries a little less. In the tight channel between the torso
-  // and an arm, JPEG mush mixes fabric, skin and background three ways, and
-  // the key's per-pixel verdicts come out scattered — 30 here, 180 there, side
-  // by side. Under violet that scatter lands on violet and disappears. Under
-  // any other colour every pixel recolours by a different amount, which is the
-  // blue speckle on the seam. The photograph carries the same scatter, so
-  // sharpening or smoothing the mask alone cannot fix it — the pixels
-  // themselves need neutralising.
-  //
-  // The signature is local VARIANCE of weight, which a real edge — however
-  // soft — does not produce. Where a background-side pixel's 5x5 neighbourhood
-  // scatters, its weight is cut and its chroma handed to the neutraliser. The
-  // variance gate keeps this strictly off clean templates: a smooth ramp's
-  // deviation is a fraction of the threshold.
-  // Two passes: the first collapses the scattered mid-band, which lowers the
-  // neighbourhood mean and exposes the pixels hugging the solid edge on the
-  // second. Near-solid pixels are only exempt above 0.96 — a 0.93 pixel inside
-  // a scattered neighbourhood is part of the scatter, not of the garment.
-  for (let pass = 0; pass < 2; pass++) {
-    const w2 = new Float32Array(wMap);
-    for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
-      const i = y * W + x;
-      if (!outside[i]) continue;
-      const v = wMap[i];
-      if (v <= 0.04 || v >= 0.96) continue;
-      let sum = 0, sum2 = 0;
-      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-        const q = wMap[(y + dy) * W + (x + dx)];
-        sum += q; sum2 += q * q;
-      }
-      const mean = sum / 25, sd = Math.sqrt(Math.max(0, sum2 / 25 - mean * mean));
-      if (sd > 0.22) {
-        const k = smooth(sd, 0.22, 0.36);
-        w2[i] = v * (1 - k);
-        neut[i] = Math.max(neut[i], 0.85 * k);
-        evAny[i] = Math.max(evAny[i], 0.85 * k);
-      }
-    }
-    wMap = w2;
   }
 
   const shadeVal = new Float32Array(N);

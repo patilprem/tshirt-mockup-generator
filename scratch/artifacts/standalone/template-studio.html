@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-09 9b81bd6</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-11 deaa224 +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -999,6 +999,56 @@ function analyze(img) {
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         push(nx, ny);
       }
+    }
+  }
+
+  // ---- sealed background pockets: background the border flood cannot reach ----
+  // Between an arm and the torso the garment often seals off a pocket of REAL
+  // background — a railing, a wall — that the flood above can never label,
+  // because every path from the border crosses core. Left "inside", those
+  // pixels take the clip floor as weight, the background evidence gate never
+  // runs on them (it is outside-only), and the runtime ends up subtracting
+  // modelled violet from a pixel that holds none: a green-yellow streak down
+  // the arm gap on every light recolour. The bgPaint audit is outside-only
+  // too, so the defect ships while the audit reads single digits.
+  //
+  // Decided per REGION, not per pixel, and only for regions whose own colour
+  // carries an answer: a pocket whose pixels are bright enough to read and
+  // overwhelmingly non-violet is background, however it is enclosed. Dark
+  // pockets carry no information and stay with the crevice machinery, whose
+  // whole design is about exactly them. Near-blown regions also stay — a
+  // highlight burning through fabric must not be punched out of the garment.
+  {
+    const seenP = new Uint8Array(N);
+    const qP = new Int32Array(N);
+    for (let s0 = 0; s0 < N; s0++) {
+      if (core[s0] || outside[s0] || seenP[s0]) continue;
+      let qh = 0, qt = 0;
+      qP[qt++] = s0; seenP[s0] = 1;
+      const mem = [];
+      while (qh < qt) {
+        const i = qP[qh++];
+        mem.push(i);
+        const x = i % W;
+        for (const ni of [x > 0 ? i - 1 : -1, x + 1 < W ? i + 1 : -1, i - W, i + W]) {
+          if (ni < 0 || ni >= N || core[ni] || outside[ni] || seenP[ni]) continue;
+          seenP[ni] = 1; qP[qt++] = ni;
+        }
+      }
+      // Too small to read as a region: JPEG noise decides the vote, and a
+      // wrong relabel of a few fabric pixels punches visible pinholes.
+      if (mem.length < 16) continue;
+      let violetN = 0;
+      const vs = [];
+      for (const i of mem) {
+        vs.push(vA[i]);
+        if (wRaw[i] > 0.30 || orderEv[i] > 0.15
+          || (ad(hA[i], shirtHue) < 45 && sA[i] > 0.18 && vA[i] > 0.10)) violetN++;
+      }
+      vs.sort((a, b) => a - b);
+      const medV = vs[vs.length >> 1];
+      if (violetN / mem.length <= 0.15 && medV >= 0.35 && medV <= 0.90)
+        for (const i of mem) outside[i] = 1;
     }
   }
 
