@@ -1409,7 +1409,23 @@ function analyze(img) {
   // to 1, and any residual weight blends the pixel toward the target: the
   // pale rim. The pocket's own clean pixels ARE that endpoint, measured
   // rather than guessed, so they seed the diffusion directly.
-  const bgF = diffuseInto(i => (outside[i] && !ring[i]) || cleanBg[i]);
+  // A seed must be UNCONTAMINATED, and no colour test can promise that. The
+  // pixel one step outside a violet garment is a real mixture of fabric and
+  // whatever is behind it, and when the background is skin that mixture
+  // still reads as skin by every ordering test there is: an armhole pixel
+  // measuring 25% violet came out (121,93,86), green deficit 10.5 and blue
+  // below green — indistinguishable from pale skin, which measures 10. Used
+  // as a seed it was pinned to alpha 0, its coverage thrown away, and the
+  // garment edge razored to a hard step. That is the white rim on a
+  // sleeveless cut, and it was this rule's fault, not the photograph's.
+  //
+  // Distance settles what colour cannot. Mixing and chroma bleed reach a
+  // pixel or two; beyond that a background pixel is only itself. So the
+  // colour test says "background-like" and the distance says "far enough to
+  // be trusted", and the pixels in between — the ones that are genuinely
+  // part fabric — are left for the matte to solve instead of being used to
+  // define the answer.
+  const bgF = diffuseInto(i => (outside[i] && !ring[i]) || (cleanBg[i] && distC[i] >= 3));
   const fgF = diffuseInto(i => !outside[i]);
   const bgC = bgF.c, fgC = fgF.c;
   // A deep crevice (underarm gap, hem fold) is enclosed by garment: no
