@@ -160,18 +160,22 @@ function movingAverage(values, window) {
   const round2 = v => +v.toFixed(2);
 
   const T = per.map(r => r.torso);
-  // POSITION comes from the shoulder line, SCALE and LEAN from the trunk.
-  // The shoulder line is the chest's own landmark and it is what a print is
-  // registered from; the trunk centroid is an average over ~10^5 pixels and is
-  // the better estimator of size and tilt. Using each for what it is good at
-  // beats using either for both.
+  // Position comes from the TRUNK CENTROID, and this is worth recording
+  // because the obvious alternative is wrong and measures better against the
+  // wrong yardstick.
   //
-  // The shoulder line is measured from the widest row rather than from a mass
-  // average, so it is noisier — 1.0px rms against the centroid's 0.5, and 2.0px
-  // vertically, where the widest row can jump between neighbours. Its windows
-  // are correspondingly wider.
-  const sCx = movingAverage(T.map(t => t.shMid), oddFrames(SMOOTH_POS_SEC * 1.6, fps));
-  const sCy = movingAverage(T.map(t => t.shY), oddFrames(SMOOTH_POS_SEC * 2.4, fps));
+  // A print is registered from the shoulders in reality, so anchoring to the
+  // shoulder line looks correct, and measured against the shoulder midpoint it
+  // cut drift from 27.2px to 7px. That measurement is circular: anchor to a
+  // landmark and the offset to that landmark is constant by construction.
+  // Measured against what the eye actually judges — the print's centre against
+  // the chest's own centre AT THE PRINT'S HEIGHT — the shoulder anchor was
+  // three times worse, 23.9px of range against 8.1px. The shoulder span is
+  // bounded by the sleeves, so it swings when an arm does, and in this clip the
+  // model is carrying a mug. The trunk columns exclude the sleeves by
+  // construction and the centroid averages ~10^5 pixels, so it stays put.
+  const sCx = movingAverage(T.map(t => t.cx), oddFrames(SMOOTH_POS_SEC, fps));
+  const sCy = movingAverage(T.map(t => t.cy), oddFrames(SMOOTH_POS_SEC, fps));
   const sW = movingAverage(T.map(t => t.w), oddFrames(SMOOTH_SIZE_SEC, fps));
   const sH = movingAverage(T.map(t => t.h), oddFrames(SMOOTH_SIZE_SEC, fps));
   const sLean = movingAverage(T.map(t => t.lean), oddFrames(SMOOTH_LEAN_SEC, fps));
@@ -220,14 +224,18 @@ function movingAverage(values, window) {
   const centreY = quads.map(q => (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4);
   const meanStep = a => a.reduce((s, v, i) => i ? s + Math.abs(v - a[i - 1]) : s, 0) / Math.max(1, a.length - 1);
   const oldCx = per.map(r => (r.quad.tl[0] + r.quad.tr[0]) / 2);
-  // How far the print slides ACROSS THE CHEST over the clip. This is the
-  // number the anchor change exists to fix, and it is the one that shows the
-  // design wandering when the model turns, so it is reported rather than
-  // assumed: quad centre measured against the shoulder midpoint it should be
-  // locked to.
+  // How far the print slides across the chest over the clip — measured the
+  // way the eye judges it, against the chest's own centre AT THE PRINT'S
+  // HEIGHT, not against whatever landmark the quad happens to be anchored to.
+  // An anchor always looks perfect measured against itself; this cannot be
+  // gamed by changing the anchor, which is the entire point of it.
   const anchorDrift = (() => {
-    const off = quads.map((q, i) => (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4 - T[i].shMid);
-    return Math.max(...off) - Math.min(...off);
+    const off = quads.map((q, i) => {
+      const t = per[i].torso;
+      if (!t || !t.chestCx) return null;
+      return (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4 - t.chestCx;
+    }).filter(v => v != null);
+    return off.length ? Math.max(...off) - Math.min(...off) : 0;
   })();
   const travel = Math.max(...centreX) - Math.min(...centreX);
   const travelY = Math.max(...centreY) - Math.min(...centreY);

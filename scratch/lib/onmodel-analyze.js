@@ -1606,12 +1606,34 @@
           }
         }
 
+        // The chest's own centre AT THE PRINT'S HEIGHT: the mean midpoint of the
+        // garment's rows over the band the quad occupies. This is not an anchor
+        // and nothing is carried by it — it exists to be measured against.
+        // Every candidate anchor looks perfect when scored against itself, so
+        // the clip needs one yardstick that no anchor choice can move, and this
+        // is the one the eye uses when it decides a print is off centre.
+        let chestCx = null;
+        {
+          const qy0 = Math.max(0, Math.round(Math.min(quad.tl[1], quad.tr[1])));
+          const qy1 = Math.min(H - 1, Math.round(Math.max(quad.bl[1], quad.br[1])));
+          let s3 = 0, n3 = 0;
+          for (let y = qy0; y <= qy1; y++) {
+            let a4 = -1, b4 = -1;
+            for (let x = 0; x < W; x++) if (core[y * W + x]) { if (a4 < 0) a4 = x; b4 = x; }
+            if (a4 < 0 || b4 - a4 < 60) continue;
+            s3 += (a4 + b4) / 2; n3++;
+          }
+          if (n3) chestCx = s3 / n3;
+        }
+
         return {
           cx: +cx2.toFixed(3), cy: +cy2.toFixed(3),
-          // The anchor the clip actually carries the print by. Kept alongside
-          // the centroid rather than replacing it: the centroid is still the
-          // right thing to measure scale and lean from, being an average over
-          // the whole trunk, and it is a useful control when this one is wrong.
+          chestCx: chestCx == null ? null : +chestCx.toFixed(3),
+          // The shoulder line. NOT the anchor — it was tried as one and made
+          // the yardstick above three times worse, because the shoulder span is
+          // bounded by the sleeves and swings with the arms. Kept because it is
+          // cheap and it is the landmark to reach for on a clip where the arms
+          // are still and the hips are not.
           shMid: shY >= 0 ? +((shA + shB) / 2).toFixed(3) : +cx2.toFixed(3),
           shY: shY >= 0 ? shY : +cy2.toFixed(3),
           shW: shW > 0 ? shW : 0,
