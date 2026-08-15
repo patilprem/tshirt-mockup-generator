@@ -820,6 +820,13 @@ const TEMPLATES = [
       // part fabric — are left for the matte to solve instead of being used to
       // define the answer.
       const bgF = diffuseInto(i => (outside[i] && !ring[i]) || (cleanBg[i] && distC[i] >= 3));
+      // A second background estimate, seeded ONLY from beyond the entire matte
+      // band. The one above deliberately reaches for the nearest trustworthy
+      // pixel, which is what lets the matte measure a rim at all — but it means
+      // its estimate sits close enough to the garment to have been touched by an
+      // upscaler's outline, and a contaminated estimate cannot be used to detect
+      // that contamination. This one is far enough out to be innocent of it.
+      const bgFar = diffuseInto(i => outside[i] && !ring[i]);
       const fgF = diffuseInto(i => !outside[i]);
       const bgC = bgF.c, fgC = fgF.c;
 
@@ -1640,6 +1647,52 @@ const TEMPLATES = [
         }
         pd.data[o] = r; pd.data[o + 1] = g; pd.data[o + 2] = b; pd.data[o + 3] = 255;
       }
+      // ---- the sharpening ring: a boundary pixel outside its own hull ----
+      // An upscaler's unsharp mask draws a bright outline around the figure, and
+      // it writes it into ONE pixel: on a candidate measured here the background
+      // immediately against the garment reads 139 where the background four
+      // pixels out settles at 88, a +52 level overshoot that decays by the third
+      // pixel. It is not in the raw generation of the same photograph, and it is
+      // not something a mask can route around — it is real brightness sitting in
+      // background pixels, so every dark recolour shows it as a light fringe and
+      // every pale one as a dark one.
+      //
+      // It can be removed, and without guessing, because a boundary pixel is by
+      // definition a mixture of two things this pipeline has already measured:
+      // the fabric diffused in from one side and the background diffused in from
+      // the other. Any mixture of two colours lies BETWEEN them. A pixel brighter
+      // than both endpoints is therefore not a mixture of them at all — nothing
+      // in the scene can produce it — and the excess is exactly what was added
+      // after the camera. Pulling it back to the brighter endpoint removes the
+      // addition and nothing else.
+      //
+      // The same argument the edge audit already makes about the OUTPUT, applied
+      // to the input. Scaling is proportional so hue is untouched; the allowance
+      // is generous enough that grain, weave and a genuinely bright fold all sit
+      // comfortably inside; and a pixel the matte baked is already at its hull
+      // point, so this finds nothing to do there.
+      for (let i = 0; i < N; i++) {
+        if (!ring[i] || distC[i] > RING || bgF.fd[i] < 0 || fgF.fd[i] < 0) continue;
+        const o = i * 4;
+        const yF = 0.299 * fgC[i * 3] + 0.587 * fgC[i * 3 + 1] + 0.114 * fgC[i * 3 + 2];
+        const yB = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
+        // Where the matte measured coverage, the hull collapses to a point: a
+        // pixel that is `a` fabric sits at a*fabric + (1-a)*background, not
+        // merely somewhere between them. Using that prediction rather than the
+        // brighter endpoint is what actually reaches the outline, because an
+        // unsharp overshoot is usually still below the fabric it hugs — inside
+        // the hull, and invisible to a hull test, while being far above what its
+        // own coverage can account for.
+        const cf = Math.max(0, Math.min(1, mConfS[i]));
+        const aE = mAlphaE[i];
+        const predicted = aE * yF + (1 - aE) * yB;
+        const hi = (cf > 0.3 ? predicted : Math.max(yF, yB)) + 12;
+        const yP = 0.299 * pd.data[o] + 0.587 * pd.data[o + 1] + 0.114 * pd.data[o + 2];
+        if (yP <= hi || yP < 1) continue;
+        const k = hi / yP;
+        pd.data[o] *= k; pd.data[o + 1] *= k; pd.data[o + 2] *= k;
+      }
+
       pctx.putImageData(pd, 0, 0);
 
       // weight map: R = recolour weight, G = design clip
