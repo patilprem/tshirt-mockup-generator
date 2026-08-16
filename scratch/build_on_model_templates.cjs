@@ -1801,71 +1801,58 @@ const TEMPLATES = [
         }
         pd.data[o] = r; pd.data[o + 1] = g; pd.data[o + 2] = b; pd.data[o + 3] = 255;
       }
-      // ---- the sharpening ring: a boundary pixel outside its own hull ----
-      // An upscaler's unsharp mask draws a bright outline around the figure, and
-      // it writes it into ONE pixel: on a candidate measured here the background
-      // immediately against the garment reads 139 where the background four
-      // pixels out settles at 88, a +52 level overshoot that decays by the third
-      // pixel. It is not in the raw generation of the same photograph, and it is
-      // not something a mask can route around — it is real brightness sitting in
-      // background pixels, so every dark recolour shows it as a light fringe and
-      // every pale one as a dark one.
+      // ---- the boundary band, rebuilt from what it is made of ----
+      // Kept in step with template-studio.html.
+      // The generator does not draw a clean edge and no prompt will make it. It
+      // rings the silhouette with an unsharp overshoot — fabric 129, then a
+      // spike to 189 against a doorway of 26 — and pairs it with the undershoot
+      // on the other side, which is the dark serration that shows on a white
+      // shirt. Both are in the photograph, so the honest thing is to repair the
+      // photograph rather than to route the mask around it.
       //
-      // It can be removed, and without guessing, because a boundary pixel is by
-      // definition a mixture of two things this pipeline has already measured:
-      // the fabric diffused in from one side and the background diffused in from
-      // the other. Any mixture of two colours lies BETWEEN them. A pixel brighter
-      // than both endpoints is therefore not a mixture of them at all — nothing
-      // in the scene can produce it — and the excess is exactly what was added
-      // after the camera. Pulling it back to the brighter endpoint removes the
-      // addition and nothing else.
+      // It can be repaired without inventing anything, because a boundary pixel
+      // is not free: it is a mixture of two colours this pipeline has already
+      // measured, the fabric at this pixel's own shade and the background
+      // diffused in from behind it. Every possible value of such a pixel lies on
+      // the SEGMENT between those two colours in RGB — that is what mixing
+      // means. So each band pixel is projected onto that segment: the component
+      // along it is the pixel's coverage and is kept exactly, texture and grain
+      // included, while the component off it is a colour no mixture of these two
+      // can produce and is removed. Clamping to the segment rather than the line
+      // is what catches ringing: an overshoot brighter than the fabric projects
+      // to the fabric, an undershoot darker than the background projects to the
+      // background.
       //
-      // The same argument the edge audit already makes about the OUTPUT, applied
-      // to the input. Scaling is proportional so hue is untouched; the allowance
-      // is generous enough that grain, weave and a genuinely bright fold all sit
-      // comfortably inside; and a pixel the matte baked is already at its hull
-      // point, so this finds nothing to do there.
+      // Only the EXCESS beyond a tolerance is taken, so codec noise is left
+      // alone and the repair fades in continuously. A pixel the matte already
+      // baked sits on the segment by construction, so this finds nothing to do
+      // there — it works on exactly the pixels the matte could not solve, which
+      // are the ones the artefact lives in.
       //
-      // The inner ring only. Extending it to the whole band did reduce the
-      // outline further — 219 px to 96 on the candidate — and it carved a grey
-      // stripe of scaled-down background alongside the hem of street-m and two
-      // others, because out there the far estimate is several pixels away and can
-      // reach past a bright wall to something darker. Where the band is thin the
-      // estimate is the pixel just beyond it and the correction is safe; where it
-      // is wide it is a guess, and a guess that only ever darkens.
+      // The inner ring only. Extending it to the whole band carved a grey stripe
+      // alongside three hems: out there the background estimate is several
+      // pixels away and can reach past a bright wall to something darker.
+      const BAND_TOL = 14;
       for (let i = 0; i < N; i++) {
-        if (!ring[i] || distC[i] > RING || bgF.fd[i] < 0 || fgF.fd[i] < 0) continue;
-        const o = i * 4;
-        const yF = 0.299 * fgC[i * 3] + 0.587 * fgC[i * 3 + 1] + 0.114 * fgC[i * 3 + 2];
-        // The NEAR estimate, deliberately. It used to be the wrong reference
-        // here — an outline this test exists to find was exactly the kind of
-        // pixel that estimate reached for, so the test compared the outline
-        // against itself (189 against 189 on the shoulder that started this)
-        // and passed it. The seed rule above fixes that at the root: an
-        // overshoot can no longer seed, so the near estimate now reads the
-        // doorway behind the shoulder, 27.
-        //
-        // The far estimate is not a safe substitute. Where a limb is narrow the
-        // seed beyond the band is on the far side of it, so the far estimate of
-        // what is behind a sleeve is the road, and scaling bright skin down to
-        // that put a grey band along an armhole — 2 dark edge pixels became
-        // 644. A near estimate that is honest beats a far one out of position.
-        const yB = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
-        // Where the matte measured coverage, the hull collapses to a point: a
-        // pixel that is `a` fabric sits at a*fabric + (1-a)*background, not
-        // merely somewhere between them. Using that prediction rather than the
-        // brighter endpoint is what actually reaches the outline, because an
-        // unsharp overshoot is usually still below the fabric it hugs — inside
-        // the hull, and invisible to a hull test, while being far above what its
-        // own coverage can account for.
-        const cf = Math.max(0, Math.min(1, mConfS[i]));
-        const aE = mAlphaE[i];
-        const predicted = aE * yF + (1 - aE) * yB;
-        const hi = (cf > 0.3 ? predicted : Math.max(yF, yB)) + 12;
-        const yP = 0.299 * pd.data[o] + 0.587 * pd.data[o + 1] + 0.114 * pd.data[o + 2];
-        if (yP <= hi || yP < 1) continue;
-        const k = hi / yP;
-        pd.data[o] *= k; pd.data[o + 1] *= k; pd.data[o + 2] *= k;
+        if (!ring[i] || distC[i] > RING || bgF.fd[i] < 0) continue;
+        const o = i * 4, i3 = i * 3, sb = Math.round(shadeVal[i] * 255) * 3;
+        // The fabric endpoint is the MODELLED violet at this pixel's own shade,
+        // not the diffused photographic one: it is what the bake writes and what
+        // the runtime cancels, so a pixel already on that segment is untouched
+        // and a repaired one lands somewhere the runtime can recolour exactly.
+        const dr = lutVm[sb] - bgC[i3], dg = lutVm[sb + 1] - bgC[i3 + 1], db = lutVm[sb + 2] - bgC[i3 + 2];
+        const dd = dr * dr + dg * dg + db * db;
+        // Endpoints too close to define a direction: any residual is noise about
+        // a point, and projecting onto a point would flatten the edge.
+        if (dd < 400) continue;
+        const pr = pd.data[o] - bgC[i3], pg = pd.data[o + 1] - bgC[i3 + 1], pb = pd.data[o + 2] - bgC[i3 + 2];
+        let a = (pr * dr + pg * dg + pb * db) / dd;
+        if (a < 0) a = 0; else if (a > 1) a = 1;
+        const er = pr - a * dr, eg = pg - a * dg, eb = pb - a * db;
+        const res = Math.sqrt(er * er + eg * eg + eb * eb);
+        if (res <= BAND_TOL) continue;
+        const k = (res - BAND_TOL) / res;
+        pd.data[o] -= er * k; pd.data[o + 1] -= eg * k; pd.data[o + 2] -= eb * k;
       }
 
       pctx.putImageData(pd, 0, 0);
