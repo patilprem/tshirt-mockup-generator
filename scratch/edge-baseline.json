@@ -1,71 +1,71 @@
 {
-  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after guided-filter matting on the native grid took the mean from 172 to 100 - deliberately, with crops compared, never to make a red build green.",
+  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after the matte was allowed to reach the whole band - the warm-pixel veto removed, and the evidence guard restated as an invariant instead of a copy of the raw coverage - taking the mean from 100.2 to 87.4. Edited deliberately, with crops compared, never to make a red build green.",
   "beach-m": {
-    "edgeWidth": 2.75,
-    "edgeRough": 98.2
+    "edgeWidth": 2.86,
+    "edgeRough": 86.6
   },
   "bright-airy-f": {
-    "edgeWidth": 3.97,
-    "edgeRough": 85.0
+    "edgeWidth": 4.06,
+    "edgeRough": 72.9
   },
   "bright-minimal-m": {
-    "edgeWidth": 4.08,
-    "edgeRough": 91.9
+    "edgeWidth": 3.97,
+    "edgeRough": 77.2
   },
   "cafe-f": {
-    "edgeWidth": 4.05,
-    "edgeRough": 117.7
+    "edgeWidth": 3.95,
+    "edgeRough": 98.7
   },
   "gallery-f": {
-    "edgeWidth": 6.51,
-    "edgeRough": 84.8
+    "edgeWidth": 6.43,
+    "edgeRough": 73.6
   },
   "garden-path-longsleeve-f": {
-    "edgeWidth": 4.64,
-    "edgeRough": 87.3
+    "edgeWidth": 4.57,
+    "edgeRough": 82.9
   },
   "home-f": {
-    "edgeWidth": 3.58,
-    "edgeRough": 87.6
+    "edgeWidth": 3.63,
+    "edgeRough": 75.1
   },
   "livingroom-m": {
-    "edgeWidth": 4.23,
-    "edgeRough": 102.4
+    "edgeWidth": 3.95,
+    "edgeRough": 84.1
   },
   "marina-m": {
-    "edgeWidth": 2.99,
-    "edgeRough": 88.5
+    "edgeWidth": 2.97,
+    "edgeRough": 85.2
   },
   "miami-f": {
-    "edgeWidth": 3.56,
-    "edgeRough": 94.5
+    "edgeWidth": 3.45,
+    "edgeRough": 77.2
   },
   "park-m": {
-    "edgeWidth": 3.68,
-    "edgeRough": 103.3
+    "edgeWidth": 3.6,
+    "edgeRough": 79.9
   },
   "rooftop-hoodie-f": {
-    "edgeWidth": 3.79,
-    "edgeRough": 102.6
+    "edgeWidth": 3.68,
+    "edgeRough": 94.8
   },
   "sky-f": {
-    "edgeWidth": 4.22,
-    "edgeRough": 107.9
+    "edgeWidth": 4.23,
+    "edgeRough": 100.7
   },
   "stadium-hoodie-m": {
-    "edgeWidth": 3.85,
-    "edgeRough": 136.5
+    "edgeWidth": 3.97,
+    "edgeRough": 121.2
   },
   "street-m": {
-    "edgeWidth": 4.71,
-    "edgeRough": 91.0
+    "edgeWidth": 4.49,
+    "edgeRough": 80.1
   },
   "sunbeam-wall-f": {
-    "edgeWidth": 3.9,
-    "edgeRough": 109.1
+    "edgeWidth": 3.8,
+    "edgeRough": 100.7
   },
   "tree-lined-f": {
-    "edgeWidth": 4.96,
-    "edgeRough": 114.9
+    "edgeWidth": 4.59,
+    "edgeRough": 95.6
   }
 }

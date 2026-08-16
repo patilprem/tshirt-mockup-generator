@@ -1385,8 +1385,6 @@ const TEMPLATES = [
           const i3 = i * 3, sb = Math.round(shadeVal[i] * 255) * 3;
           const dr = lutVm[sb] - bgC[i3], dg = lutVm[sb + 1] - bgC[i3 + 1], db = lutVm[sb + 2] - bgC[i3 + 2];
           if (dr * dr + dg * dg + db * db < 2500) continue;
-          const o = i * 4;
-          if (src[o + 2] < src[o + 1] - 4 && src[o] > src[o + 1]) continue;
           elig[i] = 1;
         }
         // A pixel next to hair is eligible but must not be BUILT from hair, so
@@ -1544,10 +1542,23 @@ const TEMPLATES = [
           // The matte refines the border's SHAPE; it does not get to overrule direct
           // evidence that a pixel IS cloth. Where the ordering evidence is strong —
           // the same signal keyMiss counts, and the one that survives shadow because
-          // dimming leaves a colour's ordering alone — coverage may only rise. Without
+          // dimming leaves a colour's ordering alone — coverage is held up. Without
           // this the filter pulled shadowed fabric below half on bright-airy-f and
           // sky-f, and their violet came through on pink at 122 and 147 px.
-          if (orderEv[i] > 0.5 && a < A[i]) a = A[i];
+          //
+          // What is held up is the INVARIANT, not the number. The guard used to copy
+          // the raw coverage back in wherever it was higher, which reinstated the very
+          // staircase the matte had just resolved — the raw field is quantised to whole
+          // source pixels and the copy dragged that quantisation through. The evidence
+          // says two things and only two: this neighbourhood is cloth, so coverage may
+          // not fall below the neighbourhood's own smoothed value; and a pixel the raw
+          // reading calls majority cloth stays majority cloth, which is exactly what
+          // keyMiss asserts. Stating it that way took cafe-f from 112.5 to 98.7 and
+          // livingroom-m from 91.2 to 84.1 with keyMiss unchanged on every template.
+          if (orderEv[i] > 0.5) {
+            if (a < Ab[i]) a = Ab[i];
+            if (A[i] >= 0.5 && a < 0.5) a = 0.5;
+          }
           // The border may be tidied, never marched. Half a pixel is the width of
           // the quantisation being removed; beyond that the outline would be
           // changing shape, which is a different thing and not wanted.
