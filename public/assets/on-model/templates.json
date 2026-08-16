@@ -6,12 +6,12 @@
     "scene": "Minimal off-white interior",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/gallery-f-photo.jpg?v=7e2851fd",
-    "weight": "/assets/on-model/gallery-f-weight.png?v=d8f65e6b",
-    "shade": "/assets/on-model/gallery-f-shade.jpg?v=6b371859",
-    "thumbPhoto": "/assets/on-model/gallery-f-thumb-photo.jpg?v=12499307",
-    "thumbWeight": "/assets/on-model/gallery-f-thumb-weight.png?v=8e788bdb",
-    "thumbShade": "/assets/on-model/gallery-f-thumb-shade.jpg?v=b62a4616",
+    "photo": "/assets/on-model/gallery-f-photo.jpg?v=fe5a0c88",
+    "weight": "/assets/on-model/gallery-f-weight.png?v=9cf8445e",
+    "shade": "/assets/on-model/gallery-f-shade.jpg?v=733ab59f",
+    "thumbPhoto": "/assets/on-model/gallery-f-thumb-photo.jpg?v=5bff2bc6",
+    "thumbWeight": "/assets/on-model/gallery-f-thumb-weight.png?v=9b03d3f8",
+    "thumbShade": "/assets/on-model/gallery-f-thumb-shade.jpg?v=e6e8165a",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -27,27 +27,27 @@
     ],
     "quad": {
       "tl": [
-        405.3,
+        405.44000000000005,
         780
       ],
       "tr": [
-        665.7,
+        666.5600000000001,
         780
       ],
       "br": [
-        652.2,
-        1050
+        652.5600000000001,
+        1050.4
       ],
       "bl": [
-        391.8,
-        1050
+        391.44000000000005,
+        1050.4
       ]
     },
     "bbox": {
-      "x": 173,
-      "y": 635,
-      "w": 726,
-      "h": 691
+      "x": 172.8,
+      "y": 634.4000000000001,
+      "w": 726.4000000000001,
+      "h": 692.8000000000001
     }
   },
   {
@@ -57,12 +57,12 @@
     "scene": "Bright airy living room",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/livingroom-m-photo.jpg?v=980d50cb",
-    "weight": "/assets/on-model/livingroom-m-weight.png?v=5a8f5a2d",
-    "shade": "/assets/on-model/livingroom-m-shade.jpg?v=fc5808d2",
-    "thumbPhoto": "/assets/on-model/livingroom-m-thumb-photo.jpg?v=5e5e7c06",
-    "thumbWeight": "/assets/on-model/livingroom-m-thumb-weight.png?v=83fd4f4f",
-    "thumbShade": "/assets/on-model/livingroom-m-thumb-shade.jpg?v=49fee9c7",
+    "photo": "/assets/on-model/livingroom-m-photo.jpg?v=c4f280cd",
+    "weight": "/assets/on-model/livingroom-m-weight.png?v=43416466",
+    "shade": "/assets/on-model/livingroom-m-shade.jpg?v=de9caca1",
+    "thumbPhoto": "/assets/on-model/livingroom-m-thumb-photo.jpg?v=0840258e",
+    "thumbWeight": "/assets/on-model/livingroom-m-thumb-weight.png?v=aee75213",
+    "thumbShade": "/assets/on-model/livingroom-m-thumb-shade.jpg?v=8e02c0a8",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -78,27 +78,27 @@
     ],
     "quad": {
       "tl": [
-        464.7,
+        464.56000000000006,
         680
       ],
       "tr": [
-        690.3,
+        690.64,
         680
       ],
       "br": [
-        701.3,
+        701.84,
         972
       ],
       "bl": [
-        475.7,
+        475.76000000000005,
         972
       ]
     },
     "bbox": {
-      "x": 286,
-      "y": 522,
-      "w": 601,
-      "h": 750
+      "x": 285.6,
+      "y": 522.4,
+      "w": 601.6,
+      "h": 749.6
     }
   },
   {
@@ -108,12 +108,12 @@
     "scene": "Sunlit pavement outside a cafe",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/street-m-photo.jpg?v=0ff4a358",
-    "weight": "/assets/on-model/street-m-weight.png?v=799638f1",
-    "shade": "/assets/on-model/street-m-shade.jpg?v=cff30212",
-    "thumbPhoto": "/assets/on-model/street-m-thumb-photo.jpg?v=eae6cd5f",
-    "thumbWeight": "/assets/on-model/street-m-thumb-weight.png?v=e646df13",
-    "thumbShade": "/assets/on-model/street-m-thumb-shade.jpg?v=7fbb349c",
+    "photo": "/assets/on-model/street-m-photo.jpg?v=209edb1a",
+    "weight": "/assets/on-model/street-m-weight.png?v=c5e7afac",
+    "shade": "/assets/on-model/street-m-shade.jpg?v=363cc6cf",
+    "thumbPhoto": "/assets/on-model/street-m-thumb-photo.jpg?v=890b5917",
+    "thumbWeight": "/assets/on-model/street-m-thumb-weight.png?v=1a8c9fc1",
+    "thumbShade": "/assets/on-model/street-m-thumb-shade.jpg?v=4c5a6b30",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -123,33 +123,33 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      115.5,
-      80.4,
+      114.4,
+      79.7,
       144
     ],
     "quad": {
       "tl": [
-        434.6,
-        731
+        434.56000000000006,
+        730.4000000000001
       ],
       "tr": [
-        703.4,
-        731
+        703.84,
+        730.4000000000001
       ],
       "br": [
-        704.9,
-        1022
+        705.04,
+        1021.6
       ],
       "bl": [
-        436.1,
-        1022
+        435.76000000000005,
+        1021.6
       ]
     },
     "bbox": {
-      "x": 201,
-      "y": 574,
-      "w": 738,
-      "h": 746
+      "x": 200.8,
+      "y": 573.6,
+      "w": 739.2,
+      "h": 747.2
     }
   },
   {
@@ -159,12 +159,12 @@
     "scene": "Green park path, open shade",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/park-m-photo.jpg?v=0c5ed0ba",
-    "weight": "/assets/on-model/park-m-weight.png?v=74ca1611",
-    "shade": "/assets/on-model/park-m-shade.jpg?v=dc30c73e",
-    "thumbPhoto": "/assets/on-model/park-m-thumb-photo.jpg?v=482a7d1d",
-    "thumbWeight": "/assets/on-model/park-m-thumb-weight.png?v=d22ad890",
-    "thumbShade": "/assets/on-model/park-m-thumb-shade.jpg?v=1ad43676",
+    "photo": "/assets/on-model/park-m-photo.jpg?v=424c146c",
+    "weight": "/assets/on-model/park-m-weight.png?v=07af2187",
+    "shade": "/assets/on-model/park-m-shade.jpg?v=8848cefb",
+    "thumbPhoto": "/assets/on-model/park-m-thumb-photo.jpg?v=787deddd",
+    "thumbWeight": "/assets/on-model/park-m-thumb-weight.png?v=5ebb61ae",
+    "thumbShade": "/assets/on-model/park-m-thumb-shade.jpg?v=d95667cd",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -174,33 +174,33 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      116.2,
-      80.9,
+      115.2,
+      81.5,
       154
     ],
     "quad": {
       "tl": [
-        458.6,
+        458.96000000000004,
         748
       ],
       "tr": [
-        691.4,
+        692.24,
         748
       ],
       "br": [
-        688.9,
+        689.44,
         1028
       ],
       "bl": [
-        456.1,
+        456.1600000000001,
         1028
       ]
     },
     "bbox": {
-      "x": 269,
-      "y": 597,
-      "w": 607,
-      "h": 718
+      "x": 268.8,
+      "y": 596.8000000000001,
+      "w": 608,
+      "h": 718.4000000000001
     }
   },
   {
@@ -210,12 +210,12 @@
     "scene": "home indoor",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/home-f-photo.jpg?v=56723708",
-    "weight": "/assets/on-model/home-f-weight.png?v=443fae3d",
-    "shade": "/assets/on-model/home-f-shade.jpg?v=89405a4a",
-    "thumbPhoto": "/assets/on-model/home-f-thumb-photo.jpg?v=13f9b494",
-    "thumbWeight": "/assets/on-model/home-f-thumb-weight.png?v=4be187d4",
-    "thumbShade": "/assets/on-model/home-f-thumb-shade.jpg?v=59f0732a",
+    "photo": "/assets/on-model/home-f-photo.jpg?v=9bdd055f",
+    "weight": "/assets/on-model/home-f-weight.png?v=5fa5567c",
+    "shade": "/assets/on-model/home-f-shade.jpg?v=6f3f65e2",
+    "thumbPhoto": "/assets/on-model/home-f-thumb-photo.jpg?v=29402030",
+    "thumbWeight": "/assets/on-model/home-f-thumb-weight.png?v=fd219a32",
+    "thumbShade": "/assets/on-model/home-f-thumb-shade.jpg?v=b9c96804",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -231,78 +231,27 @@
     ],
     "quad": {
       "tl": [
-        403.20000000000005,
-        711
+        402.8,
+        711.2
       ],
       "tr": [
-        721.8,
-        711
+        722,
+        711.2
       ],
       "br": [
-        741.3,
-        1057
+        741.6,
+        1056.8
       ],
       "bl": [
-        422.70000000000005,
-        1057
+        422.40000000000003,
+        1056.8
       ]
     },
     "bbox": {
-      "x": 161,
-      "y": 525,
-      "w": 792,
-      "h": 887
-    }
-  },
-  {
-    "id": "bright-airy-f",
-    "label": "Bright Airy",
-    "model": "female",
-    "scene": "Bright airy coffee shop, pale wood",
-    "width": 1066,
-    "height": 1600,
-    "photo": "/assets/on-model/bright-airy-f-photo.jpg?v=d2f2b074",
-    "weight": "/assets/on-model/bright-airy-f-weight.png?v=f6fcf523",
-    "shade": "/assets/on-model/bright-airy-f-shade.jpg?v=b0071ff0",
-    "thumbPhoto": "/assets/on-model/bright-airy-f-thumb-photo.jpg?v=45ceef26",
-    "thumbWeight": "/assets/on-model/bright-airy-f-thumb-weight.png?v=0525d3d1",
-    "thumbShade": "/assets/on-model/bright-airy-f-thumb-shade.jpg?v=dbca9f6d",
-    "thumbWidth": 112,
-    "thumbHeight": 168,
-    "ambientTint": [
-      0.9848,
-      1,
-      0.9848
-    ],
-    "relMax": 1.45,
-    "violetBase": [
-      119.7,
-      76.7,
-      152
-    ],
-    "quad": {
-      "tl": [
-        342.4,
-        801
-      ],
-      "tr": [
-        691.6,
-        801
-      ],
-      "br": [
-        698.1,
-        1179
-      ],
-      "bl": [
-        348.9,
-        1179
-      ]
-    },
-    "bbox": {
-      "x": 126,
-      "y": 598,
-      "w": 852,
-      "h": 968
+      "x": 161.60000000000002,
+      "y": 524.8000000000001,
+      "w": 791.2,
+      "h": 887.2
     }
   },
   {
@@ -312,12 +261,12 @@
     "scene": "palm-lined street",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/miami-f-photo.jpg?v=d6f9ecd9",
-    "weight": "/assets/on-model/miami-f-weight.png?v=609b99d7",
-    "shade": "/assets/on-model/miami-f-shade.jpg?v=5f7e02a2",
-    "thumbPhoto": "/assets/on-model/miami-f-thumb-photo.jpg?v=cae9bb95",
-    "thumbWeight": "/assets/on-model/miami-f-thumb-weight.png?v=5b9b4850",
-    "thumbShade": "/assets/on-model/miami-f-thumb-shade.jpg?v=4c680ee9",
+    "photo": "/assets/on-model/miami-f-photo.jpg?v=e1061e72",
+    "weight": "/assets/on-model/miami-f-weight.png?v=a178cddd",
+    "shade": "/assets/on-model/miami-f-shade.jpg?v=16a9ddf2",
+    "thumbPhoto": "/assets/on-model/miami-f-thumb-photo.jpg?v=e6de3a74",
+    "thumbWeight": "/assets/on-model/miami-f-thumb-weight.png?v=8c647edc",
+    "thumbShade": "/assets/on-model/miami-f-thumb-shade.jpg?v=cca72e0c",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -327,26 +276,26 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      120.1,
-      75.2,
-      157
+      122.2,
+      75.7,
+      158
     ],
     "quad": {
       "tl": [
-        389.5,
-        723
+        389.12,
+        722.4000000000001
       ],
       "tr": [
-        680.5,
-        723
+        680.48,
+        722.4000000000001
       ],
       "br": [
-        690.5,
-        1047
+        690.8800000000001,
+        1047.2
       ],
       "bl": [
-        399.5,
-        1047
+        399.52,
+        1047.2
       ]
     },
     "bbox": {
@@ -363,12 +312,12 @@
     "scene": "Bright minimal grey walls, soft daylight",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/bright-minimal-m-photo.jpg?v=b6024e11",
-    "weight": "/assets/on-model/bright-minimal-m-weight.png?v=d79bdb17",
-    "shade": "/assets/on-model/bright-minimal-m-shade.jpg?v=fbe00c71",
-    "thumbPhoto": "/assets/on-model/bright-minimal-m-thumb-photo.jpg?v=2f879163",
-    "thumbWeight": "/assets/on-model/bright-minimal-m-thumb-weight.png?v=5f00cf5e",
-    "thumbShade": "/assets/on-model/bright-minimal-m-thumb-shade.jpg?v=d423faeb",
+    "photo": "/assets/on-model/bright-minimal-m-photo.jpg?v=009c0871",
+    "weight": "/assets/on-model/bright-minimal-m-weight.png?v=fa956a6c",
+    "shade": "/assets/on-model/bright-minimal-m-shade.jpg?v=3c57ac4a",
+    "thumbPhoto": "/assets/on-model/bright-minimal-m-thumb-photo.jpg?v=eb72d1b2",
+    "thumbWeight": "/assets/on-model/bright-minimal-m-thumb-weight.png?v=cafef596",
+    "thumbShade": "/assets/on-model/bright-minimal-m-thumb-shade.jpg?v=189d2d30",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -379,32 +328,32 @@
     "relMax": 1.45,
     "violetBase": [
       111.8,
-      68.5,
+      69.7,
       143
     ],
     "quad": {
       "tl": [
-        388,
-        737
+        387.6,
+        737.6
       ],
       "tr": [
-        697,
-        737
+        697.2,
+        737.6
       ],
       "br": [
-        695.5,
-        1109
+        695.6,
+        1109.6000000000001
       ],
       "bl": [
-        386.5,
-        1109
+        386,
+        1109.6000000000001
       ]
     },
     "bbox": {
-      "x": 127,
-      "y": 537,
-      "w": 829,
-      "h": 954
+      "x": 127.2,
+      "y": 537.6,
+      "w": 828.8000000000001,
+      "h": 953.6
     }
   },
   {
@@ -414,12 +363,12 @@
     "scene": "Bright cafe, window light, barista counter behind",
     "width": 1285,
     "height": 1600,
-    "photo": "/assets/on-model/cafe-f-photo.jpg?v=cad8b0d5",
-    "weight": "/assets/on-model/cafe-f-weight.png?v=ed9c1cab",
-    "shade": "/assets/on-model/cafe-f-shade.jpg?v=0d76a260",
-    "thumbPhoto": "/assets/on-model/cafe-f-thumb-photo.jpg?v=da48c5b2",
-    "thumbWeight": "/assets/on-model/cafe-f-thumb-weight.png?v=1f0eec7c",
-    "thumbShade": "/assets/on-model/cafe-f-thumb-shade.jpg?v=b86d9684",
+    "photo": "/assets/on-model/cafe-f-photo.jpg?v=b50fcdb0",
+    "weight": "/assets/on-model/cafe-f-weight.png?v=fb5d5ff9",
+    "shade": "/assets/on-model/cafe-f-shade.jpg?v=9885f7db",
+    "thumbPhoto": "/assets/on-model/cafe-f-thumb-photo.jpg?v=b9f08e0a",
+    "thumbWeight": "/assets/on-model/cafe-f-thumb-weight.png?v=1a806b18",
+    "thumbShade": "/assets/on-model/cafe-f-thumb-shade.jpg?v=8082ded4",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -429,33 +378,33 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      100.3,
+      101.6,
       60.2,
       131
     ],
     "quad": {
       "tl": [
-        527.1,
-        681
+        527.2800000000001,
+        680.8000000000001
       ],
       "tr": [
-        756.9,
-        681
+        756.72,
+        680.8000000000001
       ],
       "br": [
-        751.4,
-        968
+        751.52,
+        968.8000000000001
       ],
       "bl": [
-        521.6,
-        968
+        522.08,
+        968.8000000000001
       ]
     },
     "bbox": {
-      "x": 241,
-      "y": 526,
-      "w": 793,
-      "h": 736
+      "x": 240.8,
+      "y": 526.4,
+      "w": 793.6,
+      "h": 736.8000000000001
     }
   },
   {
@@ -465,12 +414,12 @@
     "scene": "Sandy beach, open sky, sea behind",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/beach-m-photo.jpg?v=dfda919a",
-    "weight": "/assets/on-model/beach-m-weight.png?v=71810e60",
-    "shade": "/assets/on-model/beach-m-shade.jpg?v=ead49774",
-    "thumbPhoto": "/assets/on-model/beach-m-thumb-photo.jpg?v=8b7732b8",
-    "thumbWeight": "/assets/on-model/beach-m-thumb-weight.png?v=26a60a3b",
-    "thumbShade": "/assets/on-model/beach-m-thumb-shade.jpg?v=f8a9cb01",
+    "photo": "/assets/on-model/beach-m-photo.jpg?v=9b641c07",
+    "weight": "/assets/on-model/beach-m-weight.png?v=b6919085",
+    "shade": "/assets/on-model/beach-m-shade.jpg?v=18a4dbee",
+    "thumbPhoto": "/assets/on-model/beach-m-thumb-photo.jpg?v=bbc18a14",
+    "thumbWeight": "/assets/on-model/beach-m-thumb-weight.png?v=12a4983f",
+    "thumbShade": "/assets/on-model/beach-m-thumb-shade.jpg?v=92a3bca8",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -480,33 +429,33 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      100.1,
-      63,
-      131
+      99.9,
+      62.9,
+      132
     ],
     "quad": {
       "tl": [
-        383.70000000000005,
+        383.36000000000007,
         640
       ],
       "tr": [
-        720.3,
+        719.84,
         640
       ],
       "br": [
-        719.8,
+        719.84,
         1040
       ],
       "bl": [
-        383.20000000000005,
+        383.36000000000007,
         1040
       ]
     },
     "bbox": {
-      "x": 134,
-      "y": 425,
-      "w": 851,
-      "h": 1025
+      "x": 133.6,
+      "y": 424.8,
+      "w": 852,
+      "h": 1025.6000000000001
     }
   },
   {
@@ -516,48 +465,48 @@
     "scene": "Marina railing, boats and open water",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/marina-m-photo.jpg?v=0e462d69",
-    "weight": "/assets/on-model/marina-m-weight.png?v=27a60134",
-    "shade": "/assets/on-model/marina-m-shade.jpg?v=ad56584c",
-    "thumbPhoto": "/assets/on-model/marina-m-thumb-photo.jpg?v=37d835ef",
-    "thumbWeight": "/assets/on-model/marina-m-thumb-weight.png?v=55df8bf4",
-    "thumbShade": "/assets/on-model/marina-m-thumb-shade.jpg?v=64290197",
+    "photo": "/assets/on-model/marina-m-photo.jpg?v=e74db105",
+    "weight": "/assets/on-model/marina-m-weight.png?v=c2b16207",
+    "shade": "/assets/on-model/marina-m-shade.jpg?v=71a6ebd0",
+    "thumbPhoto": "/assets/on-model/marina-m-thumb-photo.jpg?v=5549e384",
+    "thumbWeight": "/assets/on-model/marina-m-thumb-weight.png?v=f9039f25",
+    "thumbShade": "/assets/on-model/marina-m-thumb-shade.jpg?v=7a1cd2f4",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
       1,
-      0.9608,
-      0.951
+      0.9561,
+      0.9512
     ],
     "relMax": 1.45,
     "violetBase": [
       96.5,
-      62.4,
+      63.6,
       151
     ],
     "quad": {
       "tl": [
-        392,
-        609
+        392.65625,
+        609.375
       ],
       "tr": [
-        668,
-        609
+        668.28125,
+        609.375
       ],
       "br": [
-        659,
-        965
+        658.515625,
+        964.84375
       ],
       "bl": [
-        383,
-        965
+        382.890625,
+        964.84375
       ]
     },
     "bbox": {
-      "x": 122,
-      "y": 418,
-      "w": 776,
-      "h": 911
+      "x": 121.875,
+      "y": 417.96875,
+      "w": 775.78125,
+      "h": 911.71875
     }
   },
   {
@@ -567,12 +516,12 @@
     "scene": "Open pale sky, soft daylight",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/sky-f-photo.jpg?v=d7325d64",
-    "weight": "/assets/on-model/sky-f-weight.png?v=fd0b3095",
-    "shade": "/assets/on-model/sky-f-shade.jpg?v=7e254b64",
-    "thumbPhoto": "/assets/on-model/sky-f-thumb-photo.jpg?v=aa4b5cc4",
-    "thumbWeight": "/assets/on-model/sky-f-thumb-weight.png?v=0d78ba29",
-    "thumbShade": "/assets/on-model/sky-f-thumb-shade.jpg?v=d96d286a",
+    "photo": "/assets/on-model/sky-f-photo.jpg?v=c9587662",
+    "weight": "/assets/on-model/sky-f-weight.png?v=a45bf936",
+    "shade": "/assets/on-model/sky-f-shade.jpg?v=d514517c",
+    "thumbPhoto": "/assets/on-model/sky-f-thumb-photo.jpg?v=7bad1c58",
+    "thumbWeight": "/assets/on-model/sky-f-thumb-weight.png?v=6218f991",
+    "thumbShade": "/assets/on-model/sky-f-thumb-shade.jpg?v=5667ad8b",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -582,84 +531,33 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      103.1,
-      61.9,
+      102.4,
+      61.4,
       157
     ],
     "quad": {
       "tl": [
-        402.70000000000005,
-        705
+        402.89062500000006,
+        704.6875
       ],
       "tr": [
-        682.3,
-        705
+        682.265625,
+        704.6875
       ],
       "br": [
-        679.8,
-        972
+        679.921875,
+        971.875
       ],
       "bl": [
-        400.20000000000005,
-        972
+        400.54687500000006,
+        971.875
       ]
     },
     "bbox": {
       "x": 175,
-      "y": 561,
+      "y": 560.9375,
       "w": 725,
-      "h": 685
-    }
-  },
-  {
-    "id": "rooftop-hoodie-f",
-    "label": "Rooftop Hoodie",
-    "model": "female",
-    "scene": "Rooftop skyline, overcast light",
-    "width": 1290,
-    "height": 1600,
-    "photo": "/assets/on-model/rooftop-hoodie-f-photo.jpg?v=d8abcfba",
-    "weight": "/assets/on-model/rooftop-hoodie-f-weight.png?v=d3ce2bdd",
-    "shade": "/assets/on-model/rooftop-hoodie-f-shade.jpg?v=a0d96d4f",
-    "thumbPhoto": "/assets/on-model/rooftop-hoodie-f-thumb-photo.jpg?v=a5f2b049",
-    "thumbWeight": "/assets/on-model/rooftop-hoodie-f-thumb-weight.png?v=8862b510",
-    "thumbShade": "/assets/on-model/rooftop-hoodie-f-thumb-shade.jpg?v=a6962dc3",
-    "thumbWidth": 112,
-    "thumbHeight": 168,
-    "ambientTint": [
-      0.9815,
-      0.9815,
-      1
-    ],
-    "relMax": 1.45,
-    "violetBase": [
-      95.7,
-      65.7,
-      148
-    ],
-    "quad": {
-      "tl": [
-        477,
-        695
-      ],
-      "tr": [
-        903,
-        695
-      ],
-      "br": [
-        813,
-        1066
-      ],
-      "bl": [
-        387,
-        1066
-      ]
-    },
-    "bbox": {
-      "x": 269,
-      "y": 495,
-      "w": 807,
-      "h": 951
+      "h": 685.15625
     }
   },
   {
@@ -669,12 +567,12 @@
     "scene": "Warm plaster wall, diagonal light beam",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/sunbeam-wall-f-photo.jpg?v=367a4e6e",
-    "weight": "/assets/on-model/sunbeam-wall-f-weight.png?v=b9f56f0e",
-    "shade": "/assets/on-model/sunbeam-wall-f-shade.jpg?v=8d0a3129",
-    "thumbPhoto": "/assets/on-model/sunbeam-wall-f-thumb-photo.jpg?v=03639813",
-    "thumbWeight": "/assets/on-model/sunbeam-wall-f-thumb-weight.png?v=4276387b",
-    "thumbShade": "/assets/on-model/sunbeam-wall-f-thumb-shade.jpg?v=aeab7ff5",
+    "photo": "/assets/on-model/sunbeam-wall-f-photo.jpg?v=1d8114c8",
+    "weight": "/assets/on-model/sunbeam-wall-f-weight.png?v=4a3160de",
+    "shade": "/assets/on-model/sunbeam-wall-f-shade.jpg?v=4192c9b6",
+    "thumbPhoto": "/assets/on-model/sunbeam-wall-f-thumb-photo.jpg?v=cba8a87a",
+    "thumbWeight": "/assets/on-model/sunbeam-wall-f-thumb-weight.png?v=e73aff5f",
+    "thumbShade": "/assets/on-model/sunbeam-wall-f-thumb-shade.jpg?v=58d29167",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -684,135 +582,33 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      116.1,
-      75,
+      116.4,
+      75.6,
       156
     ],
     "quad": {
       "tl": [
-        400.1,
-        634
+        399.84375,
+        634.375
       ],
       "tr": [
-        647.9,
-        634
+        647.8125,
+        634.375
       ],
       "br": [
-        633.4,
-        906
+        633.359375,
+        905.46875
       ],
       "bl": [
-        385.6,
-        906
+        385.390625,
+        905.46875
       ]
     },
     "bbox": {
-      "x": 182,
-      "y": 488,
-      "w": 669,
-      "h": 696
-    }
-  },
-  {
-    "id": "tree-lined-f",
-    "label": "Tree-Lined Street",
-    "model": "female",
-    "scene": "Leafy residential street",
-    "width": 1066,
-    "height": 1600,
-    "photo": "/assets/on-model/tree-lined-f-photo.jpg?v=275eb4f8",
-    "weight": "/assets/on-model/tree-lined-f-weight.png?v=11afdf4d",
-    "shade": "/assets/on-model/tree-lined-f-shade.jpg?v=d0d8624c",
-    "thumbPhoto": "/assets/on-model/tree-lined-f-thumb-photo.jpg?v=10c1c0bc",
-    "thumbWeight": "/assets/on-model/tree-lined-f-thumb-weight.png?v=13288787",
-    "thumbShade": "/assets/on-model/tree-lined-f-thumb-shade.jpg?v=7bd8a691",
-    "thumbWidth": 112,
-    "thumbHeight": 168,
-    "ambientTint": [
-      1,
-      0.9815,
-      0.963
-    ],
-    "relMax": 1.45,
-    "violetBase": [
-      112.6,
-      79.7,
-      163
-    ],
-    "quad": {
-      "tl": [
-        404.6,
-        634
-      ],
-      "tr": [
-        658.4,
-        634
-      ],
-      "br": [
-        652.9,
-        921
-      ],
-      "bl": [
-        399.1,
-        921
-      ]
-    },
-    "bbox": {
-      "x": 141,
-      "y": 479,
-      "w": 771,
-      "h": 737
-    }
-  },
-  {
-    "id": "stadium-hoodie-m",
-    "label": "Stadium Hoodie",
-    "model": "male",
-    "scene": "Empty stadium seating, pitch behind",
-    "width": 1067,
-    "height": 1600,
-    "photo": "/assets/on-model/stadium-hoodie-m-photo.jpg?v=a940819a",
-    "weight": "/assets/on-model/stadium-hoodie-m-weight.png?v=08fab74b",
-    "shade": "/assets/on-model/stadium-hoodie-m-shade.jpg?v=b6f0dacd",
-    "thumbPhoto": "/assets/on-model/stadium-hoodie-m-thumb-photo.jpg?v=5a7e9389",
-    "thumbWeight": "/assets/on-model/stadium-hoodie-m-thumb-weight.png?v=b76f79fc",
-    "thumbShade": "/assets/on-model/stadium-hoodie-m-thumb-shade.jpg?v=81f8d0d1",
-    "thumbWidth": 112,
-    "thumbHeight": 168,
-    "ambientTint": [
-      1,
-      0.9593,
-      0.9477
-    ],
-    "relMax": 1.45,
-    "violetBase": [
-      98.3,
-      59.7,
-      144
-    ],
-    "quad": {
-      "tl": [
-        361.70000000000005,
-        590
-      ],
-      "tr": [
-        737.3,
-        590
-      ],
-      "br": [
-        691.8,
-        952
-      ],
-      "bl": [
-        316.20000000000005,
-        952
-      ]
-    },
-    "bbox": {
-      "x": 193,
-      "y": 396,
-      "w": 710,
-      "h": 926
+      "x": 181.25,
+      "y": 488.28125,
+      "w": 669.53125,
+      "h": 695.3125
     }
   },
   {
@@ -822,48 +618,48 @@
     "scene": "Leafy garden path, soft even light",
     "width": 1066,
     "height": 1600,
-    "photo": "/assets/on-model/garden-path-longsleeve-f-photo.jpg?v=3a384156",
-    "weight": "/assets/on-model/garden-path-longsleeve-f-weight.png?v=a7762bd3",
-    "shade": "/assets/on-model/garden-path-longsleeve-f-shade.jpg?v=5043a79e",
-    "thumbPhoto": "/assets/on-model/garden-path-longsleeve-f-thumb-photo.jpg?v=ce2c616e",
-    "thumbWeight": "/assets/on-model/garden-path-longsleeve-f-thumb-weight.png?v=601f09df",
-    "thumbShade": "/assets/on-model/garden-path-longsleeve-f-thumb-shade.jpg?v=eb024f4a",
+    "photo": "/assets/on-model/garden-path-longsleeve-f-photo.jpg?v=d7639492",
+    "weight": "/assets/on-model/garden-path-longsleeve-f-weight.png?v=406be0c9",
+    "shade": "/assets/on-model/garden-path-longsleeve-f-shade.jpg?v=025dcb03",
+    "thumbPhoto": "/assets/on-model/garden-path-longsleeve-f-thumb-photo.jpg?v=94a3029b",
+    "thumbWeight": "/assets/on-model/garden-path-longsleeve-f-thumb-weight.png?v=1ea6651a",
+    "thumbShade": "/assets/on-model/garden-path-longsleeve-f-thumb-shade.jpg?v=0dc24e2e",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
       1,
       0.9341,
-      0.9222
+      0.9281
     ],
     "relMax": 1.45,
     "violetBase": [
-      121.8,
+      121.7,
       67.9,
-      164
+      165
     ],
     "quad": {
       "tl": [
-        367.1,
-        716
+        367.03125,
+        720.3125
       ],
       "tr": [
-        734.9,
-        716
+        734.53125,
+        720.3125
       ],
       "br": [
-        711.4,
-        1067
+        708.75,
+        1079.6875
       ],
       "bl": [
-        343.6,
-        1067
+        341.25,
+        1079.6875
       ]
     },
     "bbox": {
-      "x": 145,
-      "y": 527,
-      "w": 798,
-      "h": 900
+      "x": 145.3125,
+      "y": 526.5625,
+      "w": 797.65625,
+      "h": 921.875
     }
   }
 ]

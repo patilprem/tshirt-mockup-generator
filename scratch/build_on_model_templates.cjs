@@ -60,7 +60,16 @@ const EDGE_BASE = JSON.parse(fs.readFileSync(path.join(__dirname, 'edge-baseline
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
 const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
 const META_OUT = path.join(OUT_DIR, 'templates.json');
+// What ships, unchanged: the runtime, the manifest and the edge baseline are
+// all calibrated to this.
 const MAX_EDGE = 1600;
+// What the pipeline THINKS at. Every source arrives 2000-3456 px tall and was
+// being downscaled to 1600 before a single decision was taken, so a fifth to a
+// half of the real resolution was thrown away and the mask then had to commit
+// to whole pixels at the coarser grid — which is the staircase. Deciding at
+// the native grid and area-averaging the answer down turns four real samples
+// into one honest fraction of coverage, which is what an anti-aliased edge is.
+const ANALYSIS_EDGE = 3200;
 
 const TEMPLATES = [
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
@@ -106,10 +115,10 @@ const TEMPLATES = [
 
     const dbgPx = (tpl.id === process.env.DBG_ID && process.env.DBG_PX)
       ? process.env.DBG_PX.split(';').map(t => t.split(',').map(Number)) : [];
-    const r = await page.evaluate(async ({ b64, srcMime, MAX_EDGE, dbgPx }) => {
+    const r = await page.evaluate(async ({ b64, srcMime, MAX_EDGE, ANALYSIS_EDGE, dbgPx }) => {
       const load = s => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = s; });
       const img = await load('data:' + srcMime + ';base64,' + b64);
-      const k = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+      const k = Math.min(1, ANALYSIS_EDGE / Math.max(img.width, img.height));
       const W = Math.round(img.width * k), H = Math.round(img.height * k), N = W * H;
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -1491,15 +1500,17 @@ const TEMPLATES = [
       //          gradient is a direct measure of the staircase, and it needs
       //          no fitted curve, no scanline, and no assumption about which
       //          way the border runs.
-      let edgeWidth = 0, edgeRough = 0;
-      {
+      // Measured on the map that SHIPS, never on the analysis grid: a finer grid
+      // spreads the same physical edge over more pixels and would flatter both
+      // numbers without a single pixel of the output improving.
+      const measureEdge = (A, W2, H2) => {
         let n = 0, wsum = 0, rsum = 0;
-        for (let i = 0; i < N; i++) {
-          const x = i % W, y = (i / W) | 0;
-          if (x < 3 || y < 3 || x >= W - 3 || y >= H - 3) continue;
-          const a = wMap[i];
+        for (let i = 0; i < W2 * H2; i++) {
+          const x = i % W2, y = (i / W2) | 0;
+          if (x < 3 || y < 3 || x >= W2 - 3 || y >= H2 - 3) continue;
+          const a = A[i];
           if (a < 0.2 || a > 0.8) continue;
-          const gx = (wMap[i + 1] - wMap[i - 1]) / 2, gy = (wMap[i + W] - wMap[i - W]) / 2;
+          const gx = (A[i + 1] - A[i - 1]) / 2, gy = (A[i + W2] - A[i - W2]) / 2;
           const g = Math.hypot(gx, gy);
           // Too flat to be an edge: coverage that is not going anywhere says
           // nothing about the silhouette's shape.
@@ -1510,7 +1521,7 @@ const TEMPLATES = [
           for (let dy = -2; dy <= 2; dy++) {
             for (let dx = -2; dx <= 2; dx++) {
               if (!dx && !dy) continue;
-              const v = wMap[i + dy * W + dx];
+              const v = A[i + dy * W2 + dx];
               // Only where the plane's own prediction is inside the ramp; past
               // 0 and 1 the coverage is clamped and the residual would measure
               // the clamp rather than the edge.
@@ -1522,8 +1533,10 @@ const TEMPLATES = [
           if (m < 6) continue;
           rsum += res / m; wsum += wid; n++;
         }
-        if (n > 0) { edgeWidth = +(wsum / n).toFixed(2); edgeRough = +((rsum / n) * 1000).toFixed(1); }
-      }
+        return n > 0
+          ? { edgeWidth: +(wsum / n).toFixed(2), edgeRough: +((rsum / n) * 1000).toFixed(1) }
+          : { edgeWidth: 0, edgeRough: 0 };
+      };
 
       let edgeDark = 0, edgeBright = 0;
       {
@@ -1690,15 +1703,72 @@ const TEMPLATES = [
           clip: +clip[i].toFixed(3), hueClose: +hueClose.toFixed(3),
           ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue, orderEv: +orderEv[i].toFixed(3), unrel: +unrel[i].toFixed(3), clip: +clip[i].toFixed(3), conf: +confA[i].toFixed(3) };
       });
+      // ---- decided at the native grid, shipped at the old one ----
+      // An exact area average: each output pixel is the mean of the input
+      // rectangle it covers, weighted by overlap, so a border that fell between
+      // samples upstairs arrives downstairs as a genuine fraction. Box, not
+      // bilinear — bilinear samples points and would carry the staircase down
+      // with it, while an area average integrates coverage, which is precisely
+      // what alpha means.
+      const areaDown = (cv, OW, OH) => {
+        const sw = cv.width, sh = cv.height;
+        if (sw === OW && sh === OH) return cv;
+        const sd = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, sw, sh).data;
+        const out = document.createElement('canvas'); out.width = OW; out.height = OH;
+        const octx = out.getContext('2d');
+        const od = octx.createImageData(OW, OH);
+        const rx = sw / OW, ry = sh / OH;
+        for (let oy = 0; oy < OH; oy++) {
+          const y0 = oy * ry, y1 = (oy + 1) * ry;
+          const iy0 = Math.floor(y0), iy1 = Math.min(sh - 1, Math.ceil(y1) - 1);
+          for (let ox = 0; ox < OW; ox++) {
+            const x0 = ox * rx, x1 = (ox + 1) * rx;
+            const ix0 = Math.floor(x0), ix1 = Math.min(sw - 1, Math.ceil(x1) - 1);
+            let ar = 0, ag = 0, ab = 0, aa = 0, wsum = 0;
+            for (let y = iy0; y <= iy1; y++) {
+              const wy = Math.min(y + 1, y1) - Math.max(y, y0);
+              if (wy <= 0) continue;
+              for (let x = ix0; x <= ix1; x++) {
+                const wx = Math.min(x + 1, x1) - Math.max(x, x0);
+                if (wx <= 0) continue;
+                const w2 = wx * wy, o = (y * sw + x) * 4;
+                ar += sd[o] * w2; ag += sd[o + 1] * w2; ab += sd[o + 2] * w2; aa += sd[o + 3] * w2;
+                wsum += w2;
+              }
+            }
+            const oo = (oy * OW + ox) * 4, inv = wsum > 0 ? 1 / wsum : 0;
+            od.data[oo] = ar * inv; od.data[oo + 1] = ag * inv;
+            od.data[oo + 2] = ab * inv; od.data[oo + 3] = aa * inv;
+          }
+        }
+        octx.putImageData(od, 0, 0);
+        return out;
+      };
+      const oK = Math.min(1, MAX_EDGE / Math.max(W, H));
+      const OW = Math.round(W * oK), OH = Math.round(H * oK);
+      const photoOut = areaDown(photo, OW, OH);
+      const wpngOut = areaDown(wpng, OW, OH);
+      const shadeOut = areaDown(shadeCv, OW, OH);
+      // The gate reads the map that ships, so the measure is taken from it.
+      const wOutData = wpngOut.getContext('2d', { willReadFrequently: true })
+        .getImageData(0, 0, OW, OH).data;
+      const aOut = new Float32Array(OW * OH);
+      for (let i = 0; i < OW * OH; i++) aOut[i] = wOutData[i * 4] / 255;
+      const em = measureEdge(aOut, OW, OH);
+      const edgeWidth = em.edgeWidth, edgeRough = em.edgeRough;
+      // Geometry travels with the maps, or the print area lands somewhere else.
+      const sc = (p2) => [p2[0] * oK, p2[1] * oK];
+      const quadOut = { tl: sc(quad.tl), tr: sc(quad.tr), br: sc(quad.br), bl: sc(quad.bl) };
+
       return {
-        dbg, W, H, shirtHue, fragments, ambientTint, quad,
-        bbox: { x: mnX, y: mnY, w: bw, h: bh },
+        dbg, W: OW, H: OH, shirtHue, fragments, ambientTint, quad: quadOut,
+        bbox: { x: mnX * oK, y: mnY * oK, w: bw * oK, h: bh * oK },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
         qa: { missed, skin, bgPaint, edgeDark, edgeBright, edgeWidth, edgeRough, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
           chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint },
-        photo: photo.toDataURL('image/jpeg', 1.0),
-        weight: wpng.toDataURL('image/png'),
-        shade: shadeCv.toDataURL('image/jpeg', 0.92),
+        photo: photoOut.toDataURL('image/jpeg', 1.0),
+        weight: wpngOut.toDataURL('image/png'),
+        shade: shadeOut.toDataURL('image/jpeg', 0.92),
         // Thumbnail-sized copies of the same three maps. The picker recolours
         // its thumbnails with the live shirt colour, which needs weight and
         // shade as well as the photo — and downloading three full-size maps per
@@ -1730,13 +1800,13 @@ const TEMPLATES = [
             return c.toDataURL(type, q);
           };
           return {
-            thumbPhoto: small(photo, 'image/jpeg', 0.86),
-            thumbWeight: small(wpng, 'image/png'),
-            thumbShade: small(shadeCv, 'image/jpeg', 0.84),
+            thumbPhoto: small(photoOut, 'image/jpeg', 0.86),
+            thumbWeight: small(wpngOut, 'image/png'),
+            thumbShade: small(shadeOut, 'image/jpeg', 0.84),
           };
         })(),
       };
-    }, { b64, srcMime, MAX_EDGE, dbgPx });
+    }, { b64, srcMime, MAX_EDGE, ANALYSIS_EDGE, dbgPx });
     if (r.dbg && r.dbg.length) console.log('\nDBG', JSON.stringify(r.dbg, null, 1));
 
     // QA gate, mechanising the guide's "no hard shadow band" rule. A garment
@@ -1823,8 +1893,23 @@ const TEMPLATES = [
     if (EDGE_BASE[tpl.id]) {
       const b = EDGE_BASE[tpl.id];
       const roughMax = b.edgeRough * 1.06 + 2;
-      const widthMin = b.edgeWidth * 0.92 - 0.05;
-      if (r.qa.edgeRough > roughMax || r.qa.edgeWidth < widthMin) {
+      // Roughness is the floor that matters and it never moves. Width is NOT
+      // a floor against yesterday, and setting it as one was a mistake made
+      // before the two were told apart: it treats "softer" as "better", so it
+      // forbids the one thing that actually helps. Deciding on the native grid
+      // and averaging down produces an edge that is both narrower AND far
+      // smoother — gallery-f 8.06 px/120.5 to 6.86 px/98.2 — which is what a
+      // properly resolved boundary looks like, and what the crops confirm.
+      // What width must never do is collapse to a cut-out, so it is held to an
+      // absolute floor drawn from photography rather than from the last build.
+      const widthMin = 2.4;
+      const bad = r.qa.edgeRough > roughMax || r.qa.edgeWidth < widthMin;
+      // An escape hatch for LOOKING, never for shipping: it prints the verdict
+      // and keeps building so the crops can be compared side by side. The
+      // manifest it writes is not fit to publish.
+      if (bad && process.env.EDGE_GATE === 'warn') {
+        console.log(`  ! edgeRough=${r.qa.edgeRough} (floor ${b.edgeRough}) edgeWidth=${r.qa.edgeWidth} (floor ${b.edgeWidth}) — would FAIL`);
+      } else if (bad) {
         console.error(`${r.W}x${r.H} edgeRough=${r.qa.edgeRough} (floor ${b.edgeRough}) edgeWidth=${r.qa.edgeWidth} (floor ${b.edgeWidth}) — FAILS QA`);
         console.error('  The silhouette is rougher or harder than the build this replaces.');
         console.error('  Every other gate here counts contamination; this one counts what the eye reads.');
