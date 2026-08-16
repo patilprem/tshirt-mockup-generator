@@ -1,0 +1,20 @@
+{
+  "_comment": "Edge smoothness floor, measured from the shipped weight maps at 2c5165b. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels (lower is harder). A build may not ship an edge rougher or harder than these. Regenerate deliberately, with crops reviewed, never to make a red build green.",
+  "gallery-f":                 { "edgeWidth": 8.06, "edgeRough": 120.5 },
+  "livingroom-m":              { "edgeWidth": 5.21, "edgeRough": 171.1 },
+  "street-m":                  { "edgeWidth": 5.13, "edgeRough": 144.1 },
+  "park-m":                    { "edgeWidth": 4.22, "edgeRough": 191.4 },
+  "home-f":                    { "edgeWidth": 3.81, "edgeRough": 169.2 },
+  "bright-airy-f":             { "edgeWidth": 3.83, "edgeRough": 173.8 },
+  "miami-f":                   { "edgeWidth": 3.70, "edgeRough": 170.4 },
+  "bright-minimal-m":          { "edgeWidth": 4.12, "edgeRough": 170.8 },
+  "cafe-f":                    { "edgeWidth": 4.81, "edgeRough": 204.7 },
+  "beach-m":                   { "edgeWidth": 3.32, "edgeRough": 185.8 },
+  "marina-m":                  { "edgeWidth": 2.57, "edgeRough": 153.2 },
+  "sky-f":                     { "edgeWidth": 3.65, "edgeRough": 223.2 },
+  "rooftop-hoodie-f":          { "edgeWidth": 3.95, "edgeRough": 171.0 },
+  "sunbeam-wall-f":            { "edgeWidth": 3.93, "edgeRough": 175.3 },
+  "tree-lined-f":              { "edgeWidth": 5.05, "edgeRough": 192.5 },
+  "stadium-hoodie-m":          { "edgeWidth": 3.23, "edgeRough": 179.9 },
+  "garden-path-longsleeve-f":  { "edgeWidth": 4.58, "edgeRough": 127.0 }
+}

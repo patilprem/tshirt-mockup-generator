@@ -55,6 +55,8 @@ const crypto = require('crypto');
 const version = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 
+// The edge-smoothness floor. See the gate below for why it exists.
+const EDGE_BASE = JSON.parse(fs.readFileSync(path.join(__dirname, 'edge-baseline.json'), 'utf8'));
 const SRC_DIR = process.env.ON_MODEL_SRC || path.join(__dirname, 'on-model-src');
 const OUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'on-model');
 const META_OUT = path.join(OUT_DIR, 'templates.json');
@@ -1468,6 +1470,61 @@ const TEMPLATES = [
       // if own were 0 understates precisely the pixels where own decides the
       // result.
 
+      // ---- what the eye reads: how smooth the silhouette is ----
+      // Every gate in this file counts a CONTAMINATION — background painted,
+      // skin keyed, violet surviving. None of them counts a rough edge, and a
+      // rough edge is the thing an operator sees first. That blind spot let a
+      // day of changes improve every number here while the silhouette got
+      // visibly worse, so the property is measured directly and from the final
+      // weight map, which is what actually ships.
+      //
+      // Two numbers, both taken over the half-covered contour and both free of
+      // orientation, so a hem, a shoulder and an armhole are judged alike:
+      //
+      //   width  where coverage ramps from 0 to 1 across an edge, the gradient
+      //          IS the reciprocal of the ramp's width. A photographed edge
+      //          spends 2.7-6.3 px; a generator's hard step spends under two,
+      //          and that is what reads as cut out.
+      //   rough  a smooth edge is locally PLANAR in coverage — along it the
+      //          value barely changes, across it the value climbs evenly. So
+      //          the residual against the plane implied by the pixel's own
+      //          gradient is a direct measure of the staircase, and it needs
+      //          no fitted curve, no scanline, and no assumption about which
+      //          way the border runs.
+      let edgeWidth = 0, edgeRough = 0;
+      {
+        let n = 0, wsum = 0, rsum = 0;
+        for (let i = 0; i < N; i++) {
+          const x = i % W, y = (i / W) | 0;
+          if (x < 3 || y < 3 || x >= W - 3 || y >= H - 3) continue;
+          const a = wMap[i];
+          if (a < 0.2 || a > 0.8) continue;
+          const gx = (wMap[i + 1] - wMap[i - 1]) / 2, gy = (wMap[i + W] - wMap[i - W]) / 2;
+          const g = Math.hypot(gx, gy);
+          // Too flat to be an edge: coverage that is not going anywhere says
+          // nothing about the silhouette's shape.
+          if (g < 0.02) continue;
+          const wid = 1 / g;
+          if (wid > 24) continue;
+          let res = 0, m = 0;
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              if (!dx && !dy) continue;
+              const v = wMap[i + dy * W + dx];
+              // Only where the plane's own prediction is inside the ramp; past
+              // 0 and 1 the coverage is clamped and the residual would measure
+              // the clamp rather than the edge.
+              const pred = a + gx * dx + gy * dy;
+              if (pred < 0.05 || pred > 0.95) continue;
+              res += Math.abs(v - pred); m++;
+            }
+          }
+          if (m < 6) continue;
+          rsum += res / m; wsum += wid; n++;
+        }
+        if (n > 0) { edgeWidth = +(wsum / n).toFixed(2); edgeRough = +((rsum / n) * 1000).toFixed(1); }
+      }
+
       let edgeDark = 0, edgeBright = 0;
       {
         const lutW = mkRelight([255, 255, 255]);
@@ -1637,7 +1694,7 @@ const TEMPLATES = [
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
+        qa: { missed, skin, bgPaint, edgeDark, edgeBright, edgeWidth, edgeRough, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
           chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint },
         photo: photo.toDataURL('image/jpeg', 1.0),
         weight: wpng.toDataURL('image/png'),
@@ -1751,6 +1808,32 @@ const TEMPLATES = [
       console.log(`  ! coolPaint=${r.qa.coolPaint} — above the warn line, inspect the hem and waistband on white`);
     }
 
+    // ---- the edge may not get worse than it is today ----
+    // This gate exists because of a specific failure. Over one session every
+    // number in this file improved — background paint fell, the neutral-target
+    // cast fell by a third, unkeyed violet fell from 62 px to 19 — while the
+    // silhouette the operator actually looks at got visibly rougher, and three
+    // builds shipped on that evidence. A measure that cannot see the failure
+    // will certify it. So the shipped edge is frozen as a floor: a change may
+    // make the border smoother or softer, never rougher or harder, and a build
+    // that does is stopped here rather than discovered on a phone screen.
+    //
+    // The tolerances are the measure's own reproducibility, not a licence to
+    // drift — a rebuild of unchanged code reproduces these to the decimal.
+    if (EDGE_BASE[tpl.id]) {
+      const b = EDGE_BASE[tpl.id];
+      const roughMax = b.edgeRough * 1.06 + 2;
+      const widthMin = b.edgeWidth * 0.92 - 0.05;
+      if (r.qa.edgeRough > roughMax || r.qa.edgeWidth < widthMin) {
+        console.error(`${r.W}x${r.H} edgeRough=${r.qa.edgeRough} (floor ${b.edgeRough}) edgeWidth=${r.qa.edgeWidth} (floor ${b.edgeWidth}) — FAILS QA`);
+        console.error('  The silhouette is rougher or harder than the build this replaces.');
+        console.error('  Every other gate here counts contamination; this one counts what the eye reads.');
+        console.error('  Compare crops before editing scratch/edge-baseline.json.');
+        process.exitCode = 1;
+        continue;
+      }
+    }
+
     // The edge audit stays INFORMATIONAL. It was briefly gated, on the reasoning
     // that an unenforced number is how a broken hem reaches the manifest — but
     // the number it gated was mis-specified: it judged every pixel against the
@@ -1793,7 +1876,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} edgeWidth=${r.qa.edgeWidth} edgeRough=${r.qa.edgeRough}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
