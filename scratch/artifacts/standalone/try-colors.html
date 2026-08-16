@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 6d98a5d</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 6d98a5d +local edits</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -686,6 +686,9 @@ function analyze(img) {
   // real seam shadows) keep their photographic reality via low confidence.
   const lutVm = relightLut(violetBase, { ambientTint, relMax: REL_MAX });
   const RING = Math.max(4, Math.round(W / 220));
+  // How far INSIDE the silhouette the border is allowed to be rebuilt. See
+  // the inner band below the eligibility filter for why it is two.
+  const INNER = 2;
   // The matte is SOLVED out to twice the bake ring. Within RING its
   // answer is acted on in full — weight and photo bake. In the outer
   // half it is measurement only: mAlpha/mConf are recorded so the cap
@@ -1546,6 +1549,47 @@ function analyze(img) {
       if (dr * dr + dg * dg + db * db < 2500) continue;
       elig[i] = 1;
     }
+
+    // The other half of the border. Everything above lives OUTSIDE the
+    // silhouette: `ring` is `outside && distC > 0`, and inside it coverage
+    // is asserted to be exactly 1. So the band was one-sided, and a
+    // photographed edge is not — it ramps through the boundary, with as much
+    // of the transition on the cloth side as on the scene side. Clamping the
+    // inner half to a hard 1 chopped the matte's ramp in two and left a step
+    // where the two halves met, which is a large part of what was left.
+    //
+    // Two pixels is the whole of it: measured, the substitution field drops
+    // from 104/105/108/149 to 82/85/88/117 at one and two pixels in, and
+    // four, eight and sixteen add nothing. That is the physical answer — a
+    // lens spreads an edge over two or three pixels, not sixteen — and it is
+    // why this is a fixed small depth rather than a tuned one.
+    const distIn = new Int16Array(N);
+    {
+      const q = new Int32Array(N); let qh = 0, qt = 0;
+      for (let i = 0; i < N; i++) {
+        if (outside[i]) continue;
+        const x = i % W, y = (i / W) | 0;
+        if (x < 1 || y < 1 || x > W - 2 || y > H - 2) continue;
+        if (outside[i - 1] || outside[i + 1] || outside[i - W] || outside[i + W]) { distIn[i] = 1; q[qt++] = i; }
+      }
+      while (qh < qt) {
+        const i = q[qh++], d = distIn[i];
+        if (d >= INNER) continue;
+        for (const ni of [i - 1, i + 1, i - W, i + W]) {
+          if (ni < 0 || ni >= N || outside[ni] || distIn[ni]) continue;
+          distIn[ni] = d + 1; q[qt++] = ni;
+        }
+      }
+    }
+    // Hair and crevices are excluded for the same reason as outside: a
+    // strand and a fold are structure, not a rough edge. The contrast test
+    // cannot be applied here — bgC is only diffused into the ring, so a
+    // pixel inside the garment has no background estimate yet — so it is
+    // applied in the loop instead, against the background actually sampled.
+    const inner = new Uint8Array(N);
+    for (let i = 0; i < N; i++)
+      if (distIn[i] && !crevice[i] && !occluder[i]) inner[i] = 1;
+
     // A pixel next to hair is eligible but must not be BUILT from hair, so
     // sampling below refuses occluded neighbours. Without that the fill drags
     // strand colour along the shoulder and paints it as cloth.
@@ -1696,8 +1740,18 @@ function analyze(img) {
 
     // ---- rebuilt from what is actually beside it
     for (let i = 0; i < N; i++) {
-      if (!elig[i]) continue;
+      if (!elig[i] && !inner[i]) continue;
       let a = wide[i];
+      // Inside the silhouette the matte is trusted to shape the ramp, not to
+      // decide membership: this pixel is cloth, and the only question is what
+      // fraction of it the lens shared with the scene. One pixel in may give
+      // half of itself away, two pixels in a quarter, and no further — beyond
+      // that a low answer is the filter reaching across the boundary for a
+      // window's worth of background, not a real partial coverage.
+      if (inner[i]) {
+        const floor = 1 - 0.5 / distIn[i];
+        if (a < floor) a = floor;
+      }
       // The matte refines the border's SHAPE; it does not get to overrule direct
       // evidence that a pixel IS cloth. Where the ordering evidence is strong —
       // the same signal keyMiss counts, and the one that survives shadow because
@@ -1748,6 +1802,7 @@ function analyze(img) {
       // was zero there, so no paint gate could see it — the damage was in the
       // photograph, not in the mask.
       let Br = bgC[i * 3], Bg = bgC[i * 3 + 1], Bb = bgC[i * 3 + 2];
+      let walked = false;
       for (const step of [4, 6, 9, 13]) {
         const bx = x - nx * step, by = y - ny * step;
         if (bx < 0 || bx > W - 1 || by < 0 || by > H - 1) break;
@@ -1757,9 +1812,23 @@ function analyze(img) {
         Br = sample(photoData, 4, 0, bx, by);
         Bg = sample(photoData, 4, 1, bx, by);
         Bb = sample(photoData, 4, 2, bx, by);
+        walked = true;
         break;
       }
       const o = i * 4, sb = shade[i] * 3;
+      if (inner[i]) {
+        // Inside the garment there is no fallback: bgC is diffused into the
+        // ring only, so it reads 0 here and composing against it would paint
+        // a black line one pixel inside the hem. If the walk did not reach
+        // real background, this pixel keeps its photograph.
+        if (!walked) continue;
+        // And the contrast test the outer band applies up front, applied here
+        // against the background actually found. Where cloth and scene are
+        // within fifty units of each other the mixture cannot be measured,
+        // and a matte fitted to that has nothing to fit.
+        const dr = lutVm[sb] - Br, dg = lutVm[sb + 1] - Bg, db = lutVm[sb + 2] - Bb;
+        if (dr * dr + dg * dg + db * db < 2500) continue;
+      }
       // No special case at low coverage. The composite below IS the answer at
       // every alpha — at a=0 it is exactly the scene — and carving out an
       // exception meant a pixel the matte called one-twentieth cloth kept its
@@ -1778,7 +1847,12 @@ function analyze(img) {
       // it was never made from, and reporting every honest edge as too dark.
       bgC[i * 3] = Br; bgC[i * 3 + 1] = Bg; bgC[i * 3 + 2] = Bb;
       wMap[i] = a < 0.02 ? 0 : a; alphaA[i] = a; confA[i] = 1;
-      clip[i] = 0; unrel[i] = 0;
+      // clip is the design's own mask — where a print may land — and it is a
+      // question about the garment's solid body, not about this pixel's share
+      // of the lens. Clearing it outside the silhouette is right; clearing it
+      // one pixel inside would shave the print area along every edge.
+      if (!inner[i]) clip[i] = 0;
+      unrel[i] = 0;
       mConf[i] = 1; mConfS[i] = 1; mAlphaE[i] = a;
       evAny[i] = Math.max(evAny[i], a);
     }
