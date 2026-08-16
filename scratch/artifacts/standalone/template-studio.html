@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 2c5165b</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 2c5165b +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -807,7 +807,20 @@ function applyInspLock() {
 document.getElementById('inspLock').addEventListener('change', applyInspLock);
 
 /* ============ SHARED ANALYSIS (port of the build pipeline) ============ */
-const MAX_EDGE = 1600;
+// The grid the pipeline THINKS at, kept in step with
+// build_on_model_templates.cjs. Sources arrive 2000-3456 px tall and were
+// downscaled to 1600 before a single decision was taken, so a fifth to a half
+// of the resolution was discarded and the mask had to commit to whole pixels
+// on the coarser grid — the staircase. The validator has to judge on the same
+// grid the builder will use, or it certifies an edge nobody ships.
+const MAX_EDGE = 2100;
+// Bounded deliberately. Sources arrive 2000-2048 px tall, so this decides at
+// their native grid and no further: the band widths, seed distances and region
+// minimums inside the analysis are written in absolute pixels, and a candidate
+// upscaled to 2304 jumped 2.2x in linear scale, which broke them — 511 px of
+// painted background on a photograph that measured 6. Deciding at the
+// resolution the images actually carry is the whole gain; chasing an
+// upscaler's invented pixels is not.
 function hsv(r, g, b) {
   r /= 255; g /= 255; b /= 255;
   const M = Math.max(r, g, b), m = Math.min(r, g, b), d = M - m;

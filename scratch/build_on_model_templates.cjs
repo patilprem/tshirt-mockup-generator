@@ -69,7 +69,14 @@ const MAX_EDGE = 1600;
 // to whole pixels at the coarser grid — which is the staircase. Deciding at
 // the native grid and area-averaging the answer down turns four real samples
 // into one honest fraction of coverage, which is what an anti-aliased edge is.
-const ANALYSIS_EDGE = 3200;
+const ANALYSIS_EDGE = 2100;
+// Bounded deliberately. Sources arrive 2000-2048 px tall, so this decides at
+// their native grid and no further: the band widths, seed distances and region
+// minimums inside the analysis are written in absolute pixels, and a candidate
+// upscaled to 2304 jumped 2.2x in linear scale, which broke them — 511 px of
+// painted background on a photograph that measured 6. Deciding at the
+// resolution the images actually carry is the whole gain; chasing an
+// upscaler's invented pixels is not.
 
 const TEMPLATES = [
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
@@ -1757,6 +1764,7 @@ const TEMPLATES = [
       const em = measureEdge(aOut, OW, OH);
       const edgeWidth = em.edgeWidth, edgeRough = em.edgeRough;
       // Geometry travels with the maps, or the print area lands somewhere else.
+      const nrm = (v) => Math.round(v * (OW * OH) / (W * H));
       const sc = (p2) => [p2[0] * oK, p2[1] * oK];
       const quadOut = { tl: sc(quad.tl), tr: sc(quad.tr), br: sc(quad.br), bl: sc(quad.bl) };
 
@@ -1764,8 +1772,18 @@ const TEMPLATES = [
         dbg, W: OW, H: OH, shirtHue, fragments, ambientTint, quad: quadOut,
         bbox: { x: mnX * oK, y: mnY * oK, w: bw * oK, h: bh * oK },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, edgeDark, edgeBright, edgeWidth, edgeRough, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
-          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint },
+        // Counts are expressed PER SHIPPED PIXEL. Every threshold in this file
+        // was calibrated when the analysis grid and the shipped grid were the
+        // same size; now that the pipeline thinks at the native resolution, a
+        // raw count would rise with the area alone and each limit would
+        // silently tighten by the same 1.5x. rooftop's coolPaint went 428 to
+        // 652 on exactly that arithmetic, with nothing about the image or the
+        // mask changed. Ratios and the two edge numbers are already scale-free
+        // and are left alone.
+        qa: { missed: nrm(missed), skin: nrm(skin), bgPaint: nrm(bgPaint), edgeDark: nrm(edgeDark), edgeBright: nrm(edgeBright),
+          edgeWidth, edgeRough, wedgePx: nrm(wedgePx), modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
+          chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx: nrm(chromaPx), chromaMaskPx: nrm(chromaMaskPx),
+          keyMiss: nrm(keyMiss), coolPaint: nrm(coolPaint), occPaint: nrm(occPaint) },
         photo: photoOut.toDataURL('image/jpeg', 1.0),
         weight: wpngOut.toDataURL('image/png'),
         shade: shadeOut.toDataURL('image/jpeg', 0.92),

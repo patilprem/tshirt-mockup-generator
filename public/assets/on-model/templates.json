@@ -255,6 +255,57 @@
     }
   },
   {
+    "id": "bright-airy-f",
+    "label": "Bright Airy",
+    "model": "female",
+    "scene": "Bright airy coffee shop, pale wood",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/bright-airy-f-photo.jpg?v=7aa0bae4",
+    "weight": "/assets/on-model/bright-airy-f-weight.png?v=9eb3139f",
+    "shade": "/assets/on-model/bright-airy-f-shade.jpg?v=3776671e",
+    "thumbPhoto": "/assets/on-model/bright-airy-f-thumb-photo.jpg?v=9c1e2246",
+    "thumbWeight": "/assets/on-model/bright-airy-f-thumb-weight.png?v=0117677b",
+    "thumbShade": "/assets/on-model/bright-airy-f-thumb-shade.jpg?v=9a8e3658",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9848,
+      1,
+      0.9848
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      120,
+      77.3,
+      152
+    ],
+    "quad": {
+      "tl": [
+        342.08000000000004,
+        801.6
+      ],
+      "tr": [
+        691.52,
+        801.6
+      ],
+      "br": [
+        697.9200000000001,
+        1178.4
+      ],
+      "bl": [
+        348.48,
+        1178.4
+      ]
+    },
+    "bbox": {
+      "x": 126.4,
+      "y": 598.4,
+      "w": 851.2,
+      "h": 967.2
+    }
+  },
+  {
     "id": "miami-f",
     "label": "Miami Street",
     "model": "female",
@@ -561,6 +612,57 @@
     }
   },
   {
+    "id": "rooftop-hoodie-f",
+    "label": "Rooftop Hoodie",
+    "model": "female",
+    "scene": "Rooftop skyline, overcast light",
+    "width": 1290,
+    "height": 1600,
+    "photo": "/assets/on-model/rooftop-hoodie-f-photo.jpg?v=bb49e16d",
+    "weight": "/assets/on-model/rooftop-hoodie-f-weight.png?v=8a5d8ad8",
+    "shade": "/assets/on-model/rooftop-hoodie-f-shade.jpg?v=80c474f6",
+    "thumbPhoto": "/assets/on-model/rooftop-hoodie-f-thumb-photo.jpg?v=bd123ec3",
+    "thumbWeight": "/assets/on-model/rooftop-hoodie-f-thumb-weight.png?v=c3b56e7c",
+    "thumbShade": "/assets/on-model/rooftop-hoodie-f-thumb-shade.jpg?v=4fde4d27",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9861,
+      0.9815,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      96.3,
+      66.1,
+      149
+    ],
+    "quad": {
+      "tl": [
+        477.49755620723363,
+        694.4281524926686
+      ],
+      "tr": [
+        903.5386119257088,
+        694.4281524926686
+      ],
+      "br": [
+        813.2160312805474,
+        1065.884652981427
+      ],
+      "bl": [
+        387.17497556207235,
+        1065.884652981427
+      ]
+    },
+    "bbox": {
+      "x": 269.01270772238513,
+      "y": 495.0146627565982,
+      "w": 807.8201368523949,
+      "h": 950.9286412512218
+    }
+  },
+  {
     "id": "sunbeam-wall-f",
     "label": "Sunbeam Wall",
     "model": "female",
@@ -609,6 +711,108 @@
       "y": 488.28125,
       "w": 669.53125,
       "h": 695.3125
+    }
+  },
+  {
+    "id": "tree-lined-f",
+    "label": "Tree-Lined Street",
+    "model": "female",
+    "scene": "Leafy residential street",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/tree-lined-f-photo.jpg?v=cacc5512",
+    "weight": "/assets/on-model/tree-lined-f-weight.png?v=07ad382f",
+    "shade": "/assets/on-model/tree-lined-f-shade.jpg?v=58752f5e",
+    "thumbPhoto": "/assets/on-model/tree-lined-f-thumb-photo.jpg?v=7d081720",
+    "thumbWeight": "/assets/on-model/tree-lined-f-thumb-weight.png?v=c72e9429",
+    "thumbShade": "/assets/on-model/tree-lined-f-thumb-shade.jpg?v=fd6e70ea",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9755,
+      0.9632
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      113.6,
+      80.8,
+      164
+    ],
+    "quad": {
+      "tl": [
+        404.609375,
+        632.8125
+      ],
+      "tr": [
+        658.671875,
+        632.8125
+      ],
+      "br": [
+        652.8125,
+        921.09375
+      ],
+      "bl": [
+        398.75,
+        921.09375
+      ]
+    },
+    "bbox": {
+      "x": 140.625,
+      "y": 478.125,
+      "w": 771.09375,
+      "h": 738.28125
+    }
+  },
+  {
+    "id": "stadium-hoodie-m",
+    "label": "Stadium Hoodie",
+    "model": "male",
+    "scene": "Empty stadium seating, pitch behind",
+    "width": 1067,
+    "height": 1600,
+    "photo": "/assets/on-model/stadium-hoodie-m-photo.jpg?v=5596d2f7",
+    "weight": "/assets/on-model/stadium-hoodie-m-weight.png?v=1f150567",
+    "shade": "/assets/on-model/stadium-hoodie-m-shade.jpg?v=3aff5b9b",
+    "thumbPhoto": "/assets/on-model/stadium-hoodie-m-thumb-photo.jpg?v=07faad82",
+    "thumbWeight": "/assets/on-model/stadium-hoodie-m-thumb-weight.png?v=1099f431",
+    "thumbShade": "/assets/on-model/stadium-hoodie-m-thumb-shade.jpg?v=c242e545",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9651,
+      0.9477
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      98.7,
+      59.2,
+      144
+    ],
+    "quad": {
+      "tl": [
+        363.04761904761904,
+        588.952380952381
+      ],
+      "tr": [
+        733.3333333333333,
+        588.952380952381
+      ],
+      "br": [
+        691.047619047619,
+        949.3333333333333
+      ],
+      "bl": [
+        320.76190476190476,
+        949.3333333333333
+      ]
+    },
+    "bbox": {
+      "x": 192.76190476190476,
+      "y": 395.4285714285714,
+      "w": 710.0952380952381,
+      "h": 922.6666666666666
     }
   },
   {
