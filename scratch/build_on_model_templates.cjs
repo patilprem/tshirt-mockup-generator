@@ -1846,13 +1846,31 @@ const TEMPLATES = [
         // a point, and projecting onto a point would flatten the edge.
         if (dd < 400) continue;
         const pr = pd.data[o] - bgC[i3], pg = pd.data[o + 1] - bgC[i3 + 1], pb = pd.data[o + 2] - bgC[i3 + 2];
-        let a = (pr * dr + pg * dg + pb * db) / dd;
-        if (a < 0) a = 0; else if (a > 1) a = 1;
-        const er = pr - a * dr, eg = pg - a * dg, eb = pb - a * db;
+        let a0 = (pr * dr + pg * dg + pb * db) / dd;
+        if (a0 < 0) a0 = 0; else if (a0 > 1) a0 = 1;
+        const er = pr - a0 * dr, eg = pg - a0 * dg, eb = pb - a0 * db;
         const res = Math.sqrt(er * er + eg * eg + eb * eb);
+        // Nothing measurably wrong with this pixel.
         if (res <= BAND_TOL) continue;
-        const k = (res - BAND_TOL) / res;
-        pd.data[o] -= er * k; pd.data[o + 1] -= eg * k; pd.data[o + 2] -= eb * k;
+        // Never bake more fabric into a pixel than the runtime will take back
+        // out. The bake's safety property is that a*violet is cancelled by
+        // a*target at the same coverage; a pixel carrying no weight cancels
+        // nothing, so placing it on the fabric endpoint writes violet no colour
+        // can remove and leaves a violet speck under every target — 127 ring
+        // pixels of the candidate were doing exactly that. The destination is
+        // therefore capped at the coverage the pixel will actually be
+        // recoloured with, and where there is none the only repair available is
+        // toward the background, which is what a pixel with no coverage is.
+        const aMax = Math.max(0, Math.min(1, Math.max(wMap[i], alphaA[i] * Math.max(0, Math.min(1, confA[i])))));
+        const aD = Math.min(a0, aMax);
+        const qr = bgC[i3] + aD * dr, qg = bgC[i3 + 1] + aD * dg, qb = bgC[i3 + 2] + aD * db;
+        const mr = qr - pd.data[o], mg = qg - pd.data[o + 1], mb = qb - pd.data[o + 2];
+        const dist = Math.sqrt(mr * mr + mg * mg + mb * mb);
+        if (dist <= BAND_TOL) continue;
+        // The tolerance stays as slack so the repair fades in continuously
+        // rather than switching on, and a merely grainy pixel is left alone.
+        const k = (dist - BAND_TOL) / dist;
+        pd.data[o] += mr * k; pd.data[o + 1] += mg * k; pd.data[o + 2] += mb * k;
       }
 
       pctx.putImageData(pd, 0, 0);
@@ -2063,6 +2081,35 @@ const TEMPLATES = [
           if (outL > Math.max(tL, bL) + 25) outlinePx++;
         }
       }
+
+      // ---- violet the recolour did not take away ----
+      // Kept in step with template-studio.html.
+      // Recolouring toward a neutral cannot ADD the shirt's hue, so a pixel
+      // that comes out violet under black is violet the pipeline left — or
+      // wrote. The bake stores a*violet + (1-a)*background so the runtime can
+      // cancel it exactly, and that cancellation is paid for by the weight
+      // alone: a boundary repair that placed a pixel further along the fabric
+      // than its weight can pay for prints violet no target removes. Nothing
+      // else here sees it — the chroma gate looks at information-free creases
+      // and keyMiss looks for SOURCE violet surviving, and both scored clean
+      // while street-m carried a violet comb along the shoulder on white.
+      let violetLeft = 0;
+      {
+        const lutK = mkRelight([33, 33, 33]);
+        for (let i = 0; i < N; i++) {
+          if (!core[i] && !ring[i]) continue;
+          const o = i * 4, ww = wMap[i], cl2 = ownBlend[i];
+          const sbB = Math.round(shadeVal[i] * 255) * 3;
+          const px = (c2) => pd.data[o + c2] +
+            ww * (lutK[sbB + c2] - cl2 * pd.data[o + c2] - (1 - cl2) * lutVm[sbB + c2]);
+          const r2 = px(0), g2 = px(1), b2 = px(2);
+          const mx = Math.max(r2, g2, b2), mn = Math.min(r2, g2, b2);
+          if (mx - mn < 26) continue;
+          let d = Math.abs(hsv(r2, g2, b2)[0] - shirtHue) % 360;
+          if (d > 180) d = 360 - d;
+          if (d <= 32) violetLeft++;
+        }
+      }
       // chroma audit: recolour to WHITE via the exact runtime formula and count
       // information-free garment pixels that come out CHROMATIC. This is the
       // defect that actually shipped — modelled violet (G far below R and B)
@@ -2245,7 +2292,7 @@ const TEMPLATES = [
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, edgeDark, edgeBright, outlinePx, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
+        qa: { missed, skin, bgPaint, edgeDark, edgeBright, outlinePx, violetLeft, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
           chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint,
           pocketPx, pocketPaint, pocketBlind },
         photo: photo.toDataURL('image/jpeg', 1.0),
@@ -2385,6 +2432,20 @@ const TEMPLATES = [
     // 500 to 1060 before — so it warns rather than failing: dropping a template
     // over a photograph's edge line would leave the operator with nothing to
     // ship and no way to fix it.
+    // Violet surviving a neutral recolour: the purple fringe, measured. Unlike
+    // the outline this is the pipeline's own doing rather than the source's, so
+    // it fails the build outright above the line rather than warning.
+    if (r.qa.violetLeft > 600) {
+      console.error(`${r.W}x${r.H} violetLeft=${r.qa.violetLeft} — FAILS QA`);
+      console.error('  Garment or boundary pixels stay violet when recoloured to black.');
+      console.error('  On white this reads as a purple fringe along the silhouette.');
+      console.error('  Check the band repair cap and the own-value blend before shipping.');
+      process.exitCode = 1;
+      continue;
+    }
+    if (r.qa.violetLeft > 150) {
+      console.log(`  ! violetLeft=${r.qa.violetLeft} px — violet survives a neutral recolour, inspect the silhouette on white`);
+    }
     if (r.qa.outlinePx > 400) {
       console.log(`  ! outline=${r.qa.outlinePx} px — a bright edge line survives into dark colours, inspect the silhouette on black`);
     }
@@ -2434,7 +2495,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} pocket=${r.qa.pocketPx}/${r.qa.pocketBlind} outline=${r.qa.outlinePx}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} pocket=${r.qa.pocketPx}/${r.qa.pocketBlind} outline=${r.qa.outlinePx} violetLeft=${r.qa.violetLeft}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');

@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 8bad9bd</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 8bad9bd +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -2371,13 +2371,31 @@ function analyze(img) {
     // noise about a point, and projecting onto a point would flatten the edge.
     if (dd < 400) continue;
     const pr = photoData[o] - bgC[i3], pg = photoData[o + 1] - bgC[i3 + 1], pb = photoData[o + 2] - bgC[i3 + 2];
-    let a = (pr * dr + pg * dg + pb * db) / dd;
-    if (a < 0) a = 0; else if (a > 1) a = 1;
-    const er = pr - a * dr, eg = pg - a * dg, eb = pb - a * db;
+    let a0 = (pr * dr + pg * dg + pb * db) / dd;
+    if (a0 < 0) a0 = 0; else if (a0 > 1) a0 = 1;
+    const er = pr - a0 * dr, eg = pg - a0 * dg, eb = pb - a0 * db;
     const res = Math.sqrt(er * er + eg * eg + eb * eb);
+    // Nothing measurably wrong with this pixel.
     if (res <= BAND_TOL) continue;
-    const k = (res - BAND_TOL) / res;
-    photoData[o] -= er * k; photoData[o + 1] -= eg * k; photoData[o + 2] -= eb * k;
+    // Never bake more fabric into a pixel than the runtime will take back out.
+    // The bake's safety property is that a*violet is cancelled by a*target at
+    // the same coverage; a pixel carrying no weight cancels nothing, so placing
+    // it on the fabric endpoint writes violet no colour can remove and leaves a
+    // violet speck under every target — which is what 127 ring pixels of the
+    // candidate were doing. The destination is therefore capped at the coverage
+    // the pixel will actually be recoloured with, and where there is none the
+    // only repair available is toward the background, which is what a pixel
+    // with no coverage is.
+    const aMax = Math.max(0, Math.min(1, Math.max(wMap[i], alphaA[i] * Math.max(0, Math.min(1, confA[i])))));
+    const aD = Math.min(a0, aMax);
+    const qr = bgC[i3] + aD * dr, qg = bgC[i3 + 1] + aD * dg, qb = bgC[i3 + 2] + aD * db;
+    const mr = qr - photoData[o], mg = qg - photoData[o + 1], mb = qb - photoData[o + 2];
+    const dist = Math.sqrt(mr * mr + mg * mg + mb * mb);
+    if (dist <= BAND_TOL) continue;
+    // Leave the tolerance as slack so the repair fades in continuously rather
+    // than switching on, and so a pixel that is merely grainy is left alone.
+    const k = (dist - BAND_TOL) / dist;
+    photoData[o] += mr * k; photoData[o + 1] += mg * k; photoData[o + 2] += mb * k;
   }
 
   // metrics
@@ -2772,6 +2790,37 @@ function analyze(img) {
     }
   }
 
+  // ---- violet the recolour did not take away ----
+  // Recolouring toward a neutral cannot ADD the shirt's hue to a pixel, so any
+  // pixel that comes out violet under black is violet the pipeline left — or,
+  // worse, wrote. Both happen at the boundary and neither shows in the source:
+  // the bake stores a*violet + (1-a)*background so the runtime can cancel it
+  // exactly, and that cancellation is only paid for by the weight. A boundary
+  // repair that placed a pixel further along the fabric than its weight can
+  // pay for therefore prints violet into the picture that no target removes,
+  // which is this product's oldest failure in miniature — a purple fringe on a
+  // white shirt. Nothing else here measures it: the chroma gate looks at
+  // information-free creases, keyMiss looks for violet in the SOURCE surviving,
+  // and both scored clean while street-m carried a violet comb along the
+  // shoulder. Confined to the garment and its band so a violet object in the
+  // scene is the stray-violet gate's business, not this one.
+  let violetLeft = 0;
+  {
+    const lutK = relightLut([33, 33, 33], { ambientTint, relMax: REL_MAX });
+    for (let i = 0; i < N; i++) {
+      if (!core[i] && !ring[i]) continue;
+      const o = i * 4, ww = wMap[i], cl2 = ownArr[i] / 255, sbB = shade[i] * 3;
+      const px = c2 => photoData[o + c2] +
+        ww * (lutK[sbB + c2] - cl2 * photoData[o + c2] - (1 - cl2) * lutVm[sbB + c2]);
+      const r2 = px(0), g2 = px(1), b2 = px(2);
+      const mx = Math.max(r2, g2, b2), mn = Math.min(r2, g2, b2);
+      if (mx - mn < 26) continue;
+      const hh = hsv(r2, g2, b2)[0];
+      let d = Math.abs(hh - shirtHue) % 360; if (d > 180) d = 360 - d;
+      if (d <= 32) violetLeft++;
+    }
+  }
+
   // ---- matte softness: the one property every other gate is blind to ----
   //
   // Every check above asks whether something is CONTAMINATED — background
@@ -2809,7 +2858,7 @@ function analyze(img) {
     deepShadowPct: 100 * deepN / Math.max(1, gN),
     hairShadowPct: 100 * deepHairN / Math.max(1, gN),
     blownPct: 100 * blownN / Math.max(1, coreN),
-    bgPaint, haloDelta, edgeDark, edgeBright, outlinePx, wedgePx, keyMiss, coolPaint, occPaint,
+    bgPaint, haloDelta, edgeDark, edgeBright, outlinePx, violetLeft, wedgePx, keyMiss, coolPaint, occPaint,
     pocketPx, pocketPaint, pocketBlind,
     modelFit: fitSum / Math.max(1, fitCnt),
     srcW: img.width, srcH: img.height,
@@ -2994,6 +3043,7 @@ function runValidationCore(img, url) {
       // not, no rewording will help and the upscaler's sharpening is the thing
       // to turn down.
       F(a.haloDelta > 0.09, a.haloDelta > -0.015, 'No bright rim baked into the source (shipped templates: \u22123% to \u221221%)', '\u0394' + (a.haloDelta * 100).toFixed(1) + '%', 'No outline, glow, rim light or sharpening halo anywhere around the figure. Natural photographic edges only.');
+      F(a.violetLeft > 600, a.violetLeft > 150, 'No violet left in a neutral recolour (purple fringe on white)', a.violetLeft + ' px', 'The garment must be a plain violet with no other purple or magenta touching it \u2014 no rim light, no colour fringing on the silhouette.');
       F(a.outlinePx > 600, a.outlinePx > 150, 'No outline surviving into a dark colour (shipped templates: 7\u2013380 px)', a.outlinePx + ' px', 'No outline, glow or sharpening line where the figure meets the background \u2014 the edge must be a plain photographic transition.');
       F(a.edgeDark + a.edgeBright > 300, a.edgeDark + a.edgeBright > 60, 'Clean matte edge on light colours (no outline or halo)', a.edgeDark + '/' + a.edgeBright + ' px', 'The silhouette must be clean and free of any dark outline or bright fringe. No rim lighting behind the model and no backlight separating them from the background.');
       // No fix string on purpose: nothing the image model can be told fixes
