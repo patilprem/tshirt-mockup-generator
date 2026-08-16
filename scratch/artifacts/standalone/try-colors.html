@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 4e7d8ff</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 4e7d8ff +local edits</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -1963,6 +1963,91 @@ function analyze(img) {
     if (fl > wMap[i]) wMap[i] = fl;
   }
 
+  // ---- too far from any background to be a mixture of one ----
+  // The band is measured from the CORE, and the core is eroded wherever the
+  // fabric is brightly lit: strong light washes saturation out, and the rule
+  // that keeps fabric/background mixes out of the core reads that wash as a
+  // mix. On a lit shoulder that erosion runs ten pixels deep, so ten pixels of
+  // solid cloth are handed to the boundary machinery, which dutifully solves
+  // them as partial coverage. The weight then reads 1.00, 0.39, 0.96, 0.89,
+  // 0.82, 0.66, 0.53, 1.00 across a single shoulder — a dip in the middle of
+  // solid fabric, and every pixel in the dip keeps the fraction of its violet
+  // that went unpainted. That is the pale comb along the shoulder seam.
+  //
+  // Mixing is a fact about the sensor, not about colour: a pixel is a blend of
+  // two things only if both fall inside its footprint, which reaches a pixel
+  // or two, never twelve. The diffusion already records the distance to the
+  // nearest trustworthy background pixel, and at the dip it reads twelve. So a
+  // band pixel that is far from any background, carries the garment's own hue,
+  // and is more saturated than that distant background is not a boundary pixel
+  // at all — it is cloth the core lost, and it is painted as cloth.
+  if (sRefG > 0.06) {
+    for (let i = 0; i < N; i++) {
+      if (!ring[i] || crevice[i] || pocket[i] || occluder[i]) continue;
+      if (bgF.fd[i] < Math.max(4, RING - 1)) continue;
+      const i3 = i * 3;
+      const mxB = Math.max(bgC[i3], bgC[i3 + 1], bgC[i3 + 2]);
+      const sBg = mxB > 20 ? (mxB - Math.min(bgC[i3], bgC[i3 + 1], bgC[i3 + 2])) / mxB : 0;
+      if (sA[i] < sBg + 0.05) continue;
+      let hd = Math.abs(hA[i] - shirtHue) % 360; if (hd > 180) hd = 360 - hd;
+      const hueOk = 1 - smooth(hd, 22, 40);
+      if (hueOk <= 0) continue;
+      if (hueOk > wMap[i]) wMap[i] = hueOk;
+      evAny[i] = Math.max(evAny[i], hueOk);
+      // Its own reading is now a measurement, so the caps downstream must not
+      // treat it as unexplained paint and take it away again.
+      mConf[i] = Math.max(mConf[i], hueOk);
+      mConfS[i] = Math.max(mConfS[i], hueOk);
+      mAlphaE[i] = Math.max(mAlphaE[i], hueOk);
+    }
+  }
+
+  // ---- coverage from saturation, where brightness cannot separate ----
+  // The matte solves coverage along the line between the fabric's colour and
+  // the background's, and its confidence collapses when those two are the same
+  // colour. That is not a rare corner: on a shoulder against blurred foliage
+  // the background diffuses to (187,169,191) and the lit fabric sits at
+  // (178,149,199) — twenty-nine levels apart, mostly noise. There the matte
+  // reported ninety percent fabric with zero confidence, the confidence floor
+  // above multiplied that to nothing, and a pixel that is nine tenths garment
+  // was painted one tenth. Nine tenths of its violet therefore survived into
+  // every colour: the pale pink comb along the shoulder seam, which no gate
+  // caught because it is neither a rim (the background is untouched) nor
+  // unkeyed fabric (it sits outside the core).
+  //
+  // Saturation separates them when brightness cannot, and it is trustworthy
+  // here for a reason the validator enforces rather than assumes: nothing else
+  // in the scene is violet — the stray-violet gate fails a photograph where
+  // anything else is. So on the garment's own boundary, the pixel's saturation
+  // between the background's and the fabric's IS its coverage, measured on an
+  // axis the matte never used. It only ever raises weight, only inside the
+  // matte band, only where the pixel carries the shirt's own hue, and only
+  // where the two saturations are far enough apart to be read at all.
+  if (sRefG > 0.06) {
+    for (let i = 0; i < N; i++) {
+      if (!ring[i] || distC[i] > RING || crevice[i] || pocket[i] || occluder[i]) continue;
+      const i3 = i * 3;
+      const mxB = Math.max(bgC[i3], bgC[i3 + 1], bgC[i3 + 2]);
+      if (mxB < 20) continue;
+      const sBg = (mxB - Math.min(bgC[i3], bgC[i3 + 1], bgC[i3 + 2])) / mxB;
+      // The background must be measurably less saturated than the cloth, or
+      // this axis carries no information either and the matte's answer stands.
+      const span = sRefG - sBg;
+      if (span < 0.10) continue;
+      // The pixel's hue has to be the garment's. A green leaf and a violet
+      // sleeve are both saturated; only one of them is the shirt.
+      let hd = Math.abs(hA[i] - shirtHue) % 360; if (hd > 180) hd = 360 - hd;
+      const hueOk = 1 - smooth(hd, 22, 40);
+      if (hueOk <= 0) continue;
+      const aSat = Math.max(0, Math.min(1, (sA[i] - sBg) / span));
+      // Held to what the matte thinks is possible, so this can fill in a
+      // coverage the matte could not measure but never contradict one it could.
+      const fl = hueOk * Math.min(aSat, Math.max(mAlphaE[i], mAlpha[i]));
+      if (fl > wMap[i]) wMap[i] = fl;
+      evAny[i] = Math.max(evAny[i], fl);
+    }
+  }
+
   let keyMiss = 0;
   for (let i = 0; i < N; i++) {
     if (orderEv[i] <= 0.5 || wMap[i] >= 0.5) continue;
@@ -2054,7 +2139,26 @@ function analyze(img) {
       if (wMap[i] <= 0.05) continue;
       const measured = Math.max(mConfS[i], mConf[i]);
       if (measured > 0.30) continue;
-      const looksLikeCloth = smooth(sA[i] / sRefG, 0.45, 0.95);
+      // Measured against WHAT IS BEHIND IT, not against zero. A boundary pixel
+      // is desaturated because it is a mixture — that is the definition of
+      // one — so judging its saturation against the fabric's alone convicts
+      // every honest edge pixel of being background. On a shoulder against
+      // blurred foliage the background itself carries saturation 0.12, the
+      // pixel 0.25 and the cloth 0.46: measured from zero it scores 0.10 and
+      // this cap held a nine-tenths-fabric pixel at one tenth, leaving nine
+      // tenths of its violet in the picture — the pale comb along the shoulder
+      // seam. Measured from the background it scores 0.39, which is what a
+      // mixture of those two things actually is.
+      const mxB = Math.max(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]);
+      const sBg = mxB > 20 && bgF.fd[i] >= 0
+        ? (mxB - Math.min(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2])) / mxB : 0;
+      const span = Math.max(0.12, sRefG - sBg);
+      // In PROPORTION, which is what this rule is named for — not a verdict.
+      // A smoothstep from 0.45 to 0.95 is a classifier: it says a pixel less
+      // than half cloth is not cloth at all and may carry no weight. But a
+      // boundary pixel that is four tenths fabric should be recoloured four
+      // tenths, and zeroing it leaves four tenths of its violet on the shirt.
+      const looksLikeCloth = Math.max(0, Math.min(1, (sA[i] - sBg) / span));
       const allowed = Math.max(looksLikeCloth, orderEv[i]);
       if (wMap[i] > allowed) wMap[i] = allowed;
     }
