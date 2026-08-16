@@ -819,15 +819,92 @@ const TEMPLATES = [
       // be trusted", and the pixels in between — the ones that are genuinely
       // part fabric — are left for the matte to solve instead of being used to
       // define the answer.
-      const bgF = diffuseInto(i => (outside[i] && !ring[i]) || (cleanBg[i] && distC[i] >= 3));
       // A second background estimate, seeded ONLY from beyond the entire matte
-      // band. The one above deliberately reaches for the nearest trustworthy
+      // band. The one below deliberately reaches for the nearest trustworthy
       // pixel, which is what lets the matte measure a rim at all — but it means
       // its estimate sits close enough to the garment to have been touched by an
       // upscaler's outline, and a contaminated estimate cannot be used to detect
       // that contamination. This one is far enough out to be innocent of it.
       const bgFar = diffuseInto(i => outside[i] && !ring[i]);
       const fgF = diffuseInto(i => !outside[i]);
+      // ---- a seed may not be an overshoot ----
+      // Kept in step with template-studio.html.
+      // Every generator and every upscaler draws a bright line where the figure
+      // meets its background, and it is one pixel wide. Measured across a
+      // shoulder: fabric 129, then 146, 165, and a spike to 189 at the third
+      // pixel, with the real background — a dark doorway — sitting at 26 from
+      // the sixth pixel out. A spike ABOVE both of the things it lies between is
+      // not a mixture of them; no scene can produce it.
+      //
+      // What the pipeline did was believe it. The spike is bright, carries no
+      // violet and has no raw weight, so it passed every test for clean
+      // background and SEEDED the background diffusion with itself — which set
+      // the endpoint for the whole rim beside it to 189. Against a 189
+      // background the matte solved the outline as background at full
+      // confidence and the rim beside it at half coverage, so the outline kept
+      // the photograph's brightness and rendered as a pale serrated line hugging
+      // the shoulder on every dark colour.
+      //
+      // The far estimate settles it without guessing: a pixel brighter than both
+      // the fabric diffused in from one side and the background diffused in from
+      // beyond the band cannot be a mixture of them, so it does not get to
+      // define the answer. It is only barred from SEEDING — the matte still
+      // solves it, now against an endpoint that is actually behind it.
+      // And it has to be THIN, which is the half of the description that does
+      // the real work. "Brighter than both endpoints" alone convicted a bare
+      // arm: a limb narrow enough that the whole of it lies inside the matte
+      // band has no seed of its own beyond the band, so the far estimate
+      // reaches past it to the street, and bright skin duly reads as brighter
+      // than both the fabric and "the background". Barring it left the matte
+      // measuring the garment against the road, and the bake wrote that dark
+      // mixture along the sleeve.
+      //
+      // An unsharp overshoot is a ridge one or two pixels wide; an arm is not.
+      // A morphological opening states that difference and nothing else: erode
+      // the bright set, dilate it back, and what survives is every part of it
+      // that could contain the disc — the wide regions. The thin residue that
+      // does not survive is the outline. A statement about SHAPE, so it holds
+      // for any subject and any background.
+      const seedLum = (a, i3) => 0.299 * a[i3] + 0.587 * a[i3 + 1] + 0.114 * a[i3 + 2];
+      const overshoot = new Uint8Array(N);
+      {
+        const bright = new Uint8Array(N);
+        for (let i = 0; i < N; i++) {
+          if (bgFar.fd[i] < 0 || fgF.fd[i] < 0) continue;
+          const yP = 0.299 * src[i * 4] + 0.587 * src[i * 4 + 1] + 0.114 * src[i * 4 + 2];
+          const hull = Math.max(seedLum(fgF.c, i * 3), seedLum(bgFar.c, i * 3));
+          if (yP > hull + 12) bright[i] = 1;
+        }
+        const R = 2;
+        const sep = (inp, pick) => {
+          const t = new Uint8Array(N), o = new Uint8Array(N);
+          for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+              let v = inp[y * W + x];
+              for (let d = 1; d <= R; d++) {
+                if (x - d >= 0) v = pick(v, inp[y * W + x - d]);
+                if (x + d < W) v = pick(v, inp[y * W + x + d]);
+              }
+              t[y * W + x] = v;
+            }
+          }
+          for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+              let v = t[y * W + x];
+              for (let d = 1; d <= R; d++) {
+                if (y - d >= 0) v = pick(v, t[(y - d) * W + x]);
+                if (y + d < H) v = pick(v, t[(y + d) * W + x]);
+              }
+              o[y * W + x] = v;
+            }
+          }
+          return o;
+        };
+        const opened = sep(sep(bright, Math.min), Math.max);
+        for (let i = 0; i < N; i++) if (bright[i] && !opened[i]) overshoot[i] = 1;
+      }
+      const bgF = diffuseInto(i => (outside[i] && !ring[i])
+        || (cleanBg[i] && distC[i] >= 3 && !overshoot[i]));
       const bgC = bgF.c, fgC = fgF.c;
 
       // A deep crevice (underarm gap, hem fold) is enclosed by garment: no
@@ -1203,6 +1280,49 @@ const TEMPLATES = [
         alphaA[i] = aEff; confA[i] = confS;
         wMap[i] = confS * aEff + (1 - confS) * wMap[i];
         evAny[i] = Math.max(evAny[i], wMap[i]);
+      }
+
+      // ---- an overshoot takes the boundary's answer, not its own ----
+      // Kept in step with template-studio.html.
+      // Barring the outline from seeding repairs the endpoint for the rim
+      // BESIDE it, and the rim is then solved correctly — but the outline pixel
+      // itself is still there, and it is the visible line. It cannot solve
+      // itself: it sits above the hull of the two things it lies between, so the
+      // residual is large by construction, confidence lands at zero, and a pixel
+      // with no saturation earns no weight from any evidence term either.
+      //
+      // It carries no measurement, so it takes its neighbours': the coverage and
+      // confidence of the boundary pixels beside it, which the same matte solved
+      // against a background that is genuinely behind them. Safe precisely
+      // because the outline is one pixel wide, so every pixel in it has
+      // neighbours along the boundary that are not. The bake then rewrites it as
+      // a*fabric + (1-a)*background like any solved pixel, and the runtime
+      // cancels the violet exactly.
+      {
+        const aN = new Float32Array(N), cN = new Float32Array(N);
+        const todo = [];
+        for (let i = 0; i < N; i++) {
+          if (!overshoot[i] || !ring[i] || distC[i] > RING || crevice[i]) continue;
+          const x = i % W;
+          let as = 0, cs = 0, n = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (!dx && !dy) continue;
+              const nx = x + dx, ni = i + dy * W + dx;
+              if (nx < 0 || nx >= W || ni < 0 || ni >= N) continue;
+              if (overshoot[ni] || !ring[ni] || confA[ni] <= 0.2) continue;
+              as += alphaA[ni]; cs += confA[ni]; n++;
+            }
+          }
+          if (n < 2) continue;
+          aN[i] = as / n; cN[i] = cs / n; todo.push(i);
+        }
+        for (const i of todo) {
+          alphaA[i] = aN[i]; confA[i] = cN[i];
+          mAlphaE[i] = aN[i]; mConfS[i] = cN[i]; mConf[i] = Math.max(mConf[i], cN[i]);
+          wMap[i] = cN[i] * aN[i] + (1 - cN[i]) * wMap[i];
+          evAny[i] = Math.max(evAny[i], wMap[i]);
+        }
       }
 
       // ---- morphological closing: an image-independent guarantee ----
@@ -1705,10 +1825,31 @@ const TEMPLATES = [
       // is generous enough that grain, weave and a genuinely bright fold all sit
       // comfortably inside; and a pixel the matte baked is already at its hull
       // point, so this finds nothing to do there.
+      //
+      // The inner ring only. Extending it to the whole band did reduce the
+      // outline further — 219 px to 96 on the candidate — and it carved a grey
+      // stripe of scaled-down background alongside the hem of street-m and two
+      // others, because out there the far estimate is several pixels away and can
+      // reach past a bright wall to something darker. Where the band is thin the
+      // estimate is the pixel just beyond it and the correction is safe; where it
+      // is wide it is a guess, and a guess that only ever darkens.
       for (let i = 0; i < N; i++) {
         if (!ring[i] || distC[i] > RING || bgF.fd[i] < 0 || fgF.fd[i] < 0) continue;
         const o = i * 4;
         const yF = 0.299 * fgC[i * 3] + 0.587 * fgC[i * 3 + 1] + 0.114 * fgC[i * 3 + 2];
+        // The NEAR estimate, deliberately. It used to be the wrong reference
+        // here — an outline this test exists to find was exactly the kind of
+        // pixel that estimate reached for, so the test compared the outline
+        // against itself (189 against 189 on the shoulder that started this)
+        // and passed it. The seed rule above fixes that at the root: an
+        // overshoot can no longer seed, so the near estimate now reads the
+        // doorway behind the shoulder, 27.
+        //
+        // The far estimate is not a safe substitute. Where a limb is narrow the
+        // seed beyond the band is on the far side of it, so the far estimate of
+        // what is behind a sleeve is the road, and scaling bright skin down to
+        // that put a grey band along an armhole — 2 dark edge pixels became
+        // 644. A near estimate that is honest beats a far one out of position.
         const yB = 0.299 * bgC[i * 3] + 0.587 * bgC[i * 3 + 1] + 0.114 * bgC[i * 3 + 2];
         // Where the matte measured coverage, the hull collapses to a point: a
         // pixel that is `a` fabric sits at a*fabric + (1-a)*background, not
@@ -1895,6 +2036,46 @@ const TEMPLATES = [
           if (above(outL, Math.max(rL, tL)) - above(sL, Math.max(rL, vL)) > 18) edgeBright++;
         }
       }
+
+      // ---- the outline: a boundary that renders brighter than both its sides ----
+      // Kept in step with template-studio.html.
+      // The audit above deliberately forgives the photograph: it subtracts the
+      // brightness already in the source, so it measures only what the recolour
+      // ADDED. That is the right question for a rim the pipeline invents and
+      // exactly the wrong one for an outline the generator drew, which is real
+      // brightness in the source — and which the audit therefore scored 0/0
+      // while it was plainly visible as a pale serrated line along a shoulder
+      // on black.
+      //
+      // This asks the other question, and needs no ground truth to ask it. A
+      // boundary pixel is a mixture of the garment and what is behind it, so
+      // once the garment is recoloured it must lie between the relit target and
+      // the background. One that renders brighter than BOTH is not a mixture of
+      // them: whatever produced it was added after the camera. The dark target
+      // exposes it, and the background reference is the far estimate, since the
+      // near one is free to reach for the outline itself.
+      let outlinePx = 0;
+      {
+        const lutK = mkRelight([33, 33, 33]);
+        const lum = (r2, g2, b2) => 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+        for (let i = 0; i < N; i++) {
+          if (distC[i] < 1 || distC[i] > RING + 2 || bgFar.fd[i] < 0) continue;
+          const o = i * 4, ww = wMap[i], cl2 = ownBlend[i];
+          const sbB = Math.round(shadeVal[i] * 255) * 3;
+          const px = (c2) => pd.data[o + c2] +
+            ww * (lutK[sbB + c2] - cl2 * pd.data[o + c2] - (1 - cl2) * lutVm[sbB + c2]);
+          const outL = lum(px(0), px(1), px(2));
+          const tL = lum(lutK[sbB], lutK[sbB + 1], lutK[sbB + 2]);
+          // The brighter of the two background estimates. A gate that says
+          // "brighter than both sides" must be sure of both: where the band
+          // spans a whole limb the far estimate sits past it on the road, and
+          // every bright skin pixel would be reported as an outline.
+          const bL = Math.max(
+            lum(bgFar.c[i * 3], bgFar.c[i * 3 + 1], bgFar.c[i * 3 + 2]),
+            lum(bgC[i * 3], bgC[i * 3 + 1], bgC[i * 3 + 2]));
+          if (outL > Math.max(tL, bL) + 25) outlinePx++;
+        }
+      }
       // chroma audit: recolour to WHITE via the exact runtime formula and count
       // information-free garment pixels that come out CHROMATIC. This is the
       // defect that actually shipped — modelled violet (G far below R and B)
@@ -2077,7 +2258,7 @@ const TEMPLATES = [
         dbg, W, H, shirtHue, fragments, ambientTint, quad,
         bbox: { x: mnX, y: mnY, w: bw, h: bh },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
-        qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
+        qa: { missed, skin, bgPaint, edgeDark, edgeBright, outlinePx, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
           chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint,
           pocketPx, pocketPaint, pocketBlind },
         photo: photo.toDataURL('image/jpeg', 1.0),
@@ -2211,6 +2392,15 @@ const TEMPLATES = [
     // Not a defect in the pipeline but in the pose: a channel too narrow or
     // too dark for the matte to resolve renders as neutral shadow rather
     // than the background actually behind it.
+    // The generator's outline surviving into a dark recolour. A property of the
+    // source rather than of the pipeline — the shipped set measures 7 to 380 px
+    // with the seed rule in place, and the candidates that prompted it measured
+    // 500 to 1060 before — so it warns rather than failing: dropping a template
+    // over a photograph's edge line would leave the operator with nothing to
+    // ship and no way to fix it.
+    if (r.qa.outlinePx > 400) {
+      console.log(`  ! outline=${r.qa.outlinePx} px — a bright edge line survives into dark colours, inspect the silhouette on black`);
+    }
     if (r.qa.pocketPx > 400 && r.qa.pocketBlind > r.qa.pocketPx * 0.5) {
       console.log(`  ! pocket=${r.qa.pocketPx}px blind=${r.qa.pocketBlind} — arm/torso gap mostly unresolvable, inspect it on white`);
     }
@@ -2257,7 +2447,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} pocket=${r.qa.pocketPx}/${r.qa.pocketBlind}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} pocket=${r.qa.pocketPx}/${r.qa.pocketBlind} outline=${r.qa.outlinePx}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
