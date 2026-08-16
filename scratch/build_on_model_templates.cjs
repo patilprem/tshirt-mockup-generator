@@ -1978,6 +1978,174 @@ const TEMPLATES = [
         pd.data[o] += mr * k; pd.data[o + 1] += mg * k; pd.data[o + 2] += mb * k;
       }
 
+      // ---- the garment's border, defined once and rebuilt ----
+      // Kept in step with template-studio.html.
+      // Everything upstream decides, pixel by pixel, how much garment a pixel
+      // holds. Nothing upstream has an opinion about the SHAPE those pixels make,
+      // and that shape is what the eye reads. Measured on the shipped set, the
+      // silhouette's sub-pixel position wanders 0.30 to 0.44 px from one scanline
+      // to the next and the transition from cloth to scene spans 1.7 px, where a
+      // photographed edge spends 2.7 to 6.3. A staircase, in other words, half as
+      // wide as a camera's and wobbling by half a pixel — which is exactly what a
+      // comb of ticks along a sleeve is.
+      //
+      // The generator cannot be asked for better, so the border is defined here
+      // and rebuilt: smoothed ALONG itself to take the wobble out, widened ACROSS
+      // itself to the width a lens would give, and each boundary pixel then
+      // composed from the cloth and the scene actually beside it. No detail is
+      // invented — the position and the two colours are all measured; only the
+      // sub-pixel ordering between them is restored.
+      {
+        // Coverage as a field: 1 inside the garment, the measured weight through
+        // the band, 0 beyond it. This is the thing whose shape is wrong.
+        const A = new Float32Array(N);
+        for (let i = 0; i < N; i++) {
+          A[i] = (!outside[i] || core[i]) ? 1 : (distC[i] < 0 ? 0 : Math.max(0, Math.min(1, wMap[i])));
+        }
+
+        // Who may be touched. Hair, hands, crevices and sealed pockets keep their
+        // own machinery: a strand is real structure crossing the border, not a
+        // rough edge, and a curve fitted through it would erase it. A contact edge
+        // — a hem lying on denim — is genuinely sharp and its two sides are too
+        // close in colour to measure coverage against, so it is left alone too.
+        // Skin cannot be a violet mixture at all.
+        const elig = new Uint8Array(N);
+        for (let i = 0; i < N; i++) {
+          if (!ring[i] || crevice[i] || pocket[i] || occluder[i]) continue;
+          if (bgF.fd[i] < 0) continue;
+          const i3 = i * 3, sb = Math.round(shadeVal[i] * 255) * 3;
+          const dr = lutVm[sb] - bgC[i3], dg = lutVm[sb + 1] - bgC[i3 + 1], db = lutVm[sb + 2] - bgC[i3 + 2];
+          if (dr * dr + dg * dg + db * db < 2500) continue;
+          const o = i * 4;
+          if (src[o + 2] < src[o + 1] - 4 && src[o] > src[o + 1]) continue;
+          elig[i] = 1;
+        }
+        // A pixel next to hair is eligible but must not be BUILT from hair, so
+        // sampling below refuses occluded neighbours. Without that the fill drags
+        // strand colour along the shoulder and paints it as cloth.
+        const usable = (i) => i >= 0 && i < N && !occluder[i];
+
+        const sample = (arr, stride, off, x, y) => {
+          if (x < 0) x = 0; else if (x > W - 1) x = W - 1;
+          if (y < 0) y = 0; else if (y > H - 1) y = H - 1;
+          const x0 = Math.floor(x), y0 = Math.floor(y);
+          const x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+          const fx = x - x0, fy = y - y0;
+          const a00 = arr[(y0 * W + x0) * stride + off], a10 = arr[(y0 * W + x1) * stride + off];
+          const a01 = arr[(y1 * W + x0) * stride + off], a11 = arr[(y1 * W + x1) * stride + off];
+          return (a00 * (1 - fx) + a10 * fx) * (1 - fy) + (a01 * (1 - fx) + a11 * fx) * fy;
+        };
+
+        // The border's own direction. Taken from a blurred copy so a single rough
+        // pixel cannot set it: the gradient of coverage points across the border,
+        // and its perpendicular runs along it.
+        const blur = (inp) => {
+          const t = new Float32Array(N), o = new Float32Array(N);
+          for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const a = inp[y * W + Math.max(0, x - 1)], b = inp[y * W + x], c = inp[y * W + Math.min(W - 1, x + 1)];
+            t[y * W + x] = (a + 2 * b + c) / 4;
+          }
+          for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const a = t[Math.max(0, y - 1) * W + x], b = t[y * W + x], c = t[Math.min(H - 1, y + 1) * W + x];
+            o[y * W + x] = (a + 2 * b + c) / 4;
+          }
+          return o;
+        };
+        const Ab = blur(blur(A));
+
+        // ---- smoothed ALONG the border: the wobble goes, the edge does not move
+        // A five-tap pass along the tangent. Along that direction the true border
+        // is a smooth curve, so averaging there removes quantisation and nothing
+        // else; across the border nothing is averaged, so the edge keeps its
+        // position and cannot creep.
+        let cur = A;
+        for (let pass = 0; pass < 6; pass++) {
+          const next = new Float32Array(cur);
+          for (let i = 0; i < N; i++) {
+            if (!elig[i]) continue;
+            const x = i % W, y = (i / W) | 0;
+            const gx = (Ab[y * W + Math.min(W - 1, x + 1)] - Ab[y * W + Math.max(0, x - 1)]) / 2;
+            const gy = (Ab[Math.min(H - 1, y + 1) * W + x] - Ab[Math.max(0, y - 1) * W + x]) / 2;
+            const gl = Math.hypot(gx, gy);
+            if (gl < 1e-4) continue;
+            const tx = -gy / gl, ty = gx / gl;
+            let s = 4 * cur[i], wsum = 4;
+            for (const [d, wt] of [[-3, 1], [-2, 2], [-1, 3], [1, 3], [2, 2], [3, 1]]) {
+              const nx = x + tx * d, ny = y + ty * d;
+              const ni = Math.round(ny) * W + Math.round(nx);
+              if (!usable(ni)) continue;
+              s += wt * sample(cur, 1, 0, nx, ny); wsum += wt;
+            }
+            next[i] = s / wsum;
+          }
+          cur = next;
+        }
+
+        // ---- widened ACROSS the border: a lens, not a scissor cut
+        // One gentle pass along the normal takes the 1.7 px step to the 2.5-3 px
+        // ramp a photograph shows. Symmetric, so the half-coverage point — the
+        // border itself — stays exactly where the smoothing left it.
+        const wide = new Float32Array(cur);
+        for (let i = 0; i < N; i++) {
+          if (!elig[i]) continue;
+          const x = i % W, y = (i / W) | 0;
+          const gx = (Ab[y * W + Math.min(W - 1, x + 1)] - Ab[y * W + Math.max(0, x - 1)]) / 2;
+          const gy = (Ab[Math.min(H - 1, y + 1) * W + x] - Ab[Math.max(0, y - 1) * W + x]) / 2;
+          const gl = Math.hypot(gx, gy);
+          if (gl < 1e-4) continue;
+          const nx = gx / gl, ny = gy / gl;
+          wide[i] = 0.5 * cur[i] + 0.25 * sample(cur, 1, 0, x + nx, y + ny) + 0.25 * sample(cur, 1, 0, x - nx, y - ny);
+        }
+
+        // ---- rebuilt from what is actually beside it
+        for (let i = 0; i < N; i++) {
+          if (!elig[i]) continue;
+          let a = wide[i];
+          // The border may be tidied, never marched. Half a pixel is the width of
+          // the quantisation being removed; beyond that the outline would be
+          // changing shape, which is a different thing and not wanted.
+          const a0 = A[i];
+          if (a > a0 + 1.0) a = a0 + 1.0; else if (a < a0 - 1.0) a = a0 - 1.0;
+          if (a < 0) a = 0; else if (a > 1) a = 1;
+          const x = i % W, y = (i / W) | 0;
+          const gx = (Ab[y * W + Math.min(W - 1, x + 1)] - Ab[y * W + Math.max(0, x - 1)]) / 2;
+          const gy = (Ab[Math.min(H - 1, y + 1) * W + x] - Ab[Math.max(0, y - 1) * W + x]) / 2;
+          const gl = Math.hypot(gx, gy);
+          if (gl < 1e-4) continue;
+          const nx = gx / gl, ny = gy / gl;
+          // The scene behind this pixel, taken from the scene BESIDE it. Stepping
+          // outward along the normal reaches real background a few pixels away —
+          // its own colour, its own blur, its own leaf — where the global estimate
+          // reaches for whatever is nearest and can fetch the road from behind a
+          // narrow arm. Two distances, the further one preferred, so a thin band
+          // still lands outside it.
+          let bx = x - nx * 5, by = y - ny * 5;
+          if (sample(Ab, 1, 0, bx, by) > 0.25) { bx = x - nx * 8; by = y - ny * 8; }
+          const bi = Math.round(by) * W + Math.round(bx);
+          const Br = usable(bi) ? sample(pd.data, 4, 0, bx, by) : bgC[i * 3];
+          const Bg = usable(bi) ? sample(pd.data, 4, 1, bx, by) : bgC[i * 3 + 1];
+          const Bb = usable(bi) ? sample(pd.data, 4, 2, bx, by) : bgC[i * 3 + 2];
+          const o = i * 4, sb = Math.round(shadeVal[i] * 255) * 3;
+          // Below a tenth of coverage the pixel is the scene: it keeps its own
+          // photograph and carries no weight, so no film of paint is left behind.
+          if (a < 0.10) { wMap[i] = 0; alphaA[i] = 0; continue; }
+          // The cloth endpoint is the MODELLED violet at this pixel's own shade —
+          // the one the runtime cancels exactly — so the rebuilt pixel recolours
+          // to a*target + (1-a)*scene and carries no violet into any colour.
+          pd.data[o] = a * lutVm[sb] + (1 - a) * Br;
+          pd.data[o + 1] = a * lutVm[sb + 1] + (1 - a) * Bg;
+          pd.data[o + 2] = a * lutVm[sb + 2] + (1 - a) * Bb;
+          wMap[i] = a; alphaA[i] = a; confA[i] = 1;
+          clip[i] = 0; unrel[i] = 0;
+          mConf[i] = 1; mConfS[i] = 1; mAlphaE[i] = a;
+          // ownBlend is computed before the bake in this file, so it is corrected
+          // here: a rebuilt pixel must subtract the MODELLED violet, not its own.
+          ownBlend[i] = 0;
+          evAny[i] = Math.max(evAny[i], a);
+        }
+      }
+
+
       pctx.putImageData(pd, 0, 0);
 
       // weight map: R = recolour weight, G = design clip
