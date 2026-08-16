@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 67fbb71</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 67fbb71 +local edits</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -1823,6 +1823,7 @@ function analyze(img) {
     photoData[o] += mr * k; photoData[o + 1] += mg * k; photoData[o + 2] += mb * k;
   }
 
+
   // metrics
   // Deep shadow next to hair or skin is measured separately from deep
   // shadow in the open garment: the occluder machinery renders it
@@ -2076,6 +2077,136 @@ function analyze(img) {
     // construction rather than merely counted.
     if (!crevice[i] && evAny[i] < 0.05 && mConf[i] < 0.1) wMap[i] = 0;
   }
+  // ---- the silhouette, resynthesized ----
+  // Placed AFTER every weight-final stage — the ring clamp, the evidence cap,
+  // the invention cap and the residue zeroing — because those rules exist to
+  // police weights the measurement never justified, and a resynthesized pixel
+  // is the opposite: its weight IS its measured coverage, and its photograph
+  // was rewritten to match. Run before them, they zeroed the weight and left
+  // the baked violet mix in the picture with nothing to cancel it — a dark rim
+  // on white and violet on black, which is how this block's first position
+  // measured 874 and 506 px on the gates it exists to clear.
+  // Everything above repairs individual pixels; the profile ACROSS the edge is
+  // still the generator's, and the generator draws it as a near-step with an
+  // overshoot on each side — 1.4 to 1.9 px where a photograph spends 2.7 to
+  // 6.3. No per-pixel correction can widen a step; only rewriting the
+  // transition can. And it can be rewritten without invention, because the
+  // band's pixels have just been placed on the fabric↔background segment: each
+  // one's position along it IS its coverage, measured. That coverage field is
+  // smoothed once across the boundary — coverage is the integral of an edge
+  // over the pixel footprint, so it is continuous in any real photograph, and
+  // the smoothed value stays within a pixel of the measured one — and the
+  // pixel is REBUILT as a*fabric + (1-a)*background at the smoothed coverage,
+  // with its weight, alpha and confidence set to the same number. The runtime
+  // then produces a*target + (1-a)*background exactly: an anti-aliased edge in
+  // every colour, no rim in either direction, by construction.
+  //
+  // Who is eligible is decided by the family test: a pixel further off the
+  // segment than sixty percent of the segment's own length is not a mixture of
+  // these two things — it is a hair wisp, a strand of grass, an occluder — and
+  // it keeps its photograph and its matte answer untouched. Pockets, crevices
+  // and occluders keep their own machinery for the same reason. Ineligible
+  // pixels still shape the field their neighbours smooth over, so the profile
+  // dips around a wisp instead of ignoring it.
+  {
+    const field = new Float32Array(N);
+    const eligible = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!outside[i]) { field[i] = 1; continue; }
+      if (distC[i] < 0) { field[i] = 0; continue; }
+      let a = wMap[i];
+      // Skin is never a violet mixture. Every mix of the fabric with anything
+      // keeps blue at or above green — violet's blue is its highest channel —
+      // while skin, wood and sand put blue clearly lowest. Without this test a
+      // forearm beside a sleeve read as forty percent fabric against the wall
+      // behind it and took white spurs down the arm.
+      const warmSrc = src[i * 4 + 2] < src[i * 4 + 1] - 4 && src[i * 4] > src[i * 4 + 1];
+      if (!warmSrc && !pocket[i] && !crevice[i] && !occluder[i] && ring[i] && bgF.fd[i] >= 0) {
+        const o = i * 4, i3 = i * 3, sb = shade[i] * 3;
+        const dr = lutVm[sb] - bgC[i3], dg = lutVm[sb + 1] - bgC[i3 + 1], db = lutVm[sb + 2] - bgC[i3 + 2];
+        const dd = dr * dr + dg * dg + db * db;
+        // A coverage reading needs contrast to be read against. Shadow and grain
+        // move a pixel by tens of levels, so position along a segment shorter
+        // than ~50 levels is noise, not measurement — and a boundary between
+        // two things that close is a contact edge (a waistband on dark denim),
+        // which is genuinely sharp and already owned by the crevice and matte
+        // machinery. Dark denim projected onto a short segment read as 68%
+        // fabric and painted the hoodie half a pixel down the jeans, 264 px of
+        // it. Silhouettes — fabric against street, sky or skin — measure 100+.
+        if (dd >= 2500) {
+          const o2 = i * 4;
+          const pr = photoData[o2] - bgC[i3], pg = photoData[o2 + 1] - bgC[i3 + 1], pb = photoData[o2 + 2] - bgC[i3 + 2];
+          let a0 = (pr * dr + pg * dg + pb * db) / dd;
+          if (a0 < 0) a0 = 0; else if (a0 > 1) a0 = 1;
+          const er = pr - a0 * dr, eg = pg - a0 * dg, eb = pb - a0 * db;
+          if (Math.sqrt(er * er + eg * eg + eb * eb) <= 0.6 * Math.sqrt(dd)) {
+            eligible[i] = 1;
+            a = confA[i] > 0.3 ? alphaA[i] : a0;
+          }
+        }
+      }
+      field[i] = a;
+    }
+    // One binomial pass, separable. Radius two: wide enough to spread a step
+    // over three or four pixels — what a photographed edge spends — and narrow
+    // enough that the coverage it reports never strays more than a couple of
+    // pixels from where it was measured.
+    const KW = [1, 4, 6, 4, 1];
+    const tmp = new Float32Array(N), aSm = new Float32Array(N);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        let sAcc = 0, wAcc = 0;
+        for (let k2 = -2; k2 <= 2; k2++) {
+          const x2 = x + k2;
+          if (x2 < 0 || x2 >= W) continue;
+          sAcc += KW[k2 + 2] * field[y * W + x2]; wAcc += KW[k2 + 2];
+        }
+        tmp[y * W + x] = sAcc / wAcc;
+      }
+    }
+    for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H; y++) {
+        let sAcc = 0, wAcc = 0;
+        for (let k2 = -2; k2 <= 2; k2++) {
+          const y2 = y + k2;
+          if (y2 < 0 || y2 >= H) continue;
+          sAcc += KW[k2 + 2] * tmp[y2 * W + x]; wAcc += KW[k2 + 2];
+        }
+        aSm[y * W + x] = sAcc / wAcc;
+      }
+    }
+    for (let i = 0; i < N; i++) {
+      if (!eligible[i]) continue;
+      // Anti-alias the boundary, never move it. Smoothing spreads a step over
+      // its neighbours, and at a silhouette that is the truth of coverage; at a
+      // contact edge — a hem lying on jeans — the transition really is sharp,
+      // and an uncapped ramp grows the garment half a pixel onto the trousers,
+      // which the below-the-hem audit counts pixel by pixel (655 on a hoodie
+      // whose waistband rides on dark denim). So the smoothed coverage may
+      // exceed what this pixel's own measurement sees by at most 0.45: the full
+      // anti-aliasing ramp survives, and no pixel the measurement calls
+      // background can come out more than half painted.
+      const a = Math.min(1, aSm[i], field[i] + 0.45);
+      const o = i * 4, i3 = i * 3, sb = shade[i] * 3;
+      // The tail of the ramp is background. Leaving two percent of weight on a
+      // pixel that keeps its photograph is how thin films of paint end up on
+      // clean background, so below the cut the pixel is returned to the scene
+      // entirely: photograph kept, weight zero.
+      if (a < 0.10) { wMap[i] = 0; alphaA[i] = 0; continue; }
+      photoData[o] = a * lutVm[sb] + (1 - a) * bgC[i3];
+      photoData[o + 1] = a * lutVm[sb + 1] + (1 - a) * bgC[i3 + 1];
+      photoData[o + 2] = a * lutVm[sb + 2] + (1 - a) * bgC[i3 + 2];
+      // The runtime must subtract the MODELLED violet here, nothing else: the
+      // pixel was just written as a*V + (1-a)*bg, and only own = 0 makes the
+      // runtime's a*(T - V) cancel that V exactly. clip and unrel both feed the
+      // own-value blend, so both are cleared — leaving unrel set left own at
+      // its old value and produced a dark rim of failed cancellation on white.
+      wMap[i] = a; alphaA[i] = a; confA[i] = 1; clip[i] = 0; unrel[i] = 0;
+      mConfS[i] = 1; mConf[i] = 1; mAlphaE[i] = a;
+      evAny[i] = Math.max(evAny[i], a);
+    }
+  }
+
   // bgPaint is recounted here, on the FINAL weight — the metrics loop above
   // runs before the floors and the confinement, and reporting the
   // pre-confinement count failed candidates for paint that no longer exists.
