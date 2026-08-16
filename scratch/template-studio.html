@@ -2955,6 +2955,10 @@ function analyze(img) {
       const a0 = A[i];
       if (a > a0 + 1.0) a = a0 + 1.0; else if (a < a0 - 1.0) a = a0 - 1.0;
       if (a < 0) a = 0; else if (a > 1) a = 1;
+      // Only where there is actually a transition. A pixel the matte calls
+      // solid scene or solid cloth is not a boundary and has nothing to gain
+      // here — and at a flat coverage the normal below is meaningless.
+      if (a < 0.02 || a > 0.995) continue;
       const x = i % W, y = (i / W) | 0;
       const gx = (Ab[y * W + Math.min(W - 1, x + 1)] - Ab[y * W + Math.max(0, x - 1)]) / 2;
       const gy = (Ab[Math.min(H - 1, y + 1) * W + x] - Ab[Math.max(0, y - 1) * W + x]) / 2;
@@ -2967,23 +2971,44 @@ function analyze(img) {
       // reaches for whatever is nearest and can fetch the road from behind a
       // narrow arm. Two distances, the further one preferred, so a thin band
       // still lands outside it.
-      let bx = x - nx * 5, by = y - ny * 5;
-      if (sample(Ab, 1, 0, bx, by) > 0.25) { bx = x - nx * 8; by = y - ny * 8; }
-      const bi = Math.round(by) * W + Math.round(bx);
-      const Br = usable(bi) ? sample(photoData, 4, 0, bx, by) : bgC[i * 3];
-      const Bg = usable(bi) ? sample(photoData, 4, 1, bx, by) : bgC[i * 3 + 1];
-      const Bb = usable(bi) ? sample(photoData, 4, 2, bx, by) : bgC[i * 3 + 2];
+      // Walk outward until the sample is genuinely OUTSIDE, and refuse it if it
+      // never gets there. Sampling blind along the normal is how a light sky
+      // pixel (220,213,231) came back as dark violet (75,40,125): where the
+      // coverage field is flat its gradient is noise, the "outward" step landed
+      // back inside the garment, and the fill wrote cloth into the sky. Weight
+      // was zero there, so no paint gate could see it — the damage was in the
+      // photograph, not in the mask.
+      let Br = bgC[i * 3], Bg = bgC[i * 3 + 1], Bb = bgC[i * 3 + 2];
+      for (const step of [4, 6, 9, 13]) {
+        const bx = x - nx * step, by = y - ny * step;
+        if (bx < 0 || bx > W - 1 || by < 0 || by > H - 1) break;
+        if (sample(Ab, 1, 0, bx, by) > 0.12) continue;
+        const bi = Math.round(by) * W + Math.round(bx);
+        if (!usable(bi)) continue;
+        Br = sample(photoData, 4, 0, bx, by);
+        Bg = sample(photoData, 4, 1, bx, by);
+        Bb = sample(photoData, 4, 2, bx, by);
+        break;
+      }
       const o = i * 4, sb = shade[i] * 3;
-      // Below a tenth of coverage the pixel is the scene: it keeps its own
-      // photograph and carries no weight, so no film of paint is left behind.
-      if (a < 0.10) { wMap[i] = 0; alphaA[i] = 0; continue; }
+      // No special case at low coverage. The composite below IS the answer at
+      // every alpha — at a=0 it is exactly the scene — and carving out an
+      // exception meant a pixel the matte called one-twentieth cloth kept its
+      // photograph, which still holds that twentieth of violet with no weight
+      // left to cancel it. Only true dust is dropped.
       // The cloth endpoint is the MODELLED violet at this pixel's own shade —
       // the one the runtime cancels exactly — so the rebuilt pixel recolours
       // to a*target + (1-a)*scene and carries no violet into any colour.
       photoData[o] = a * lutVm[sb] + (1 - a) * Br;
       photoData[o + 1] = a * lutVm[sb + 1] + (1 - a) * Bg;
       photoData[o + 2] = a * lutVm[sb + 2] + (1 - a) * Bb;
-      wMap[i] = a; alphaA[i] = a; confA[i] = 1;
+      // The background this pixel was composed against is now a measurement,
+      // not a guess, so it is recorded. Downstream — the edge audit above all —
+      // reads bgC as "what is behind this pixel"; leaving the old diffused
+      // value there had the audit judging the composite against a background
+      // it was never made from, and reporting every honest edge as too dark.
+      bgC[i * 3] = Br; bgC[i * 3 + 1] = Bg; bgC[i * 3 + 2] = Bb;
+      wMap[i] = a < 0.02 ? 0 : a; alphaA[i] = a; confA[i] = 1;
       clip[i] = 0; unrel[i] = 0;
       mConf[i] = 1; mConfS[i] = 1; mAlphaE[i] = a;
       evAny[i] = Math.max(evAny[i], a);

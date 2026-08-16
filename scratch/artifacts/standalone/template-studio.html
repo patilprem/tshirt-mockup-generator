@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 882ed03</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-16 5b93da0 +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -2755,6 +2755,265 @@ function analyze(img) {
     // construction rather than merely counted.
     if (!crevice[i] && evAny[i] < 0.05 && mConf[i] < 0.1) wMap[i] = 0;
   }
+  // ---- the garment's border, defined once and rebuilt ----
+  // Everything upstream decides, pixel by pixel, how much garment a pixel
+  // holds. Nothing upstream has an opinion about the SHAPE those pixels make,
+  // and that shape is what the eye reads. Measured on the shipped set, the
+  // silhouette's sub-pixel position wanders 0.30 to 0.44 px from one scanline
+  // to the next and the transition from cloth to scene spans 1.7 px, where a
+  // photographed edge spends 2.7 to 6.3. A staircase, in other words, half as
+  // wide as a camera's and wobbling by half a pixel — which is exactly what a
+  // comb of ticks along a sleeve is.
+  //
+  // The generator cannot be asked for better, so the border is defined here
+  // and rebuilt: smoothed ALONG itself to take the wobble out, widened ACROSS
+  // itself to the width a lens would give, and each boundary pixel then
+  // composed from the cloth and the scene actually beside it. No detail is
+  // invented — the position and the two colours are all measured; only the
+  // sub-pixel ordering between them is restored.
+  {
+    // Coverage as a field: 1 inside the garment, the measured weight through
+    // the band, 0 beyond it. This is the thing whose shape is wrong.
+    const A = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      A[i] = (!outside[i] || core[i]) ? 1 : (distC[i] < 0 ? 0 : Math.max(0, Math.min(1, wMap[i])));
+    }
+
+    // Who may be touched. Hair, hands, crevices and sealed pockets keep their
+    // own machinery: a strand is real structure crossing the border, not a
+    // rough edge, and a curve fitted through it would erase it. A contact edge
+    // — a hem lying on denim — is genuinely sharp and its two sides are too
+    // close in colour to measure coverage against, so it is left alone too.
+    // Skin cannot be a violet mixture at all.
+    const elig = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!ring[i] || crevice[i] || pocket[i] || occluder[i]) continue;
+      if (bgF.fd[i] < 0) continue;
+      const i3 = i * 3, sb = shade[i] * 3;
+      const dr = lutVm[sb] - bgC[i3], dg = lutVm[sb + 1] - bgC[i3 + 1], db = lutVm[sb + 2] - bgC[i3 + 2];
+      if (dr * dr + dg * dg + db * db < 2500) continue;
+      const o = i * 4;
+      if (src[o + 2] < src[o + 1] - 4 && src[o] > src[o + 1]) continue;
+      elig[i] = 1;
+    }
+    // A pixel next to hair is eligible but must not be BUILT from hair, so
+    // sampling below refuses occluded neighbours. Without that the fill drags
+    // strand colour along the shoulder and paints it as cloth.
+    const usable = (i) => i >= 0 && i < N && !occluder[i];
+
+    const sample = (arr, stride, off, x, y) => {
+      if (x < 0) x = 0; else if (x > W - 1) x = W - 1;
+      if (y < 0) y = 0; else if (y > H - 1) y = H - 1;
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+      const fx = x - x0, fy = y - y0;
+      const a00 = arr[(y0 * W + x0) * stride + off], a10 = arr[(y0 * W + x1) * stride + off];
+      const a01 = arr[(y1 * W + x0) * stride + off], a11 = arr[(y1 * W + x1) * stride + off];
+      return (a00 * (1 - fx) + a10 * fx) * (1 - fy) + (a01 * (1 - fx) + a11 * fx) * fy;
+    };
+
+  // ---- the border, matted from the image instead of asserted from colour
+  // Everything upstream decides coverage from the garment's VIOLET, and
+  // violet is degenerate exactly where the border is hardest: strong light
+  // washes saturation out of cloth, shadow takes its value away, and a
+  // blurred background can sit twenty-nine levels from it. Every rule that
+  // patches one of those cases mis-fires on another, which is the whole
+  // history of this file.
+  //
+  // Alpha matting asks a different question, and one the photograph can
+  // answer: inside any small window, the image is a blend of two colours, so
+  // coverage must be an AFFINE function of the pixel's own colour — alpha =
+  // a·I + b. Fitting that per window and averaging the overlapping fits is
+  // the guided filter, and it is the closed-form matting Laplacian's answer
+  // computed in linear time. It follows the picture's real edges: mask teeth
+  // that correspond to nothing in the image are erased, a genuine edge is
+  // followed to the sub-pixel, and a hair strand keeps its own partial
+  // coverage because the window sees it. No hue is assumed anywhere, which
+  // is why this generalises to garments and backgrounds not yet photographed.
+  const matteAlpha = (cov) => {
+    let bx0 = W, by0 = H, bx1 = 0, by1 = 0;
+    for (let i = 0; i < N; i++) {
+      if (!ring[i] && !core[i]) continue;
+      const x = i % W, y = (i / W) | 0;
+      if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
+      if (y < by0) by0 = y; if (y > by1) by1 = y;
+    }
+    if (bx1 < bx0) return null;
+    // The window radius sets how far the filter looks for the two colours it
+    // is separating. Padding by twice it keeps every window that touches the
+    // band fully inside the working rectangle.
+    const R = 6, EPS = 1e-4;
+    bx0 = Math.max(0, bx0 - 2 * R - 2); by0 = Math.max(0, by0 - 2 * R - 2);
+    bx1 = Math.min(W - 1, bx1 + 2 * R + 2); by1 = Math.min(H - 1, by1 + 2 * R + 2);
+    const bw = bx1 - bx0 + 1, bh = by1 - by0 + 1, M = bw * bh;
+    const Ir = new Float32Array(M), Ig = new Float32Array(M), Ib = new Float32Array(M);
+    const P = new Float32Array(M);
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        const i = (y + by0) * W + (x + bx0), o = i * 4, m = y * bw + x;
+        Ir[m] = src[o] / 255; Ig[m] = src[o + 1] / 255; Ib[m] = src[o + 2] / 255;
+        P[m] = cov[i];
+      }
+    }
+    // Separable moving average. Two passes of a running sum, so the cost is
+    // independent of the radius and the whole filter stays linear.
+    const box = (a) => {
+      const t = new Float32Array(M), out = new Float32Array(M);
+      for (let y = 0; y < bh; y++) {
+        const row = y * bw;
+        let acc = 0;
+        for (let x = 0; x <= Math.min(R, bw - 1); x++) acc += a[row + x];
+        for (let x = 0; x < bw; x++) {
+          const lo = Math.max(0, x - R), hi = Math.min(bw - 1, x + R);
+          t[row + x] = acc / (hi - lo + 1);
+          const add = x + R + 1, rem = x - R;
+          if (add < bw) acc += a[row + add];
+          if (rem >= 0) acc -= a[row + rem];
+        }
+      }
+      for (let x = 0; x < bw; x++) {
+        let acc = 0;
+        for (let y = 0; y <= Math.min(R, bh - 1); y++) acc += t[y * bw + x];
+        for (let y = 0; y < bh; y++) {
+          const lo = Math.max(0, y - R), hi = Math.min(bh - 1, y + R);
+          out[y * bw + x] = acc / (hi - lo + 1);
+          const add = y + R + 1, rem = y - R;
+          if (add < bh) acc += t[add * bw + x];
+          if (rem >= 0) acc -= t[rem * bw + x];
+        }
+      }
+      return out;
+    };
+    const mul = (a, b) => { const o = new Float32Array(M); for (let m = 0; m < M; m++) o[m] = a[m] * b[m]; return o; };
+    const mIr = box(Ir), mIg = box(Ig), mIb = box(Ib), mP = box(P);
+    const mIrP = box(mul(Ir, P)), mIgP = box(mul(Ig, P)), mIbP = box(mul(Ib, P));
+    const mrr = box(mul(Ir, Ir)), mrg = box(mul(Ir, Ig)), mrb = box(mul(Ir, Ib));
+    const mgg = box(mul(Ig, Ig)), mgb = box(mul(Ig, Ib)), mbb = box(mul(Ib, Ib));
+    const ar = new Float32Array(M), ag = new Float32Array(M), ab = new Float32Array(M), bb2 = new Float32Array(M);
+    for (let m = 0; m < M; m++) {
+      // The window's colour covariance, regularised. EPS is what decides
+      // whether a faint difference counts as an edge or as noise: too large
+      // and the matte blurs across the silhouette, too small and grain in
+      // flat cloth is mistaken for structure.
+      const rr = mrr[m] - mIr[m] * mIr[m] + EPS, rg = mrg[m] - mIr[m] * mIg[m], rb = mrb[m] - mIr[m] * mIb[m];
+      const gg = mgg[m] - mIg[m] * mIg[m] + EPS, gb = mgb[m] - mIg[m] * mIb[m], b2 = mbb[m] - mIb[m] * mIb[m] + EPS;
+      const c0 = gg * b2 - gb * gb, c1 = gb * rb - rg * b2, c2 = rg * gb - gg * rb;
+      let det = rr * c0 + rg * c1 + rb * c2;
+      if (Math.abs(det) < 1e-12) det = det < 0 ? -1e-12 : 1e-12;
+      const i00 = c0 / det, i01 = c1 / det, i02 = c2 / det;
+      const i11 = (rr * b2 - rb * rb) / det, i12 = (rb * rg - rr * gb) / det;
+      const i22 = (rr * gg - rg * rg) / det;
+      const cr = mIrP[m] - mIr[m] * mP[m], cg = mIgP[m] - mIg[m] * mP[m], cb = mIbP[m] - mIb[m] * mP[m];
+      const Ar = i00 * cr + i01 * cg + i02 * cb;
+      const Ag = i01 * cr + i11 * cg + i12 * cb;
+      const Ab2 = i02 * cr + i12 * cg + i22 * cb;
+      ar[m] = Ar; ag[m] = Ag; ab[m] = Ab2;
+      bb2[m] = mP[m] - Ar * mIr[m] - Ag * mIg[m] - Ab2 * mIb[m];
+    }
+    // Every window that contains a pixel offers a fit for it; the filter's
+    // answer is their average, which is what makes the result continuous.
+    const mar = box(ar), mag = box(ag), mab = box(ab), mb = box(bb2);
+    const q = new Float32Array(N);
+    for (let i = 0; i < N; i++) q[i] = cov[i];
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        const m = y * bw + x, i = (y + by0) * W + (x + bx0);
+        let v = mar[m] * Ir[m] + mag[m] * Ig[m] + mab[m] * Ib[m] + mb[m];
+        q[i] = v < 0 ? 0 : v > 1 ? 1 : v;
+      }
+    }
+    return q;
+  };
+
+    // The border's own direction, still needed to reach the scene beside each
+    // pixel when it is rebuilt. Taken from a blurred copy so one rough pixel
+    // cannot set it.
+    const blur = (inp) => {
+      const t = new Float32Array(N), o = new Float32Array(N);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const a2 = inp[y * W + Math.max(0, x - 1)], b2 = inp[y * W + x], c2 = inp[y * W + Math.min(W - 1, x + 1)];
+        t[y * W + x] = (a2 + 2 * b2 + c2) / 4;
+      }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const a2 = t[Math.max(0, y - 1) * W + x], b2 = t[y * W + x], c2 = t[Math.min(H - 1, y + 1) * W + x];
+        o[y * W + x] = (a2 + 2 * b2 + c2) / 4;
+      }
+      return o;
+    };
+    const Ab = blur(blur(A));
+    const matted = matteAlpha(A);
+    const wide = matted || A;
+
+    // ---- rebuilt from what is actually beside it
+    for (let i = 0; i < N; i++) {
+      if (!elig[i]) continue;
+      let a = wide[i];
+      // The border may be tidied, never marched. Half a pixel is the width of
+      // the quantisation being removed; beyond that the outline would be
+      // changing shape, which is a different thing and not wanted.
+      const a0 = A[i];
+      if (a > a0 + 1.0) a = a0 + 1.0; else if (a < a0 - 1.0) a = a0 - 1.0;
+      if (a < 0) a = 0; else if (a > 1) a = 1;
+      // Only where there is actually a transition. A pixel the matte calls
+      // solid scene or solid cloth is not a boundary and has nothing to gain
+      // here — and at a flat coverage the normal below is meaningless.
+      if (a < 0.02 || a > 0.995) continue;
+      const x = i % W, y = (i / W) | 0;
+      const gx = (Ab[y * W + Math.min(W - 1, x + 1)] - Ab[y * W + Math.max(0, x - 1)]) / 2;
+      const gy = (Ab[Math.min(H - 1, y + 1) * W + x] - Ab[Math.max(0, y - 1) * W + x]) / 2;
+      const gl = Math.hypot(gx, gy);
+      if (gl < 1e-4) continue;
+      const nx = gx / gl, ny = gy / gl;
+      // The scene behind this pixel, taken from the scene BESIDE it. Stepping
+      // outward along the normal reaches real background a few pixels away —
+      // its own colour, its own blur, its own leaf — where the global estimate
+      // reaches for whatever is nearest and can fetch the road from behind a
+      // narrow arm. Two distances, the further one preferred, so a thin band
+      // still lands outside it.
+      // Walk outward until the sample is genuinely OUTSIDE, and refuse it if it
+      // never gets there. Sampling blind along the normal is how a light sky
+      // pixel (220,213,231) came back as dark violet (75,40,125): where the
+      // coverage field is flat its gradient is noise, the "outward" step landed
+      // back inside the garment, and the fill wrote cloth into the sky. Weight
+      // was zero there, so no paint gate could see it — the damage was in the
+      // photograph, not in the mask.
+      let Br = bgC[i * 3], Bg = bgC[i * 3 + 1], Bb = bgC[i * 3 + 2];
+      for (const step of [4, 6, 9, 13]) {
+        const bx = x - nx * step, by = y - ny * step;
+        if (bx < 0 || bx > W - 1 || by < 0 || by > H - 1) break;
+        if (sample(Ab, 1, 0, bx, by) > 0.12) continue;
+        const bi = Math.round(by) * W + Math.round(bx);
+        if (!usable(bi)) continue;
+        Br = sample(photoData, 4, 0, bx, by);
+        Bg = sample(photoData, 4, 1, bx, by);
+        Bb = sample(photoData, 4, 2, bx, by);
+        break;
+      }
+      const o = i * 4, sb = shade[i] * 3;
+      // No special case at low coverage. The composite below IS the answer at
+      // every alpha — at a=0 it is exactly the scene — and carving out an
+      // exception meant a pixel the matte called one-twentieth cloth kept its
+      // photograph, which still holds that twentieth of violet with no weight
+      // left to cancel it. Only true dust is dropped.
+      // The cloth endpoint is the MODELLED violet at this pixel's own shade —
+      // the one the runtime cancels exactly — so the rebuilt pixel recolours
+      // to a*target + (1-a)*scene and carries no violet into any colour.
+      photoData[o] = a * lutVm[sb] + (1 - a) * Br;
+      photoData[o + 1] = a * lutVm[sb + 1] + (1 - a) * Bg;
+      photoData[o + 2] = a * lutVm[sb + 2] + (1 - a) * Bb;
+      // The background this pixel was composed against is now a measurement,
+      // not a guess, so it is recorded. Downstream — the edge audit above all —
+      // reads bgC as "what is behind this pixel"; leaving the old diffused
+      // value there had the audit judging the composite against a background
+      // it was never made from, and reporting every honest edge as too dark.
+      bgC[i * 3] = Br; bgC[i * 3 + 1] = Bg; bgC[i * 3 + 2] = Bb;
+      wMap[i] = a < 0.02 ? 0 : a; alphaA[i] = a; confA[i] = 1;
+      clip[i] = 0; unrel[i] = 0;
+      mConf[i] = 1; mConfS[i] = 1; mAlphaE[i] = a;
+      evAny[i] = Math.max(evAny[i], a);
+    }
+  }
+
   // bgPaint is recounted here, on the FINAL weight — the metrics loop above
   // runs before the floors and the confinement, and reporting the
   // pre-confinement count failed candidates for paint that no longer exists.
