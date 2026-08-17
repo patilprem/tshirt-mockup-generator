@@ -79,6 +79,20 @@ const ANALYSIS_EDGE = 2100;
 // upscaler's invented pixels is not.
 
 const TEMPLATES = [
+  // Kept in the list although it has never shipped, so every build re-confirms
+  // the rejection rather than someone rediscovering it. The generation is
+  // side-lit hard from the window: measured on the source, the lit side of the
+  // garment is rgb(126,95,157) at value 0.62 and saturation 0.40, while the
+  // shadow side is rgb(30,25,31) at value 0.13 and saturation 0.15. Red and
+  // blue are equal there and green sits six below them — the violet has
+  // collapsed to neutral dark grey, so there is nothing left to key on and no
+  // fabric detail left to carry a new colour. Forced past the gates it ships a
+  // hard-edged dark patch across the right hip on every target colour, which is
+  // exactly what deepShadow 8.95% and keyMiss 424 are reporting. No pipeline
+  // change reaches this: recolouring it would mean inventing the whole shadow
+  // side. The scene is worth having, so the fix is a fresh generation with soft
+  // even frontal light — drop the image into the studio and it writes that
+  // corrected prompt.
   { id: 'window-f', file: 'window-f.webp', label: 'Window Light', model: 'female', scene: 'Tall window, sheer curtain' },
   { id: 'gallery-f', file: 'gallery-f.webp', label: 'Gallery Interior', model: 'female', scene: 'Minimal off-white interior' },
   { id: 'livingroom-m', file: 'livingroom-m.webp', label: 'Living Room', model: 'male', scene: 'Bright airy living room' },
