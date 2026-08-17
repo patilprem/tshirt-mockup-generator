@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 52dbb62</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 52dbb62 +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -2496,6 +2496,29 @@ function analyze(img) {
   const softPerPerim = softBand / Math.max(1, perim);
   const hardStepPct = 100 * hardStep / Math.max(1, perim);
 
+  // How much LIGHT AND SHADOW the garment carries. The shade map is
+  // illumination relative to the fabric's own diffuse white point, so the
+  // spread of it inside solid fabric is the modelling the recolour has to work
+  // with — and modelling is what makes a garment read as cloth rather than as
+  // a flat shape. Nothing else here measures it: a garment lit dead flat
+  // passes every check, recolours correctly, and still looks lifeless. On
+  // white that costs nothing, since white is nearly flat anyway; on a dark
+  // colour it is the whole picture, because the shading is all there is to see.
+  //
+  // Measured across the shipped set, this runs 54 to 141. Open Sky at 54 is the
+  // one that reads as a black silhouette on Vintage Black; everything from 78
+  // up holds its folds. Trimmed to the 5th and 95th percentiles so a single
+  // specular pixel or one black crease cannot stand in for the whole garment.
+  let modelling = 0;
+  {
+    const v = [];
+    for (let i = 0; i < N; i++) if (wMap[i] >= 0.94) v.push(shade[i]);
+    if (v.length >= 500) {
+      v.sort((a, b) => a - b);
+      modelling = v[Math.floor(0.95 * (v.length - 1))] - v[Math.floor(0.05 * (v.length - 1))];
+    }
+  }
+
   return {
     W, H, shirtHue, fragments,
     softPerPerim, hardStepPct,
@@ -2507,6 +2530,7 @@ function analyze(img) {
     blownPct: 100 * blownN / Math.max(1, coreN),
     bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss, coolPaint, occPaint,
     modelFit: fitSum / Math.max(1, fitCnt),
+    modelling,
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
     photoData, wArr, clipArr, ownArr, shade,
@@ -2673,6 +2697,14 @@ function runValidationCore(img, url) {
       F(a.skin > 2000, a.skin > 200, 'No skin captured as garment', a.skin + ' px', `Keep bare skin away from the ${gm.short}: both upper arms rest against the torso, hands stay out of the chest area, and no skin overlaps the garment.`);
       F(a.blownPct > 6, a.blownPct > 2.5, 'No blown-out highlights on fabric', a.blownPct.toFixed(2) + '%', `No blown-out or burnt-out highlights on the fabric. Keep the ${gm.short} off pure white anywhere — no specular hotspot, no direct hard light source on it.`);
       F(false, a.modelFit > 12, 'Relight model fit (grain level)', a.modelFit.toFixed(1) + '/255');
+      // A warning, never a failure. A flat garment is not a broken one — the
+      // recolour is faithful and every other check passes — so it is a judgement
+      // about how the mockup will SELL, and the operator makes it. It is here at
+      // all because that judgement is invisible on the violet original and on
+      // white, and only shows up on a dark colour after the template has shipped.
+      F(false, a.modelling < 70, 'Fabric carries enough light and shadow',
+        a.modelling + (a.modelling < 70 ? ' — flat, will read as a shape on black' : ' (shipped set: 54-141)'),
+        `Light the ${gm.short} with clear DIRECTIONAL soft light so the fabric shows real folds, creases and falloff — one side of the torso and the sleeves visibly brighter than the other. Keep it soft and diffused with no hard shadow line, but do not light it flat: a garment with no shading in it looks like a cut-out shape once it is recoloured dark.`);
       F(a.bgPaint > 400, a.bgPaint > 50, 'Background untouched at garment edges (no painted rim)', a.bgPaint + ' px', `The garment edges — ${gm.edges} — must be crisp and in sharp focus, cleanly separated from the background, with no glow, bloom or coloured halo around the figure.`);
       // Calibrated against the shipped set rather than guessed. A photograph's
       // background DIMS as it approaches the figure — contact shadow, falloff,

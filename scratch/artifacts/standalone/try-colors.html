@@ -246,7 +246,7 @@
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 52dbb62</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 52dbb62 +local edits</span></span>
     <h1>Colour View</h1>
     <p class="lede">
       Paste a candidate model photo — a model in the vivid-violet crewneck — and see it in
@@ -2016,6 +2016,29 @@ function analyze(img) {
   const softPerPerim = softBand / Math.max(1, perim);
   const hardStepPct = 100 * hardStep / Math.max(1, perim);
 
+  // How much LIGHT AND SHADOW the garment carries. The shade map is
+  // illumination relative to the fabric's own diffuse white point, so the
+  // spread of it inside solid fabric is the modelling the recolour has to work
+  // with — and modelling is what makes a garment read as cloth rather than as
+  // a flat shape. Nothing else here measures it: a garment lit dead flat
+  // passes every check, recolours correctly, and still looks lifeless. On
+  // white that costs nothing, since white is nearly flat anyway; on a dark
+  // colour it is the whole picture, because the shading is all there is to see.
+  //
+  // Measured across the shipped set, this runs 54 to 141. Open Sky at 54 is the
+  // one that reads as a black silhouette on Vintage Black; everything from 78
+  // up holds its folds. Trimmed to the 5th and 95th percentiles so a single
+  // specular pixel or one black crease cannot stand in for the whole garment.
+  let modelling = 0;
+  {
+    const v = [];
+    for (let i = 0; i < N; i++) if (wMap[i] >= 0.94) v.push(shade[i]);
+    if (v.length >= 500) {
+      v.sort((a, b) => a - b);
+      modelling = v[Math.floor(0.95 * (v.length - 1))] - v[Math.floor(0.05 * (v.length - 1))];
+    }
+  }
+
   return {
     W, H, shirtHue, fragments,
     softPerPerim, hardStepPct,
@@ -2027,6 +2050,7 @@ function analyze(img) {
     blownPct: 100 * blownN / Math.max(1, coreN),
     bgPaint, haloDelta, edgeDark, edgeBright, wedgePx, keyMiss, coolPaint, occPaint,
     modelFit: fitSum / Math.max(1, fitCnt),
+    modelling,
     srcW: img.width, srcH: img.height,
     ambientTint, relMax: REL_MAX, violetBase,
     photoData, wArr, clipArr, ownArr, shade,

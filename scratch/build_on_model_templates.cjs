@@ -1983,6 +1983,32 @@ const TEMPLATES = [
           : { edgeWidth: 0, edgeRough: 0 };
       };
 
+      // How much LIGHT AND SHADOW the garment carries. The shade map is
+      // illumination relative to the fabric's own diffuse white point, so its
+      // spread inside solid fabric is the modelling the recolour has to work
+      // with — and modelling is what makes a garment read as cloth rather than
+      // a flat shape. Nothing else in this file measures it: a garment lit dead
+      // flat passes every gate, recolours correctly, and still looks lifeless.
+      // On white that costs nothing, since white is nearly flat anyway; on a
+      // dark colour it is the whole picture, because the shading is all there
+      // is to see.
+      //
+      // Across the shipped set this runs 54 to 141. sky-f at 54 is the one that
+      // reads as a black silhouette on Vintage Black; everything from 78 up
+      // holds its folds. Reported, never gated: a flat garment is not a broken
+      // one, and dropping a live template over it is a judgement about how the
+      // mockup sells rather than whether it is correct. The studio warns on it
+      // so the next candidate is caught before it ships instead of after.
+      let modelling = 0;
+      {
+        const v = [];
+        for (let i = 0; i < N; i++) if (wMap[i] >= 0.94) v.push(Math.round(shadeVal[i] * 255));
+        if (v.length >= 500) {
+          v.sort((a, b) => a - b);
+          modelling = v[Math.floor(0.95 * (v.length - 1))] - v[Math.floor(0.05 * (v.length - 1))];
+        }
+      }
+
       let edgeDark = 0, edgeBright = 0;
       {
         const lutW = mkRelight([255, 255, 255]);
@@ -2221,7 +2247,7 @@ const TEMPLATES = [
         qa: { missed: nrm(missed), skin: nrm(skin), bgPaint: nrm(bgPaint), edgeDark: nrm(edgeDark), edgeBright: nrm(edgeBright),
           edgeWidth, edgeRough, wedgePx: nrm(wedgePx), modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
           chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx: nrm(chromaPx), chromaMaskPx: nrm(chromaMaskPx),
-          keyMiss: nrm(keyMiss), coolPaint: nrm(coolPaint), occPaint: nrm(occPaint) },
+          keyMiss: nrm(keyMiss), coolPaint: nrm(coolPaint), occPaint: nrm(occPaint), modelling },
         photo: photoOut.toDataURL('image/jpeg', 1.0),
         weight: wpngOut.toDataURL('image/png'),
         shade: shadeOut.toDataURL('image/jpeg', 0.92),
@@ -2417,7 +2443,7 @@ const TEMPLATES = [
       quad: r.quad, bbox: r.bbox,
     });
 
-    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} edgeWidth=${r.qa.edgeWidth} edgeRough=${r.qa.edgeRough}`);
+    console.log(`${r.W}x${r.H} frags=${r.fragments} missed=${r.qa.missed} skin=${r.qa.skin} bgPaint=${r.qa.bgPaint} edgeDark=${r.qa.edgeDark} edgeBright=${r.qa.edgeBright} wedge=${r.qa.wedgePx} modelFit=${r.qa.modelFit} deepShadow=${r.qa.deepShadowPct}% hairShadow=${r.qa.hairShadowPct}% chroma=${r.qa.chromaPct}% keyMiss=${r.qa.keyMiss} coolPaint=${r.qa.coolPaint} occPaint=${r.qa.occPaint} edgeWidth=${r.qa.edgeWidth} edgeRough=${r.qa.edgeRough} modelling=${r.qa.modelling}`);
   }
 
   fs.writeFileSync(META_OUT, JSON.stringify(manifest, null, 2) + '\n');
