@@ -1,5 +1,5 @@
 {
-  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after the low-contrast veto was removed - the guided filter degrades to a local mean where the image has no colour to fit, which is the right answer, and handing those pixels back to the raw coverage was what painted the scene - taking the mean from 79.9 to 77.7 and bgPaint from 255 to 30. Edited deliberately, with crops compared, never to make a red build green.",
+  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after the input downscale was made an integration rather than a resample - drawImage aliases when reducing, and stadium-hoodie-m is the only source above the analysis grid - taking it from 116.7 to 90.9 and the mean to 76.2. A real photographic edge, measured with no pipeline in between (scratch/measure_photo_edge.cjs), reads 68 to 85 at these widths - so below about 85 this number no longer separates a defect from the picture and the crops decide. Edited deliberately, with crops compared, never to make a red build green.",
   "beach-m": {
     "edgeWidth": 3.1,
     "edgeRough": 75
@@ -53,8 +53,8 @@
     "edgeRough": 87.2
   },
   "stadium-hoodie-m": {
-    "edgeWidth": 4.07,
-    "edgeRough": 116.7
+    "edgeWidth": 3.67,
+    "edgeRough": 90.9
   },
   "street-m": {
     "edgeWidth": 4.44,

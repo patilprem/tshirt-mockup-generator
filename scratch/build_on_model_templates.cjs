@@ -130,8 +130,58 @@ const TEMPLATES = [
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const ctx = cv.getContext('2d', { willReadFrequently: true });
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, W, H);
-      const src = ctx.getImageData(0, 0, W, H).data;
+      // A source larger than the analysis grid has to come down to it, and HOW
+      // it comes down decides everything after. drawImage, even at 'high'
+      // quality, is a resampler and not an integrator: reducing by 0.6 it takes
+      // a weighted sample near each destination centre rather than the average
+      // over the destination pixel's full footprint, so detail finer than the
+      // new grid folds back in as aliasing instead of averaging away. On a
+      // silhouette that is a jagged edge, invented at load time, before a single
+      // decision has been taken — and every stage downstream then faithfully
+      // preserves it.
+      //
+      // The output side of this file has always integrated (see areaDown, and
+      // the note there about coverage being an area). The input side did not.
+      // stadium-hoodie-m is the only shipped source above the analysis grid
+      // (2304x3456), and it was the worst template by a wide margin. Integrating
+      // its downscale instead: edgeRough 116.7 to 90.9, missed 1553 to 594, skin
+      // 21 to 0, keyMiss 57 to 16, coolPaint and occPaint to 0. Nothing else in
+      // the set is affected — every other source is at or below 2100, so k is 1
+      // and this branch never runs — but every future image larger than the grid
+      // goes through it, which is where it earns its place.
+      let src;
+      if (k < 1) {
+        const nv = document.createElement('canvas'); nv.width = img.width; nv.height = img.height;
+        const nc = nv.getContext('2d', { willReadFrequently: true });
+        nc.drawImage(img, 0, 0);
+        const sd = nc.getImageData(0, 0, img.width, img.height).data;
+        const SW = img.width, SH = img.height;
+        const out = new Uint8ClampedArray(N * 4);
+        const rx = SW / W, ry = SH / H;
+        for (let oy = 0; oy < H; oy++) {
+          const y0 = oy * ry, y1 = (oy + 1) * ry;
+          for (let ox = 0; ox < W; ox++) {
+            const x0 = ox * rx, x1 = (ox + 1) * rx;
+            let ar = 0, ag = 0, ab = 0, ws = 0;
+            for (let yy = Math.floor(y0); yy < Math.min(SH, Math.ceil(y1)); yy++) {
+              const wy = Math.min(y1, yy + 1) - Math.max(y0, yy);
+              for (let xx = Math.floor(x0); xx < Math.min(SW, Math.ceil(x1)); xx++) {
+                const wx = Math.min(x1, xx + 1) - Math.max(x0, xx);
+                const w2 = wx * wy, o2 = (yy * SW + xx) * 4;
+                ar += sd[o2] * w2; ag += sd[o2 + 1] * w2; ab += sd[o2 + 2] * w2; ws += w2;
+              }
+            }
+            const oo = (oy * W + ox) * 4, iv = ws > 0 ? 1 / ws : 0;
+            out[oo] = ar * iv; out[oo + 1] = ag * iv; out[oo + 2] = ab * iv; out[oo + 3] = 255;
+          }
+        }
+        src = out;
+        // The canvas is read again further down, so it carries the same pixels.
+        const idt = ctx.createImageData(W, H); idt.data.set(out); ctx.putImageData(idt, 0, 0);
+      } else {
+        ctx.drawImage(img, 0, 0, W, H);
+        src = ctx.getImageData(0, 0, W, H).data;
+      }
 
       function hsv(r, g, b) {
         r /= 255; g /= 255; b /= 255;
@@ -1868,6 +1918,36 @@ const TEMPLATES = [
       // Measured on the map that SHIPS, never on the analysis grid: a finer grid
       // spreads the same physical edge over more pixels and would flatter both
       // numbers without a single pixel of the output improving.
+      //
+      // ---- what the number means, and where it stops meaning anything ----
+      // Two calibrations, both run and both worth keeping, because between them
+      // they say when to stop.
+      //
+      // A mathematically perfect silhouette — an analytic curve, no grain — put
+      // through this same downsample and 8-bit map reads 24 at a 3.2 px edge and
+      // 12 at 4.6 px. That is the arithmetic floor, and it is the right yardstick
+      // for one question only: is the pipeline adding a staircase of its own? At
+      // 172 it plainly was.
+      //
+      // It is the WRONG yardstick for how good a photograph of a cotton hem can
+      // be, and reading it as headroom is a way to spend weeks removing real
+      // detail. So the other calibration: take coverage straight from a source
+      // photograph with no pipeline in between — flat cloth against a plain wall,
+      // where F and B are two constants and alpha = dot(I-B, F-B)/|F-B|^2 is the
+      // exact answer — and measure that. See scratch/measure_photo_edge.cjs.
+      // Across bright-minimal-m and gallery-f, at the widths this pipeline ships:
+      //
+      //   gallery-f       wall edge, sharp    width  2.40   rough 84.6
+      //   bright-minimal  sleeve vs wall      width  6.86   rough 84.3
+      //   bright-minimal  sleeve, shaded      width 11.97   rough 67.8
+      //
+      // A real photographic edge reads 68 to 85. The shipped set means 77.7 and
+      // fourteen of seventeen sit inside or below that band — the maps are
+      // already smoother than the photographs they came from, because the matte
+      // suppresses grain the photograph has. Below about 85 this number no longer
+      // separates a defect from the picture; judge those by eye. Above it —
+      // stadium-hoodie-m at 116.7 — something is genuinely wrong, and worth
+      // chasing.
       const measureEdge = (A, W2, H2) => {
         let n = 0, wsum = 0, rsum = 0;
         for (let i = 0; i < W2 * H2; i++) {

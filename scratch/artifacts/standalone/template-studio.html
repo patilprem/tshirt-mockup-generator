@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 f0636bc</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 f0636bc +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -837,8 +837,55 @@ function analyze(img) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, W, H);
-  const src = ctx.getImageData(0, 0, W, H).data;
+  // A source larger than the analysis grid has to come down to it, and HOW it
+  // comes down decides everything after. drawImage, even at 'high' quality, is
+  // a resampler and not an integrator: reducing by 0.6 it takes a weighted
+  // sample near each destination centre rather than the average over the
+  // destination pixel's full footprint, so detail finer than the new grid folds
+  // back in as aliasing instead of averaging away. On a silhouette that is a
+  // jagged edge, invented at load time, before a single decision has been
+  // taken — and every stage downstream then faithfully preserves it.
+  //
+  // The output side of this pipeline has always integrated; the input side did
+  // not. stadium-hoodie-m is the only shipped source above the grid
+  // (2304x3456) and it was the worst template by a wide margin. Integrating its
+  // downscale instead: edgeRough 116.7 to 90.9, missed 1553 to 594, skin 21 to
+  // 0, keyMiss 57 to 16. Every source at or below the grid has k of 1 and never
+  // reaches this branch, so nothing else moved — but every future image larger
+  // than the grid goes through it, which is where it earns its place.
+  let src;
+  if (k < 1) {
+    const nv = document.createElement('canvas'); nv.width = img.width; nv.height = img.height;
+    const nc = nv.getContext('2d', { willReadFrequently: true });
+    nc.drawImage(img, 0, 0);
+    const sd = nc.getImageData(0, 0, img.width, img.height).data;
+    const SW = img.width, SH = img.height;
+    const out = new Uint8ClampedArray(N * 4);
+    const rx = SW / W, ry = SH / H;
+    for (let oy = 0; oy < H; oy++) {
+      const y0 = oy * ry, y1 = (oy + 1) * ry;
+      for (let ox = 0; ox < W; ox++) {
+        const x0 = ox * rx, x1 = (ox + 1) * rx;
+        let ar = 0, ag = 0, ab = 0, ws = 0;
+        for (let yy = Math.floor(y0); yy < Math.min(SH, Math.ceil(y1)); yy++) {
+          const wy = Math.min(y1, yy + 1) - Math.max(y0, yy);
+          for (let xx = Math.floor(x0); xx < Math.min(SW, Math.ceil(x1)); xx++) {
+            const wx = Math.min(x1, xx + 1) - Math.max(x0, xx);
+            const w2 = wx * wy, o2 = (yy * SW + xx) * 4;
+            ar += sd[o2] * w2; ag += sd[o2 + 1] * w2; ab += sd[o2 + 2] * w2; ws += w2;
+          }
+        }
+        const oo = (oy * W + ox) * 4, iv = ws > 0 ? 1 / ws : 0;
+        out[oo] = ar * iv; out[oo + 1] = ag * iv; out[oo + 2] = ab * iv; out[oo + 3] = 255;
+      }
+    }
+    src = out;
+    // The canvas is read again further down, so it carries the same pixels.
+    const idt = ctx.createImageData(W, H); idt.data.set(out); ctx.putImageData(idt, 0, 0);
+  } else {
+    ctx.drawImage(img, 0, 0, W, H);
+    src = ctx.getImageData(0, 0, W, H).data;
+  }
 
   // Key hue searched ONLY in the violet corridor — the garment is violet
   // by construction, and an open winner-take-one-bin argmax let a tight

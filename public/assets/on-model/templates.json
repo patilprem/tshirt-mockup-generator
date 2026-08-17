@@ -771,12 +771,12 @@
     "scene": "Empty stadium seating, pitch behind",
     "width": 1067,
     "height": 1600,
-    "photo": "/assets/on-model/stadium-hoodie-m-photo.jpg?v=91997c26",
-    "weight": "/assets/on-model/stadium-hoodie-m-weight.png?v=aa2afe34",
-    "shade": "/assets/on-model/stadium-hoodie-m-shade.jpg?v=3aff5b9b",
-    "thumbPhoto": "/assets/on-model/stadium-hoodie-m-thumb-photo.jpg?v=edd0f91d",
-    "thumbWeight": "/assets/on-model/stadium-hoodie-m-thumb-weight.png?v=3df1a47c",
-    "thumbShade": "/assets/on-model/stadium-hoodie-m-thumb-shade.jpg?v=c242e545",
+    "photo": "/assets/on-model/stadium-hoodie-m-photo.jpg?v=1c366754",
+    "weight": "/assets/on-model/stadium-hoodie-m-weight.png?v=f3a5b77c",
+    "shade": "/assets/on-model/stadium-hoodie-m-shade.jpg?v=62bdc963",
+    "thumbPhoto": "/assets/on-model/stadium-hoodie-m-thumb-photo.jpg?v=605a34f5",
+    "thumbWeight": "/assets/on-model/stadium-hoodie-m-thumb-weight.png?v=b78a8518",
+    "thumbShade": "/assets/on-model/stadium-hoodie-m-thumb-shade.jpg?v=17d24974",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
@@ -786,33 +786,33 @@
     ],
     "relMax": 1.45,
     "violetBase": [
-      98.7,
-      59.2,
-      144
+      99.4,
+      59.6,
+      145
     ],
     "quad": {
       "tl": [
-        363.04761904761904,
-        588.952380952381
+        361.1428571428571,
+        589.7142857142857
       ],
       "tr": [
-        733.3333333333333,
-        588.952380952381
+        736,
+        589.7142857142857
       ],
       "br": [
-        691.047619047619,
-        949.3333333333333
+        692.952380952381,
+        950.8571428571428
       ],
       "bl": [
-        320.76190476190476,
-        949.3333333333333
+        318.0952380952381,
+        950.8571428571428
       ]
     },
     "bbox": {
       "x": 192.76190476190476,
       "y": 395.4285714285714,
       "w": 710.0952380952381,
-      "h": 922.6666666666666
+      "h": 925.7142857142857
     }
   },
   {
