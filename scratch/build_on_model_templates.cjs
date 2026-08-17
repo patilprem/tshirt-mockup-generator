@@ -1375,19 +1375,28 @@ const TEMPLATES = [
           A[i] = (!outside[i] || core[i]) ? 1 : (distC[i] < 0 ? 0 : Math.max(0, Math.min(1, wMap[i])));
         }
 
-        // Who may be touched. Hair, hands, crevices and sealed pockets keep their
-        // own machinery: a strand is real structure crossing the border, not a
-        // rough edge, and a curve fitted through it would erase it. A contact edge
-        // — a hem lying on denim — is genuinely sharp and its two sides are too
-        // close in colour to measure coverage against, so it is left alone too.
+        // Who may be touched. Hair, hands and crevices keep their own machinery:
+        // a strand is real structure crossing the border, not a rough edge, and
+        // a curve fitted through it would erase it.
+        //
+        // A contact test used to sit here too — cloth and scene within fifty
+        // units of each other, so the mixture cannot be measured, so leave it
+        // alone. The premise is right and the conclusion was wrong. Where a
+        // window holds no colour variation the guided filter does not guess:
+        // its affine fit collapses, the colour coefficients go to zero and the
+        // answer becomes the window's own mean coverage — a smoothing of the
+        // input, which is the correct thing to do when the image has nothing
+        // further to say. What the test did instead was hand those pixels back
+        // to the raw colour-keyed coverage, and that is what was painting the
+        // scene: across the seventeen templates bgPaint falls from 255 to 30
+        // with the test gone, sunbeam-wall-f alone from 89 to 0. The case it
+        // was written for, a hem lying on denim, is checked directly by the
+        // studio's hem-over-trousers test rather than guarded by a proxy.
         // Skin cannot be a violet mixture at all.
         const elig = new Uint8Array(N);
         for (let i = 0; i < N; i++) {
           if (!ring[i] || crevice[i] || occluder[i]) continue;
           if (bgF.fd[i] < 0) continue;
-          const i3 = i * 3, sb = Math.round(shadeVal[i] * 255) * 3;
-          const dr = lutVm[sb] - bgC[i3], dg = lutVm[sb + 1] - bgC[i3 + 1], db = lutVm[sb + 2] - bgC[i3 + 2];
-          if (dr * dr + dg * dg + db * db < 2500) continue;
           elig[i] = 1;
         }
 
@@ -1663,12 +1672,6 @@ const TEMPLATES = [
             // a black line one pixel inside the hem. If the walk did not reach
             // real background, this pixel keeps its photograph.
             if (!walked) continue;
-            // And the contrast test the outer band applies up front, applied here
-            // against the background actually found. Where cloth and scene are
-            // within fifty units of each other the mixture cannot be measured,
-            // and a matte fitted to that has nothing to fit.
-            const dr = lutVm[sb] - Br, dg = lutVm[sb + 1] - Bg, db = lutVm[sb + 2] - Bb;
-            if (dr * dr + dg * dg + db * db < 2500) continue;
           }
           // No special case at low coverage. The composite below IS the answer at
           // every alpha — at a=0 it is exactly the scene — and carving out an
