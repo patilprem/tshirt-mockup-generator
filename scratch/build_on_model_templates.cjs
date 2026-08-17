@@ -111,6 +111,16 @@ const TEMPLATES = [
   { id: 'tree-lined-f', file: 'tree-lined-f.png', label: 'Tree-Lined Street', model: 'female', scene: 'Leafy residential street' },
   { id: 'stadium-hoodie-m', file: 'stadium-hoodie-m.png', label: 'Stadium Hoodie', model: 'male', scene: 'Empty stadium seating, pitch behind' },
   { id: 'garden-path-longsleeve-f', file: 'garden-path-longsleeve-f.png', label: 'Garden Path', model: 'female', scene: 'Leafy garden path, soft even light' },
+  // Two garments the set did not have. A tank is the hardest case this pipeline
+  // faces — bare shoulders and arms sit straight against the fabric with no
+  // sleeve between them — and all four come through with skin at 0, which is
+  // the gate that exists for exactly this.
+  { id: 'gym-tank-m', file: 'gym-tank-m.png', label: 'Gym Tank', model: 'male', scene: 'Gym interior, tall windows' },
+  { id: 'track-tank-f', file: 'track-tank-f.png', label: 'Track Tank', model: 'female', scene: 'Running track, open field' },
+  { id: 'studio-tank-f', file: 'studio-tank-f.png', label: 'Studio Tank', model: 'female', scene: 'Bright studio interior, pale wood' },
+  { id: 'holiday-tank-m', file: 'holiday-tank-m.png', label: 'Holiday Tank', model: 'male', scene: 'Open sky, bright daylight' },
+  { id: 'city-sweatshirt-f', file: 'city-sweatshirt-f.png', label: 'City Sweatshirt', model: 'female', scene: 'City street, bare winter trees' },
+  { id: 'porch-sweatshirt-m', file: 'porch-sweatshirt-m.png', label: 'Porch Sweatshirt', model: 'male', scene: 'Autumn porch, pumpkins' },
 ];
 
 (async () => {

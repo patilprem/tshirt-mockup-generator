@@ -865,5 +865,311 @@
       "w": 797.65625,
       "h": 921.875
     }
+  },
+  {
+    "id": "gym-tank-m",
+    "label": "Gym Tank",
+    "model": "male",
+    "scene": "Gym interior, tall windows",
+    "width": 1067,
+    "height": 1600,
+    "photo": "/assets/on-model/gym-tank-m-photo.jpg?v=70dff80b",
+    "weight": "/assets/on-model/gym-tank-m-weight.png?v=dbb47e3e",
+    "shade": "/assets/on-model/gym-tank-m-shade.jpg?v=69c3770f",
+    "thumbPhoto": "/assets/on-model/gym-tank-m-thumb-photo.jpg?v=ae7644eb",
+    "thumbWeight": "/assets/on-model/gym-tank-m-thumb-weight.png?v=13ebc18c",
+    "thumbShade": "/assets/on-model/gym-tank-m-thumb-shade.jpg?v=d36f5e3d",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9665,
+      0.9888,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      116,
+      84.3,
+      171
+    ],
+    "quad": {
+      "tl": [
+        416.8518518518519,
+        662.0370370370371
+      ],
+      "tr": [
+        675.7407407407406,
+        662.0370370370371
+      ],
+      "br": [
+        654.9074074074074,
+        993.5185185185185
+      ],
+      "bl": [
+        396.0185185185186,
+        993.5185185185185
+      ]
+    },
+    "bbox": {
+      "x": 304.6296296296296,
+      "y": 483.3333333333333,
+      "w": 464.81481481481484,
+      "h": 850.925925925926
+    }
+  },
+  {
+    "id": "track-tank-f",
+    "label": "Track Tank",
+    "model": "female",
+    "scene": "Running track, open field",
+    "width": 1067,
+    "height": 1600,
+    "photo": "/assets/on-model/track-tank-f-photo.jpg?v=2e675599",
+    "weight": "/assets/on-model/track-tank-f-weight.png?v=09749e70",
+    "shade": "/assets/on-model/track-tank-f-shade.jpg?v=886e2ebd",
+    "thumbPhoto": "/assets/on-model/track-tank-f-thumb-photo.jpg?v=5fcb23ef",
+    "thumbWeight": "/assets/on-model/track-tank-f-thumb-weight.png?v=2c91bc84",
+    "thumbShade": "/assets/on-model/track-tank-f-thumb-shade.jpg?v=c666390b",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9782,
+      0.9869,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      108.8,
+      69.1,
+      162
+    ],
+    "quad": {
+      "tl": [
+        425.82857142857137,
+        688
+      ],
+      "tr": [
+        707.8857142857142,
+        688
+      ],
+      "br": [
+        657.9809523809523,
+        1003.4285714285713
+      ],
+      "bl": [
+        375.9238095238095,
+        1003.4285714285713
+      ]
+    },
+    "bbox": {
+      "x": 252.19047619047618,
+      "y": 518.0952380952381,
+      "w": 521.9047619047619,
+      "h": 808.3809523809523
+    }
+  },
+  {
+    "id": "studio-tank-f",
+    "label": "Studio Tank",
+    "model": "female",
+    "scene": "Bright studio interior, pale wood",
+    "width": 1067,
+    "height": 1600,
+    "photo": "/assets/on-model/studio-tank-f-photo.jpg?v=97d50c5a",
+    "weight": "/assets/on-model/studio-tank-f-weight.png?v=a6892bf0",
+    "shade": "/assets/on-model/studio-tank-f-shade.jpg?v=a54b5342",
+    "thumbPhoto": "/assets/on-model/studio-tank-f-thumb-photo.jpg?v=af8bb75f",
+    "thumbWeight": "/assets/on-model/studio-tank-f-thumb-weight.png?v=33dbb8d7",
+    "thumbShade": "/assets/on-model/studio-tank-f-thumb-shade.jpg?v=7200e396",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9781,
+      0.9563
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      86.9,
+      62.4,
+      153
+    ],
+    "quad": {
+      "tl": [
+        364.87619047619046,
+        652.1904761904761
+      ],
+      "tr": [
+        656.0761904761905,
+        652.1904761904761
+      ],
+      "br": [
+        656.4571428571428,
+        995.047619047619
+      ],
+      "bl": [
+        365.2571428571428,
+        995.047619047619
+      ]
+    },
+    "bbox": {
+      "x": 252.95238095238093,
+      "y": 467.8095238095238,
+      "w": 512.7619047619047,
+      "h": 878.4761904761905
+    }
+  },
+  {
+    "id": "holiday-tank-m",
+    "label": "Holiday Tank",
+    "model": "male",
+    "scene": "Open sky, bright daylight",
+    "width": 1067,
+    "height": 1600,
+    "photo": "/assets/on-model/holiday-tank-m-photo.jpg?v=9a6533fb",
+    "weight": "/assets/on-model/holiday-tank-m-weight.png?v=47c44f32",
+    "shade": "/assets/on-model/holiday-tank-m-shade.jpg?v=9c98a35e",
+    "thumbPhoto": "/assets/on-model/holiday-tank-m-thumb-photo.jpg?v=b0c7577c",
+    "thumbWeight": "/assets/on-model/holiday-tank-m-thumb-weight.png?v=ee5676c9",
+    "thumbShade": "/assets/on-model/holiday-tank-m-thumb-shade.jpg?v=cf23479f",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.852,
+      0.9235,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      118,
+      79.4,
+      171
+    ],
+    "quad": {
+      "tl": [
+        355.9619047619048,
+        691.047619047619
+      ],
+      "tr": [
+        651.2761904761904,
+        691.047619047619
+      ],
+      "br": [
+        700.8,
+        1063.6190476190475
+      ],
+      "bl": [
+        405.4857142857143,
+        1063.6190476190475
+      ]
+    },
+    "bbox": {
+      "x": 269.7142857142857,
+      "y": 490.66666666666663,
+      "w": 528,
+      "h": 954.6666666666666
+    }
+  },
+  {
+    "id": "city-sweatshirt-f",
+    "label": "City Sweatshirt",
+    "model": "female",
+    "scene": "City street, bare winter trees",
+    "width": 1067,
+    "height": 1600,
+    "photo": "/assets/on-model/city-sweatshirt-f-photo.jpg?v=546ed577",
+    "weight": "/assets/on-model/city-sweatshirt-f-weight.png?v=f6b0589f",
+    "shade": "/assets/on-model/city-sweatshirt-f-shade.jpg?v=b5d671db",
+    "thumbPhoto": "/assets/on-model/city-sweatshirt-f-thumb-photo.jpg?v=2fae5ad9",
+    "thumbWeight": "/assets/on-model/city-sweatshirt-f-thumb-weight.png?v=44d4bb64",
+    "thumbShade": "/assets/on-model/city-sweatshirt-f-thumb-shade.jpg?v=1824d76c",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9837,
+      0.9674
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      104.1,
+      71.3,
+      146
+    ],
+    "quad": {
+      "tl": [
+        356.64761904761906,
+        691.047619047619
+      ],
+      "tr": [
+        771.7333333333332,
+        691.047619047619
+      ],
+      "br": [
+        681.8285714285714,
+        1042.2857142857142
+      ],
+      "bl": [
+        266.74285714285713,
+        1042.2857142857142
+      ]
+    },
+    "bbox": {
+      "x": 169.14285714285714,
+      "y": 502.0952380952381,
+      "w": 739.8095238095237,
+      "h": 899.8095238095237
+    }
+  },
+  {
+    "id": "porch-sweatshirt-m",
+    "label": "Porch Sweatshirt",
+    "model": "male",
+    "scene": "Autumn porch, pumpkins",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/porch-sweatshirt-m-photo.jpg?v=af124196",
+    "weight": "/assets/on-model/porch-sweatshirt-m-weight.png?v=3edd150c",
+    "shade": "/assets/on-model/porch-sweatshirt-m-shade.jpg?v=380af205",
+    "thumbPhoto": "/assets/on-model/porch-sweatshirt-m-thumb-photo.jpg?v=d07a966c",
+    "thumbWeight": "/assets/on-model/porch-sweatshirt-m-thumb-weight.png?v=f5401662",
+    "thumbShade": "/assets/on-model/porch-sweatshirt-m-thumb-shade.jpg?v=ff58533b",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      0.9826,
+      0.9884,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      104,
+      66.3,
+      152
+    ],
+    "quad": {
+      "tl": [
+        356.25,
+        599.21875
+      ],
+      "tr": [
+        705.46875,
+        599.21875
+      ],
+      "br": [
+        776.171875,
+        954.6875
+      ],
+      "bl": [
+        426.953125,
+        954.6875
+      ]
+    },
+    "bbox": {
+      "x": 162.5,
+      "y": 407.8125,
+      "w": 764.84375,
+      "h": 911.71875
+    }
   }
 ]

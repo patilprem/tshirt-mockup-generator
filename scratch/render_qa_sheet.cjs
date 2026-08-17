@@ -51,7 +51,7 @@ const THUMB_W = 300;
     out.push({ id: m.id, label: m.label, scene: m.scene, model: m.model, cells });
     console.log(`${m.id} ${cells.length} cells  ${(cells.reduce((a, c) => a + c.length, 0) / 1024).toFixed(0)}KB`);
   }
-  fs.writeFileSync(path.join(__dirname, 'sheet-data.json'),
+  fs.writeFileSync(path.join(process.env.QA_DIR || __dirname, 'sheet-data.json'),
     JSON.stringify({ colours: COLOURS, templates: out }));
   console.log(`\n${out.length} templates x ${COLOURS.length} colours -> sheet-data.json`);
   await browser.close();

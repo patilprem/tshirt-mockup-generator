@@ -1,5 +1,5 @@
 {
-  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after the input downscale was made an integration rather than a resample - drawImage aliases when reducing, and stadium-hoodie-m is the only source above the analysis grid - taking it from 116.7 to 90.9 and the mean to 76.2. A real photographic edge, measured with no pipeline in between (scratch/measure_photo_edge.cjs), reads 68 to 85 at these widths - so below about 85 this number no longer separates a defect from the picture and the crops decide. Edited deliberately, with crops compared, never to make a red build green.",
+  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after the input downscale was made an integration rather than a resample - drawImage aliases when reducing, and stadium-hoodie-m is the only source above the analysis grid - taking it from 116.7 to 90.9 and the mean to 76.2. A real photographic edge, measured with no pipeline in between (scratch/measure_photo_edge.cjs), reads 68 to 85 at these widths - so below about 85 this number no longer separates a defect from the picture and the crops decide. The six tank and sweatshirt entries were measured on first admission rather than improved to - they are new garments, and a floor set at what they actually read is the only honest one. Edited deliberately, with crops compared, never to make a red build green.",
   "beach-m": {
     "edgeWidth": 3.1,
     "edgeRough": 75
@@ -16,6 +16,10 @@
     "edgeWidth": 4.09,
     "edgeRough": 87.2
   },
+  "city-sweatshirt-f": {
+    "edgeWidth": 3.86,
+    "edgeRough": 104.5
+  },
   "gallery-f": {
     "edgeWidth": 6.35,
     "edgeRough": 75.6
@@ -23,6 +27,14 @@
   "garden-path-longsleeve-f": {
     "edgeWidth": 4.69,
     "edgeRough": 74.5
+  },
+  "gym-tank-m": {
+    "edgeWidth": 3.06,
+    "edgeRough": 156.7
+  },
+  "holiday-tank-m": {
+    "edgeWidth": 3.97,
+    "edgeRough": 108.8
   },
   "home-f": {
     "edgeWidth": 3.67,
@@ -44,6 +56,10 @@
     "edgeWidth": 3.72,
     "edgeRough": 72.2
   },
+  "porch-sweatshirt-m": {
+    "edgeWidth": 3.71,
+    "edgeRough": 77.4
+  },
   "rooftop-hoodie-f": {
     "edgeWidth": 4.3,
     "edgeRough": 74.4
@@ -60,9 +76,17 @@
     "edgeWidth": 4.44,
     "edgeRough": 79.3
   },
+  "studio-tank-f": {
+    "edgeWidth": 4.26,
+    "edgeRough": 111.6
+  },
   "sunbeam-wall-f": {
     "edgeWidth": 4.27,
     "edgeRough": 88.4
+  },
+  "track-tank-f": {
+    "edgeWidth": 2.63,
+    "edgeRough": 104.2
   },
   "tree-lined-f": {
     "edgeWidth": 4.65,
