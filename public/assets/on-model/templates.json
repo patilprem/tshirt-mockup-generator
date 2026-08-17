@@ -873,48 +873,48 @@
     "scene": "Gym interior, tall windows",
     "width": 1067,
     "height": 1600,
-    "photo": "/assets/on-model/gym-tank-m-photo.jpg?v=70dff80b",
-    "weight": "/assets/on-model/gym-tank-m-weight.png?v=dbb47e3e",
-    "shade": "/assets/on-model/gym-tank-m-shade.jpg?v=69c3770f",
-    "thumbPhoto": "/assets/on-model/gym-tank-m-thumb-photo.jpg?v=ae7644eb",
-    "thumbWeight": "/assets/on-model/gym-tank-m-thumb-weight.png?v=13ebc18c",
-    "thumbShade": "/assets/on-model/gym-tank-m-thumb-shade.jpg?v=d36f5e3d",
+    "photo": "/assets/on-model/gym-tank-m-photo.jpg?v=f0a2d65a",
+    "weight": "/assets/on-model/gym-tank-m-weight.png?v=2f77defc",
+    "shade": "/assets/on-model/gym-tank-m-shade.jpg?v=c6fdd58b",
+    "thumbPhoto": "/assets/on-model/gym-tank-m-thumb-photo.jpg?v=2ecc287d",
+    "thumbWeight": "/assets/on-model/gym-tank-m-thumb-weight.png?v=76278995",
+    "thumbShade": "/assets/on-model/gym-tank-m-thumb-shade.jpg?v=b02a531f",
     "thumbWidth": 112,
     "thumbHeight": 168,
     "ambientTint": [
-      0.9665,
+      0.9777,
       0.9888,
       1
     ],
     "relMax": 1.45,
     "violetBase": [
-      116,
-      84.3,
-      171
+      115.4,
+      85.9,
+      166
     ],
     "quad": {
       "tl": [
-        416.8518518518519,
-        662.0370370370371
+        417.2952380952381,
+        662.0952380952381
       ],
       "tr": [
-        675.7407407407406,
-        662.0370370370371
+        676.0380952380951,
+        662.0952380952381
       ],
       "br": [
-        654.9074074074074,
-        993.5185185185185
+        654.7047619047619,
+        994.2857142857142
       ],
       "bl": [
-        396.0185185185186,
-        993.5185185185185
+        395.96190476190475,
+        994.2857142857142
       ]
     },
     "bbox": {
-      "x": 304.6296296296296,
-      "y": 483.3333333333333,
-      "w": 464.81481481481484,
-      "h": 850.925925925926
+      "x": 304.76190476190476,
+      "y": 483.04761904761904,
+      "w": 464.76190476190476,
+      "h": 851.8095238095237
     }
   },
   {
