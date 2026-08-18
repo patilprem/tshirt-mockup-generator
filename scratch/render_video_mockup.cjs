@@ -154,13 +154,21 @@ const fs = require('fs');
         const sMax = Math.asin(kMax);
         // Fold displacement scales with the print, so it is the same physical
         // effect whatever size the design is placed at.
-        // 0.016 of print width at the 90th-percentile fold. Swept against the
-        // frame this ships on: 0.010 is visible but timid, 0.024 makes the
-        // graphic ripple like a flag rather than sit on cotton. The failure on
-        // the high side is much uglier than the one on the low side, so this
-        // sits nearer the middle than the top.
-        const DISP = dW * 0.016;
-        const BLUR = Math.max(2, Math.round(w * 0.012));
+        // Magnitude AND blur width, swept together, because they are not
+        // independent: the blur sets the SCALE of the deformation and the
+        // magnitude only its depth. A narrow blur leaves fold structure at
+        // 20px, and displacing by that bends the straight edges of a framed
+        // design into visible waves — the graphic reads as warped rather than
+        // draped, which is the failure that came back from review. Widening the
+        // blur to 3% of frame width keeps only the chest's large-scale form, so
+        // a straight border stays straight while still bending gently across
+        // the body.
+        //
+        // With that scale, 0.006 of print width is enough. The cylinder
+        // provides the main "this is on a body" cue; the folds are a secondary
+        // effect and should read as one.
+        const DISP = dW * 0.006;
+        const BLUR = Math.max(2, Math.round(w * 0.030));
 
         const shadeCv = E.onModelShadeCanvas(entry);
         const sctx2 = shadeCv.getContext('2d', { willReadFrequently: true });
