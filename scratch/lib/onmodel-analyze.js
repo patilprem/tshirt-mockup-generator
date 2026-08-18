@@ -1233,6 +1233,46 @@
         if (!crevice[i] && evAny[i] < 0.05 && mConf[i] < 0.1) wMap[i] = 0;
       }
 
+      // ---- the boundary, and what has been tried on it ----
+      //
+      // The boundary this machinery draws is decided by regions — a threshold,
+      // a connected component, a closing, a completion, a radius-1 blur — so
+      // its ramp is 2px wide and its position is quantised to whole pixels.
+      // The photograph it is standing in for is softer than that in both
+      // senses: measured across this garment's edge, the source's CHROMA
+      // transition is 4px and its LUMA transition is 12px. A 2px colour step
+      // sitting inside a 12px brightness gradient is what reads as cut out.
+      //
+      // Recorded so it is not attempted a fourth time, each measured on frames
+      // 70/100/130 of the street clip against the same harness:
+      //
+      //   blur the map          ramp widens, violet 11-36 -> 63-146 px/frame.
+      //                         Coverage moves off the fabric side.
+      //   3x3 median            removes speckle, cuts convex corners; kept, in
+      //                         the raising direction only.
+      //   more analysis res     ramp does not widen — it is a fixed pixel count
+      //                         whatever the image is — but boundary WANDER
+      //                         halves, 1.68 -> 0.89px rms. Kept, as 2560/1600.
+      //   guided filter,        ramp 2 -> 3-4px, wander -28% on one frame of
+      //   guide = blue minus    three, violet 11-36 -> 41-69. Flooring on wRaw
+      //   green                 did not hold it: at a boundary the pixel's
+      //                         saturation is already diluted, so the strict
+      //                         key's own response is well under 1 on fabric
+      //                         that is mostly there.
+      //   the same, raise-only  violet returns to baseline exactly, and
+      //                         bgPaint goes 300 -> 6700. Rendered side by side
+      //                         at 3x it is indistinguishable from not doing
+      //                         it.
+      //
+      // The pattern across all of them: this boundary already sits at a tuned
+      // compromise, and every cheap perturbation trades violet against painted
+      // background without buying visible smoothness. Moving it needs the thing
+      // none of these are — a real matte, solving alpha per boundary pixel from
+      // foreground and background colours estimated off the image, with a
+      // confidence that falls back to the region answer where the mixture model
+      // cannot explain the pixel. That is a bounded piece of work and it is the
+      // remaining ceiling on edge quality.
+      //
       // ---- de-speckle the boundary ----
       //
       // Everything above this point is finished writing to wMap, and several of
