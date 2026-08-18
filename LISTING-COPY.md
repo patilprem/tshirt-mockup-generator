@@ -222,6 +222,66 @@ Assets for 1, 3 and 4 already exist in `public/assets/gallery/` and `public/asse
 
 ---
 
+## Reddit — r/printondemand
+
+Referenced from SEO-PLAN.md's community-sharing task. r/printondemand's own sidebar says
+self-promotion is fine as long as you're not spamming threads — looser than most subreddits — but
+the post still has to read as a person sharing a thing they made, not an ad. Same rule as
+everywhere else in this file: lead with a checkable fact, name the gaps, and don't claim anything
+that isn't true.
+
+**Before posting:** check the subreddit's current rules and flair options (a "Self-Promotion" or
+"Resource" flair usually exists) in case they've changed since this was written, and don't post to
+more than one or two POD-adjacent subreddits with the same text in the same week.
+
+**Suggested title:**
+
+> Tired of mockup tools watermarking the free tier or capping downloads, so I built one that doesn't
+
+**Post body:**
+
+> Every mockup generator I tried had a catch. Placeit watermarks anything you don't pay $14.95/mo
+> for. Mockey's free tier is 3 downloads a day at 400×500 with no commercial use. A couple of others
+> wanted an account before they'd even show me a preview.
+>
+> So I built [FreeTeeMockup](https://freeteemockup.com) — full disclosure, it's mine. It's a
+> t-shirt mockup generator that runs entirely in the browser: upload a design, drop it on one of 8
+> garments (crewneck, ladies tee, v-neck, tank, long sleeve, polo, hoodie, sweatshirt), export a
+> PNG. No account, no watermark, no daily cap.
+>
+> Two modes: a flat-lay studio (fabric colour, wood/solid/transparent backgrounds, a few optional
+> props), and 10 on-model photo templates where the design is displacement-mapped onto the garment
+> so it follows the fabric's folds instead of sitting flat on top.
+>
+> The feature I use the most myself is batch export — one design across every garment and colour
+> you pick, or a batch of designs across one template, all zipped up and named by garment/colour.
+> If you're filling out Etsy listing image slots for a design in a few colourways, that's most of
+> them done in one export. It's free and there's no cap on it, which is normally the part other
+> tools charge for.
+>
+> Also: nothing you upload leaves your browser. Rendering is all canvas, client-side — no server
+> ever sees your design.
+>
+> What it doesn't do yet: no video mockups, no sleeve prints, back prints only on some garments so
+> far, and it's t-shirts only — no mugs, totes, or phone cases. If one of those is what you'd
+> actually need, I'd rather hear that now than guess.
+>
+> Happy to answer questions about how it works or take requests for what to build next.
+
+**Notes:**
+
+- The disclosure ("full disclosure, it's mine") goes in the first mention of the link, not buried
+  at the end — Reddit self-promo etiquette expects it up front, not as a footnote.
+- Closing on an open question ("what would you actually need") is deliberate — it invites replies
+  instead of just upvotes, and every reply is a chance to answer with more specifics than the post
+  itself carries.
+- Reuse the **Comparison lines** table above if a comment thread asks "how is this different from
+  X" — those figures are already sourced and dated.
+- If this performs well, r/EtsySellers and r/Etsy are the natural next posts (SEO-PLAN.md already
+  lists them) — write a fresh post for each rather than cross-posting the identical text.
+
+---
+
 ## Maintenance
 
 When a feature ships, update the canonical fact block **first**, then push the change out to the

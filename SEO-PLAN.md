@@ -38,7 +38,7 @@ Everything below requires account access or publishing under your identity, so C
   Product Hunt pages are heavily cited by AI assistants and ChatGPT is the site's largest channel.
   That is a hypothesis, not a measured result.
 - [ ] **Directory submissions** (each ~5 min, backlink value adds up): AlternativeTo (list FreeTeeMockup as an alternative to Placeit/Smartmockups/Mockey), free-tool directories (e.g. toolify.ai, insanelycooltools.com, futurepedia if AI-angle fits). Claude drafts the copy; you create the listings.
-- [ ] **Community sharing**: once the first blog guides exist, share them where POD sellers hang out — r/printondemand, r/Etsy (mind self-promo rules — contribute, don't just drop links), Etsy seller Facebook groups, Printful/Printify community forums. Claude drafts per-channel posts on request.
+- [ ] **Community sharing**: once the first blog guides exist, share them where POD sellers hang out — r/printondemand, r/Etsy (mind self-promo rules — contribute, don't just drop links), Etsy seller Facebook groups, Printful/Printify community forums. Claude drafts per-channel posts on request. r/printondemand draft (title + body, disclosure-first) is ready in LISTING-COPY.md — still needs a human to actually post it.
 - [x] **After 4–6 weeks of GSC data**: done 2026-08-08. Full analysis in
   [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §2. Headline: 8 clicks / 166 impressions in ~7 weeks;
   every commercial head term sits at position 73–97; `/t-shirt-mockups-for-etsy` holds 52% of all
