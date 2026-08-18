@@ -33,7 +33,7 @@
  * Usage: node scratch/extract_video_frames.cjs <clip> <outDir> [fps] [longEdge=1600]
  *        fps omitted or 0 = the clip's own rate
  */
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -60,6 +60,46 @@ function probe(clip) {
   };
 }
 
+// Generated clips arrive PADDED more often than not: the model renders at one
+// aspect and letterboxes it into the container the request asked for. The clip
+// this was written against is a 720x1088 image inside a 720x1280 file, with a
+// 192px black bar across the top — and a mockup video cannot ship with a black
+// band on it, so the bar has to come off before anything else looks at the
+// frames. It also throws the mask off: a hard black edge is a strong gradient
+// that the boundary machinery has no reason to expect.
+//
+// ffmpeg's cropdetect is exactly this tool. It is run over the opening seconds
+// and the MODAL suggestion wins rather than the last one, because a dark scene
+// can make a single frame propose a crop that no other frame agrees with. If
+// the winner covers the whole frame there was no padding and nothing is done.
+function detectCrop(clip, width, height) {
+  // spawnSync, not execFileSync: cropdetect writes its findings to stderr and
+  // then EXITS ZERO, so the catch-the-error trick probe() uses above reads
+  // nothing at all here. That failure is silent — no crop is reported and the
+  // padding ships — which is exactly the kind of no-op worth naming.
+  const res = spawnSync(ffmpeg, [
+    '-hide_banner', '-i', clip,
+    '-vf', 'cropdetect=limit=24:round=2:reset=0',
+    '-frames:v', '120', '-f', 'null', '-',
+  ], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  const out = (res.stderr || '') + (res.stdout || '');
+  if (!out) return null;
+  const counts = new Map();
+  for (const mt of out.matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)) {
+    const k = mt[0];
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  if (!counts.size) return null;
+  const [bestK] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  const m = bestK.match(/crop=(\d+):(\d+):(\d+):(\d+)/);
+  const c = { w: +m[1], h: +m[2], x: +m[3], y: +m[4] };
+  if (c.w >= width && c.h >= height) return null;
+  // A crop that keeps less than half the frame is cropdetect misreading a dark
+  // scene, not a letterbox. Refuse it rather than silently shipping a sliver.
+  if (c.w * c.h < width * height * 0.5) return null;
+  return c;
+}
+
 (async () => {
   const [clipArg, outArg, fpsArg, edgeArg] = process.argv.slice(2);
   if (!clipArg || !outArg) {
@@ -75,13 +115,16 @@ function probe(clip) {
   fs.mkdirSync(outDir, { recursive: true });
   for (const f of fs.readdirSync(outDir)) if (/^f_\d+\.png$/.test(f)) fs.unlinkSync(path.join(outDir, f));
 
-  const k = longEdge / Math.max(info.width, info.height);
+  const crop = detectCrop(clip, info.width, info.height);
+  const srcW = crop ? crop.w : info.width, srcH = crop ? crop.h : info.height;
+  const k = longEdge / Math.max(srcW, srcH);
   // Even dimensions: the frames are re-encoded to h264 at the end of the
   // pipeline and yuv420p cannot represent an odd one.
-  const W = Math.round(info.width * k / 2) * 2, H = Math.round(info.height * k / 2) * 2;
+  const W = Math.round(srcW * k / 2) * 2, H = Math.round(srcH * k / 2) * 2;
 
   const filters = [];
   if (Math.abs(wantFps - info.fps) > 0.01) filters.push(`fps=${wantFps}`);
+  if (crop) filters.push(`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`);
   filters.push(`scale=${W}:${H}:flags=lanczos`);
 
   execFileSync(ffmpeg, [
@@ -99,12 +142,15 @@ function probe(clip) {
   fs.writeFileSync(path.join(outDir, 'clip.json'), JSON.stringify({
     source: path.basename(clip),
     width: W, height: H,
-    srcWidth: info.width, srcHeight: info.height,
-    analysisScale: +(W / info.width).toFixed(4),
+    srcWidth: srcW, srcHeight: srcH,
+    containerWidth: info.width, containerHeight: info.height,
+    letterboxCrop: crop || null,
+    analysisScale: +(W / srcW).toFixed(4),
     duration: info.duration,
     fps: wantFps,
     frames: written,
   }, null, 2));
   console.log(`${path.basename(clip)}: ${info.width}x${info.height} @${info.fps}fps, ${info.duration.toFixed(2)}s`);
+  if (crop) console.log(`  letterbox removed: ${crop.w}x${crop.h}+${crop.x}+${crop.y} (${(100 * (1 - (crop.w * crop.h) / (info.width * info.height))).toFixed(0)}% of the container was padding)`);
   console.log(`  -> ${written} frames at ${W}x${H} @${wantFps}fps in ${outDir}`);
 })();
