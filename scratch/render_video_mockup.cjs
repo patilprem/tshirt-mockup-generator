@@ -154,7 +154,12 @@ const fs = require('fs');
         const sMax = Math.asin(kMax);
         // Fold displacement scales with the print, so it is the same physical
         // effect whatever size the design is placed at.
-        const DISP = dW * 0.04;
+        // 0.016 of print width at the 90th-percentile fold. Swept against the
+        // frame this ships on: 0.010 is visible but timid, 0.024 makes the
+        // graphic ripple like a flag rather than sit on cotton. The failure on
+        // the high side is much uglier than the one on the low side, so this
+        // sits nearer the middle than the top.
+        const DISP = dW * 0.016;
         const BLUR = Math.max(2, Math.round(w * 0.012));
 
         const shadeCv = E.onModelShadeCanvas(entry);
@@ -186,6 +191,38 @@ const fs = require('fs');
           return out2;
         };
         sh = blurPass(blurPass(sh));
+
+        // NORMALISE the gradient field before using it as a displacement.
+        //
+        // The first version multiplied (gradient / 255) by the displacement
+        // budget, treating the gradient as if it were a 0-1 fraction. It is
+        // not: it is levels PER PIXEL, and after a blur wide enough to see
+        // folds rather than weave, a fold spanning 40px and swinging 30 levels
+        // gives 0.75 levels/px. Divided by 255 that is 0.003, times a 10px
+        // budget it is three hundredths of a pixel. Measured on the delivered
+        // clip: 0.01px mean, 0.06px max, against a 10.8px budget — the code
+        // ran, every number was finite, and the print was flat anyway.
+        //
+        // What the budget should mean is "the strongest fold in the print area
+        // moves the graphic this far", so the field is divided by its own
+        // strength there — a high percentile rather than the maximum, so one
+        // bright seam cannot define the scale for everything else.
+        let gScale = 1;
+        {
+          const qcx0 = (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4;
+          const qcy0 = (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4;
+          const mags = [];
+          for (let y = Math.max(1, Math.round(qcy0 - quadH / 2)); y < Math.min(h - 1, Math.round(qcy0 + quadH / 2)); y += 2) {
+            for (let x = Math.max(1, Math.round(qcx0 - quadW / 2)); x < Math.min(w - 1, Math.round(qcx0 + quadW / 2)); x += 2) {
+              const p = y * w + x;
+              mags.push(Math.hypot((sh[p + 1] - sh[p - 1]) * 0.5, (sh[p + w] - sh[p - w]) * 0.5));
+            }
+          }
+          if (mags.length > 32) {
+            mags.sort((a2, b2) => a2 - b2);
+            gScale = Math.max(1e-3, mags[Math.floor(mags.length * 0.9)]);
+          }
+        }
 
         // ---- prefilter the design to the scale it will actually be printed at ----
         //
@@ -257,8 +294,8 @@ const fs = require('fs');
             const gy = (sh[p + w] - sh[p - w]) * 0.5;
             const ga = gx * ux[0] + gy * ux[1];
             const gb = gx * uy[0] + gy * uy[1];
-            a += (ga / 255) * DISP;
-            b += (gb / 255) * DISP;
+            a += (ga / gScale) * DISP;
+            b += (gb / gScale) * DISP;
 
             if (Math.abs(a) > dW2 || Math.abs(b) > dH2) continue;
             // cylinder: image offset -> printed offset

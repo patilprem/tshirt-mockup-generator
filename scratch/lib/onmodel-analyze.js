@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  window.__analyzeOnModel = async function ({ b64, srcMime, MAX_EDGE, dbgPx, calib }) {
+  window.__analyzeOnModel = async function ({ b64, srcMime, MAX_EDGE, dbgPx, calib, OUT_EDGE }) {
       const load = s => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = s; });
       const img = await load('data:' + srcMime + ';base64,' + b64);
       const k = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
@@ -1854,15 +1854,67 @@
           clip: +clip[i].toFixed(3), hueClose: +hueClose.toFixed(3),
           ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue, orderEv: +orderEv[i].toFixed(3), unrel: +unrel[i].toFixed(3), clip: +clip[i].toFixed(3), conf: +confA[i].toFixed(3) };
       });
+      // ---- SUPERSAMPLE: emit the maps below the scale they were computed at ----
+      //
+      // The boundary this machinery draws is decided by thresholds, morphology
+      // and a radius-1 blur, so its ramp is a fixed number of PIXELS wide
+      // whatever the image is — which is why analysing larger does not soften
+      // it, and why blurring it afterwards costs violet on the fabric side.
+      //
+      // What analysing larger does fix is the boundary WANDERING. The 50%
+      // crossing moves in and out by a pixel from one scanline to the next, and
+      // a contour that should be a clean curve arrives as a staircase; that is
+      // what reads as "not smooth", and it is a different defect from the ramp
+      // being narrow. Measured down the sleeve edge as the rms second
+      // difference of the crossing position: 1.68px analysed at 1600, 0.89px
+      // analysed at 2560 and averaged back down. Averaging four samples into
+      // one output pixel is what turns a staircase into a slope, and unlike a
+      // blur it cannot move coverage off the fabric, because the mean over each
+      // output pixel is exactly preserved.
+      //
+      // The geometry goes down with it. quad, torso and bbox are in analysis
+      // pixels and every consumer indexes the emitted maps with them, so they
+      // are scaled by the same factor here rather than at each call site.
+      let outCv = { photo, weight: wpng, shade: shadeCv }, OW = W, OH = H, ok = 1;
+      if (OUT_EDGE && OUT_EDGE < Math.max(W, H)) {
+        ok = OUT_EDGE / Math.max(W, H);
+        OW = Math.round(W * ok); OH = Math.round(H * ok);
+        const down = (srcCv, alpha) => {
+          const c = document.createElement('canvas');
+          c.width = OW; c.height = OH;
+          const x = c.getContext('2d');
+          x.imageSmoothingEnabled = true;
+          x.imageSmoothingQuality = 'high';
+          x.drawImage(srcCv, 0, 0, OW, OH);
+          return c;
+        };
+        outCv = { photo: down(photo), weight: down(wpng), shade: down(shadeCv) };
+      }
+      const scPt = p => [+(p[0] * ok).toFixed(3), +(p[1] * ok).toFixed(3)];
+      const outQuad = ok === 1 ? quad
+        : { tl: scPt(quad.tl), tr: scPt(quad.tr), br: scPt(quad.br), bl: scPt(quad.bl) };
+      const outTorso = (ok === 1 || !torso) ? torso : (() => {
+        const t = { ...torso };
+        for (const k of ['cx', 'cy', 'w', 'h', 'shMid', 'shY', 'shW', 'chestCx']) {
+          if (typeof t[k] === 'number') t[k] = +(t[k] * ok).toFixed(3);
+        }
+        // lean is an angle and area is a count; neither scales like a length.
+        t.area = torso.area;
+        return t;
+      })();
+
       return {
-        dbg, W, H, shirtHue, fragments, ambientTint, quad, torso,
-        bbox: { x: mnX, y: mnY, w: bw, h: bh },
+        dbg, W: OW, H: OH, analysisW: W, analysisH: H, supersample: +(1 / ok).toFixed(3),
+        shirtHue, fragments, ambientTint, quad: outQuad, torso: outTorso,
+        bbox: { x: Math.round(mnX * ok), y: Math.round(mnY * ok), w: Math.round(bw * ok), h: Math.round(bh * ok) },
         vRef: +vRef.toFixed(4), relMax: REL_MAX, violetBase,
+        // QA counts stay in ANALYSIS pixels — they are measured where the
+        // analysis happened, and rescaling a pixel count would be a fiction.
         qa: { missed, skin, bgPaint, edgeDark, edgeBright, wedgePx, modelFit: +(fitSum / Math.max(1, fitCnt)).toFixed(2), deepShadowPct, hairShadowPct,
           chromaPct, chromaWorst: +chromaWorst.toFixed(1), chromaPx, chromaMaskPx, keyMiss, coolPaint, occPaint },
-        photo: photo.toDataURL('image/jpeg', 1.0),
-        weight: wpng.toDataURL('image/png'),
-        shade: shadeCv.toDataURL('image/jpeg', 0.92),
+        photo: outCv.photo.toDataURL('image/jpeg', 1.0),
+        weight: outCv.weight.toDataURL('image/png'),
+        shade: outCv.shade.toDataURL('image/jpeg', 0.92),
         // Thumbnail-sized copies of the same three maps. The picker recolours
         // its thumbnails with the live shirt colour, which needs weight and
         // shade as well as the photo — and downloading three full-size maps per
