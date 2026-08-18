@@ -888,10 +888,51 @@
         // teeth along the whole hem, surviving into every colour.
         const sep = Math.sqrt(den);
         const fgGap = Math.min(fgC[i * 3] - fgC[i * 3 + 1], fgC[i * 3 + 2] - fgC[i * 3 + 1]);
-        let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGap, 3, 14);
+        // The green deficit, judged RELATIVE to the endpoint's own brightness.
+        // What this term asks is whether the fabric endpoint is still
+        // chromatic or has gone neutral in shadow, and neutrality is a ratio,
+        // not a count of levels: (134,108,117) is plainly violet on a deficit
+        // of 9, while (30,28,29) is grey on a deficit of 2. Measured in
+        // absolute levels the same garment loses confidence simply for being
+        // photographed under softer light — this clip, shot without direct
+        // sun, scored 0.57 on a boundary the luminance witness independently
+        // corroborated to within a few percent at every pixel of the ramp.
+        // Normalised at the mid-grey the old constants were chosen against,
+        // so a well-lit frame is scored as before.
+        const fgGapRel = 255 * fgGap / Math.max(40, 0.299 * fgC[i * 3] + 0.587 * fgC[i * 3 + 1] + 0.114 * fgC[i * 3 + 2]);
+        let conf = (1 - smooth(err, 14, 42)) * smooth(sep, 12, 45) * smooth(fgGapRel, 6, 28);
         if (fgF.fd[i] < 0) conf = 0;
         const fdB = bgF.fd[i] < 0 ? 99 : bgF.fd[i];
-        const confS = conf * (1 - smooth(fdB, RING + 1, RING + 4));
+        // EXCESS travel, not absolute travel.
+        //
+        // bgF diffuses inward from seeds at `outside && !ring` — that is, from
+        // distC > RING2 — and propagates through ring pixels only. So along an
+        // ordinary open boundary fd is not a property of the scene at all: it
+        // is exactly RING2 + 1 - distC. The deeper a pixel sits toward the
+        // fabric, the further the background estimate MUST have travelled to
+        // reach it, by construction, in every image.
+        //
+        // Gating on the raw distance therefore gates on depth in disguise, and
+        // with RING=7 it zeroes the matte for every pixel at distC <= 4 — the
+        // fabric-side half of every ramp, everywhere, on every clip. Measured
+        // across one sleeve boundary, the matte had solved
+        //     alpha 0.20 0.34 0.58 0.73 0.92 1.00
+        // and the weight that shipped was
+        //           0.11 0.14 0.08 0    0    0
+        // a six-pixel photographic edge delivered as a one-pixel step. The
+        // gate's own falloff predicts those survivors to two decimals
+        // (1.00, 0.74, 0.25, 0 of conf), which is how it was identified.
+        // Against the violet original the truncation is invisible; recoloured
+        // to white it is the staircase along the sleeve.
+        //
+        // What the gate is FOR is real and kept: in a narrow wedge — the
+        // underarm gap, under hair — no clean background is reachable and the
+        // estimate has to detour around an obstruction, which was the comb of
+        // white teeth in the torso-arm gap. A detour is travel IN EXCESS of
+        // the unavoidable minimum, so that is what is measured. An unreachable
+        // background still lands at 99 and still dies.
+        const fdFloor = Math.max(0, RING2 + 1 - Math.max(0, distC[i]));
+        const confS = conf * (1 - smooth(Math.max(0, fdB - fdFloor), 1, 4));
         conf *= 1 - smooth(fdB, RING2 + 1, RING2 + 4);
         if (distC[i] <= RING && vA[i] < 0.28 && (bgF.fd[i] < 0 || bgF.fd[i] > RING2 + 1)) wedgePx++;
         // The matte's answer is recorded for EVERY ring pixel, before the
@@ -1892,7 +1933,18 @@
         return { x, y, rgb: [src[o], src[o+1], src[o+2]], h: +hA[i].toFixed(1), s: +sA[i].toFixed(3), v: +vA[i].toFixed(3),
           wRaw: +wRaw[i].toFixed(3), core: core[i], outside: outside[i], gate: gate[i],
           clip: +clip[i].toFixed(3), hueClose: +hueClose.toFixed(3),
-          ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue, orderEv: +orderEv[i].toFixed(3), unrel: +unrel[i].toFixed(3), clip: +clip[i].toFixed(3), conf: +confA[i].toFixed(3) };
+          ev: +(hueClose * smooth(sA[i], 0.05, 0.18)).toFixed(3), wMap: +wMap[i].toFixed(3), shirtHue, orderEv: +orderEv[i].toFixed(3), unrel: +unrel[i].toFixed(3), clip: +clip[i].toFixed(3), conf: +confA[i].toFixed(3),
+          // The matte's own answer alongside the weight that shipped. The
+          // design is that these AGREE in the ring — the photo is baked to
+          // alphaA*V + (1-alphaA)*bg and the runtime multiplies by wMap, so
+          // the subtraction only cancels when wMap == alphaA. Where they
+          // disagree the boundary renders outside the convex hull of the two
+          // endpoints, which is the white spill into the arm.
+          dist: distC[i], ring: ring[i], crev: crevice[i] ? 1 : 0,
+          alphaA: +alphaA[i].toFixed(3), mAlphaE: +mAlphaE[i].toFixed(3),
+          mConfS: +mConfS[i].toFixed(3), mConf: +mConf[i].toFixed(3),
+          lumCap: +mLumCap[i].toFixed(3),
+          fgC: [0,1,2].map(k => Math.round(fgC[i*3+k])), bgC: [0,1,2].map(k => Math.round(bgC[i*3+k])) };
       });
       // ---- SUPERSAMPLE: emit the maps below the scale they were computed at ----
       //
