@@ -36,3 +36,10 @@ scratch/artifacts/cache/
 # screenshots from the hero tests
 hero-handoff.png
 hero-handoff-flatlay.png
+
+# Baked video plates: large binary frame dumps, rebuilt by scratch/video/build_plate.py
+scratch/video/plates/
+
+# Python bytecode from scratch/video tooling
+__pycache__/
+*.pyc

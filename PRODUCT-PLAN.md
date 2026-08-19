@@ -58,9 +58,12 @@ per-use cost needs a very good reason.
 6. **Background removal for uploads.** Most user PNGs have white boxes — the #1 quality killer.
    Run U²-Net/rembg-class model in-browser via WASM/ONNX; zero server, keeps privacy promise.
    "Free background remover" is also its own SEO keyword universe.
-7. **Video mockups.** Slow zoom/pan or garment color-cycle rendered client-side to WebM/MP4
-   (canvas + MediaRecorder). Placeit's video mockups are a flagship *paid* feature; free video
+7. **Video mockups.** Placeit's video mockups are a flagship *paid* feature; free video
    mockups have almost no supply and real search volume. Exports directly usable as Etsy video.
+   Scope has moved past the original client-side zoom/pan idea: what travels on TikTok is a
+   person moving in the garment, which needs a tracked mesh warp rather than a pan over a still.
+   Architecture, the measured proof-of-concept and the plate generation spec are in
+   [VIDEO-MOCKUP-PLAN.md](VIDEO-MOCKUP-PLAN.md); offline tooling is in `scratch/video/`.
 8. **Back print + sleeve print.** Second print area per garment. Unlocks "front and back mockup"
    searches and matches how real POD listings work.
    *Back print has shipped for crewneck, hoodie, sweatshirt, long sleeve, ladies tee and polo*
