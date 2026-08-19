@@ -64,16 +64,34 @@ generates the garment plate. Classical compositing prints the design.
 
 Two programs, split on the cost asymmetry.
 
+**Screen the batch** — `scratch/video/screen_plates.py`
+
+Point it at a directory of fresh generations. A few seconds per clip, seven gates, PASS/FAIL
+with the failing metric named. It exists because baking costs ~40-75 s per clip and the batch
+is mostly rejects. The gate that matters most is **boil** — the signature artifact of video
+diffusion, where fabric shimmers and re-forms rather than moving. Trackers stay alive through
+boil, so survival counts look healthy while the mesh jitters. Measuring temporal *jerk* rather
+than speed separates the two: a walking model has high displacement and low jerk, a boiling one
+has the reverse.
+
 **Bake once per plate** — `scratch/video/build_plate.py`
 
-1. Track the garment with forward-backward validated Lucas-Kanade optical flow. Points that
-   fail a sub-pixel round trip are dropped rather than smoothed; a tracker that slides onto the
-   background is worse than a missing one.
-2. Deform a grid over the print area with moving-least-squares (Schaefer et al. 2006), so a
-   vertex over the sternum follows sternum trackers and one over the hem follows the hem.
+1. Track the garment. Two paths, because generated and filmed plates fail differently:
+   forward-backward validated Lucas-Kanade where the fabric has corners, dense DIS optical flow
+   where it does not. `--tracker auto` tries corners first and falls back.
+2. Fit one RANSAC affine per frame across the whole tracker cloud, then blend back a damped
+   fraction of a moving-least-squares local fit (`--bend`, default 0.35).
 3. Chroma-key the garment matte per frame.
 4. Extract illumination as a ratio against the garment's own low-pass, which cancels the base
    colour of the blank so one layer drives every garment colour.
+
+Step 2 is the one that is easy to get wrong. Advecting mesh vertices straight through per-frame
+flow lets every vertex accumulate its own drift, and the errors are *differential*, not common —
+so they do not cancel, they shear. Measured at 0.33 px median round-trip error per hop, the
+free-running mesh still tore the artwork into illegible fragments inside a hundred frames. The
+global affine is a consensus over hundreds of trackers, so that noise averages away. It also
+matches the reference clips, whose prints deform close to affine with a slight bend rather than
+as freely deforming sheets.
 
 Output is a plate package: frames, per-frame matte and shade, a mesh array, and a `plate.json`
 that deliberately mirrors a `templates.json` row (`printRect`, `relMax`, `ambientTint`).
@@ -91,27 +109,40 @@ that deliberately mirrors a `templates.json` row (`printRect`, `relMax`, `ambien
 
 ## Measured, not assumed
 
-Run against one of the reference clips (1080x1920, 201 frames), on CPU, no GPU:
+Two clips, both end to end, on CPU with no GPU. A filmed Placeit reference (1080x1920, 201
+frames) and a generated Flow clip (720x1280, 144 frames, magenta blank, street walk):
 
-| Quantity | Result |
-|---|---|
-| Trackers surviving all 201 frames | 862 of 1470 (59%) at full res; 83% at half res |
-| Bake time, whole clip | ~74 s |
-| Render time per seller design | ~95 s single-threaded, trivially parallel per frame |
-| Print stability | no visible drift, swim or edge crawl across the clip |
-| Recolour | folds, weave and existing ink preserved |
+| Quantity | Filmed plate | Generated plate |
+|---|---|---|
+| Sparse corner trackers surviving the clip | 862 of 1470 | **79 — below the gate** |
+| Dense virtual trackers surviving the clip | n/a | 554 |
+| Screening time | ~7 s | ~7 s |
+| Bake time | ~74 s | ~39 s |
+| Render time per seller design | ~95 s | ~29 s |
+| Print stability | no drift, swim or edge crawl | same, after affine regularisation |
 
-Tracking was never the bottleneck. Resampling quality was: the first pass looked wrong purely
-because the artwork was undersampled, not because the geometry was off.
+Three things were wrong on the first attempt, and none of them were the geometry:
+
+1. **Resampling.** The artwork was undersampled before warping, so edges read as jagged
+   clip-art. Fixed by mipping to ~2.5x on-screen size with area averaging.
+2. **Tracker choice.** Generated cotton is smooth — video models render fabric as broad soft
+   gradients — so corner detection found 79 usable points where filmed cotton gave 862. Fixed
+   by the dense fallback.
+3. **Regularisation.** See above. This is the failure that looks like the whole approach is
+   broken, and is actually four lines of consensus fitting.
 
 ## Where Grok and Flow fit
 
-They generate **plates**, never mockups.
+They generate **plates**, never mockups. The plate library is generated end to end; no camera is
+involved at any point.
 
 - **Flow / Veo** — the blank-garment clips. This is safe generative work: there is no fine
-  detail to preserve, so the failure mode above never arises. Target 5–8 s, 1080x1920, one
-  continuous shot.
+  detail to preserve, so the typography failure mode never arises. Target 5–8 s, one continuous
+  shot, the highest resolution the model will give.
 - **Grok** — scene and pose ideation, and reference stills to seed a clip.
+
+Copy-paste prompts per archetype are in
+[scratch/video/FLOW-PLATE-PROMPTS.md](scratch/video/FLOW-PLATE-PROMPTS.md).
 
 ### Plate generation spec
 
@@ -134,28 +165,39 @@ The downstream pipeline sets these rules, not taste — the same logic as
   multiply-shading assumption.
 - **One continuous shot.** A cut resets every track; a plate spanning a cut must be baked as two.
 
-Not every generation will pass. Bake is the gate: if fewer than ~150 trackers survive the clip,
-`build_plate.py` rejects it. Budget for a hit rate well below 1 and generate in batches.
+Not every generation will pass, and that is the design. Screen the batch, bake the survivors,
+keep what looks filmed. `build_plate.py` rejects a clip that leaves fewer than 120 trackers even
+on the dense path. Treat a rejection as "generate another", not as something to tune around.
+
+Resolution is the one constraint worth watching: the tested Flow clip came out at 720x1280 where
+the filmed references are 1080x1920. That is usable for social but it is the ceiling on export
+quality, so take the largest output the model offers.
 
 ## Roadmap
 
 1. **Prove the plate library.** Ten plates covering the formats that travel on TikTok: walking,
-   laughing, mirror, café, street, flat-lay-to-body. Bake, eyeball, keep what holds.
+   laughing, mirror, café, street, flat-lay-to-body. Generate in batches, screen, bake the
+   survivors, keep what reads as filmed.
 2. **Port the renderer to the browser.** The maths is already framework-free canvas work in
    `onmodel-engine.js`; the mesh is a small typed array per frame and WebCodecs or
    MediaRecorder handles encoding. Keeps the "files never leave the browser" wedge intact,
    which is the entire positioning in PRODUCT-PLAN.
 3. **Ship colour + design together.** The colour-cycle video is a native TikTok format and falls
    straight out of the relight path.
-4. **Seed the plates with Flow** once the ten filmed-or-generated plates prove the bake gate.
+4. **Grow the library** once the first ten hold. Plate count is the moat; nothing else about
+   this compounds.
 
 ## Risks
 
-- **Plate supply is the real cost.** The compositor is solved; sourcing clips that survive the
-  bake gate is the work. Filming one afternoon with one model may beat generating.
+- **Plate supply is the real cost.** The compositor is solved; generating clips that survive the
+  gates is the work. Budget for a low hit rate rather than for prompt-tuning to a high one.
+- **Generated fabric is texture-poor.** It cost the sparse tracker outright, and the dense path
+  is the mitigation rather than a cure — a plate with no fold detail at all also carries no
+  usable shade layer, so the print will sit flat however well it tracks. Prefer generations with
+  visible folds and directional light.
 - **Browser render time.** ~95 s of CPU per clip is fine on a laptop and painful on a phone.
   Offer a lower-resolution preview and a full-resolution export.
 - **Uncanny-valley plates.** A generated model that reads as AI undercuts a product whose pitch
   is realism. Judge plates on whether they pass as filmed, not on prompt adherence.
-- **Likeness and licensing.** Filmed models need a release covering commercial reuse; generated
-  people avoid that but carry their own platform terms. Settle this before the library grows.
+- **Likeness and licensing.** Generated people avoid model releases but carry the video model's
+  own terms on commercial use. Settle this before the library grows.

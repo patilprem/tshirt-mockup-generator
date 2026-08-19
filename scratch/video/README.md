@@ -14,6 +14,18 @@ practical Node equivalent. The runtime renderer that ships to users is JS/canvas
 pip install opencv-python-headless numpy    # plus ffmpeg on PATH
 ```
 
+## Screen a batch of candidates
+
+Generated plates are mostly rejects, and baking is far too slow to use as the filter. Screen
+first:
+
+```sh
+python3 scratch/video/screen_plates.py candidates/*.mp4
+```
+
+Seven gates, a few seconds per clip, PASS/FAIL with the failing metric named. Prompts and the
+meaning of each rejection are in [FLOW-PLATE-PROMPTS.md](FLOW-PLATE-PROMPTS.md).
+
 ## Bake a plate
 
 ```sh
@@ -43,7 +55,10 @@ Omit `--color` to keep the plate's own garment colour.
 
 ## Status
 
-Both scripts have been run end to end on a 201-frame 1080x1920 clip: ~74 s to bake, ~95 s to
-render, 862 trackers surviving the full clip, no visible print drift. Plate colour, fold shading
-and silhouette masking all hold. What is not built yet is the browser-side renderer and the
-plate library itself.
+Run end to end on two clips. A filmed 201-frame 1080x1920 reference: ~74 s to bake, ~95 s to
+render, 862 corner trackers surviving. A generated 144-frame 720x1280 Flow clip: 79 corners —
+below the gate — falling back to 554 dense trackers, ~39 s to bake, ~29 s to render. Both hold
+their print with no visible drift, and recolour, fold shading, despill and silhouette masking
+all work.
+
+What is not built yet is the browser-side renderer and the plate library itself.
