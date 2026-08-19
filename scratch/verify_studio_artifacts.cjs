@@ -94,6 +94,16 @@ async function checkStudio(browser) {
   check('prompt keeps the violet rule', /violet/i.test(prompt));
   await page.screenshot({ path: path.join(SHOTS, 'studio-1-prompt.png') });
 
+  // Scene preset picker — the Scene Library artifact tells people this ships
+  // here, so a page without it (or one where picking a scene does not fill
+  // the field) is broken in a way nothing else on this page catches.
+  const sceneOptionCount = await page.locator('#pScenePreset option').count();
+  check('scene preset picker is populated', sceneOptionCount > 40, sceneOptionCount + ' options');
+  await page.selectOption('#pScenePreset', { label: 'Forest trail' });
+  const pickedScene = await page.inputValue('#pScene');
+  check('picking a scene preset fills the scene field', /forest trail/i.test(pickedScene), pickedScene);
+  await page.selectOption('#pScenePreset', { label: 'Coffee shop' });
+
   // Step 2 — validate a real template photograph.
   await page.setInputFiles('#file', SAMPLE);
   await page.waitForSelector('#valResults:not(.hidden)', { timeout: 120000 });

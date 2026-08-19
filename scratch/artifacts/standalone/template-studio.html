@@ -192,7 +192,7 @@
 </style>
 <div class="wrap">
   <header>
-    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 bc2bdda</span></span>
+    <span class="eyebrow">FreeTeeMockup · internal <span id="buildStamp">· 2026-08-17 bc2bdda +local edits</span></span>
     <h1>On-Model Template Studio</h1>
     <p class="lede">
       The full workflow for adding a template: generate a pipeline-safe prompt, validate the
@@ -269,6 +269,9 @@
           </div>
         </div>
       </div>
+      <label class="f" style="margin-top:12px">Scene preset (fills the field below — edit after picking, or leave it as free text)
+        <select id="pScenePreset"><option value="">Custom — type your own below</option></select>
+      </label>
       <label class="f" style="margin-top:12px">Scene (describe the background — nothing violet, purple or lilac in it)
         <input type="text" id="pScene" value="a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus">
       </label>
@@ -563,6 +566,88 @@ pGarment.addEventListener('change', showFieldNote);
 pRace.addEventListener('change', showFieldNote);
 fillPoses();
 
+// Forty-one background strings, each one worded to survive the six gates the
+// build already runs (stray violet, deep shadow, backlight, matte softness,
+// blown highlights, background brightness) — see the Scene Library artifact
+// for why each is worded the way it is. Grouped exactly as that page groups
+// them, so a scene found there is the same click away here.
+const SCENE_PRESETS = [
+  ['Neutral & studio', [
+    ['Off-white room', 'a bright minimal room with smooth off-white walls and soft daylight from a large window out of shot, background softly out of focus'],
+    ['Warm plaster', 'a warm cream plaster wall in soft natural daylight, background softly out of focus'],
+    ['Sage wall', 'a soft sage-green painted wall in gentle indirect daylight, background softly out of focus'],
+    ['Sand stucco', 'a warm sand-toned stucco wall in open shade, background softly out of focus'],
+    ['Soft grey seamless', 'a plain mid-grey studio backdrop lit evenly by a large diffused softbox, no visible seam, background completely smooth'],
+  ]],
+  ['Home & interior', [
+    ['Living room', 'a bright living room with a pale linen sofa and soft daylight, background softly out of focus'],
+    ['Home kitchen', 'a tidy home kitchen with pale wood cabinets and soft window light, background softly out of focus'],
+    ['Home office', 'a sunlit home office with a plain pale desk and neutral shelves far behind, background softly out of focus'],
+    ['Craft room', 'a quiet craft room with pale shelves of neutral supplies far behind, background softly out of focus'],
+  ]],
+  ['Cafe, shop & social', [
+    ['Coffee shop', 'a bright airy coffee shop with pale wooden tables and large windows, background softly out of focus'],
+    ['Bookshop aisle', 'a quiet bookshop aisle with warm wooden shelves far behind in even indoor light, background softly out of focus'],
+    ['Plant shop', 'a bright plant shop with soft green foliage far behind, background softly out of focus'],
+    ['Bakery counter', 'a modern bakery counter with pale tiles and warm daylight, background softly out of focus'],
+    ['Farmers market', 'a farmers market walkway with pale canvas awnings and neutral produce crates far behind, background softly out of focus'],
+  ]],
+  ['Urban exterior', [
+    ['Stone street', 'a sunlit street with pale stone buildings far behind, the model standing in open shade, background softly out of focus'],
+    ['Residential street', 'a quiet residential street with soft green trees far behind, background softly out of focus'],
+    ['Concrete wall', 'a smooth concrete wall in even shaded light with nothing else in frame, background softly out of focus'],
+    ['Rooftop, overcast', 'a rooftop terrace under a soft overcast sky with the city far behind and low in frame, background softly out of focus'],
+  ]],
+  ['Nature & outdoors', [
+    ['Park path', 'a leafy park path with soft green foliage far behind, background softly out of focus'],
+    ['Forest trail', 'a forest trail in flat overcast light with soft green and brown foliage far behind, no dappled sunlight, background softly out of focus'],
+    ['Open meadow', 'an open grassy meadow under a soft overcast sky, background softly out of focus'],
+    ['Lakeside clearing', 'a lakeside clearing with calm flat water and soft green trees far behind, background softly out of focus'],
+    ['Wheat field', 'a wheat field in soft even morning light with no direct sun, background softly out of focus'],
+    ['Pasture fence', 'a weathered wooden fence with open pasture far behind in flat light, background softly out of focus'],
+    ['Desert trail', 'a desert trail with pale sand and distant hills under a soft overcast haze, background softly out of focus'],
+    ['Autumn path', 'an autumn park path in flat overcast light with soft amber and brown foliage far behind, background softly out of focus'],
+  ]],
+  ['Coastal & water', [
+    ['Sandy beach', 'a sandy beach with calm sea and pale open sky far behind, background softly out of focus'],
+    ['Open sky', 'open pale blue sky in soft daylight with nothing else in frame, background completely smooth'],
+    ['Boardwalk', 'a coastal boardwalk with pale weathered wood and open overcast sky, background softly out of focus'],
+    ['Harbour walkway', 'a harbour walkway with pale moored boats far behind, background softly out of focus'],
+  ]],
+  ['Active & sport', [
+    ['Bright gym', 'a bright modern gym with pale grey walls and large windows, equipment far behind and softly out of focus'],
+    ['Yoga studio', 'a yoga studio with a pale wooden floor and soft even daylight, background softly out of focus'],
+    ['Running track', 'a running track in flat overcast light with an empty field far behind, background softly out of focus'],
+    ['Golf fairway', 'a golf course fairway in soft overcast light with distant green far behind, background softly out of focus'],
+  ]],
+  ['Work & trade', [
+    ['Garage workshop', 'a clean garage workshop with pale walls and tools neatly hung far behind, even indoor light, background softly out of focus'],
+    ['Classroom', 'a bright classroom with a plain pale wall and soft daylight, desks far behind and softly out of focus'],
+    ['Clinic corridor', 'a bright clinic corridor with plain pale walls and soft even light, background softly out of focus'],
+    ['Barn interior', 'a barn interior with warm weathered wood and soft daylight from an open door out of shot, background softly out of focus'],
+  ]],
+  ['Seasonal', [
+    ['Snowy path', 'a snowy path in flat overcast winter light with pale bare trees far behind, background softly out of focus'],
+    ['Pumpkin porch', 'a porch with pale painted boards and orange pumpkins low in frame, soft overcast light, background softly out of focus'],
+    ['Evergreen interior', 'a bright living room with a plain evergreen tree far behind, soft daylight and no lit string lights, background softly out of focus'],
+  ]],
+];
+const pScene = document.getElementById('pScene');
+const pScenePreset = document.getElementById('pScenePreset');
+pScenePreset.innerHTML += SCENE_PRESETS.map(([group, scenes]) =>
+  `<optgroup label="${group}">${scenes.map(([name, text]) =>
+    `<option value="${text.replace(/"/g, '&quot;')}">${name}</option>`).join('')}</optgroup>`
+).join('');
+pScenePreset.addEventListener('change', () => {
+  if (!pScenePreset.value) return;
+  pScene.value = pScenePreset.value;
+});
+// Free-hand edits to the scene no longer match any preset's exact wording, so
+// the picker falls back to "Custom" rather than keep showing a stale name.
+pScene.addEventListener('input', () => {
+  if (pScene.value !== pScenePreset.value) pScenePreset.value = '';
+});
+
 function buildPrompt(extra) {
   const g = pModel.value;
   const race = pRace.value ? pRace.value + ' ' : '';
@@ -730,6 +815,7 @@ function runInspiration(img, url) {
     darkBg: 'a softly lit interior with a deep neutral backdrop' + blurTail,
   };
   document.getElementById('pScene').value = SCENES[top] || SCENES.white;
+  document.getElementById('pScenePreset').value = '';
   document.getElementById('pBottoms').value = bottoms;
 
   // Framing, from how much of the frame the subject occupies. Measured against
@@ -791,7 +877,7 @@ function runInspiration(img, url) {
 // one the pipeline cannot handle. Copying it would defeat the point.
 function applyInspLock() {
   const on = document.getElementById('inspLock').checked;
-  for (const id of ['pScene', 'pBottoms', 'pFraming']) {
+  for (const id of ['pScenePreset', 'pScene', 'pBottoms', 'pFraming']) {
     const el = document.getElementById(id);
     el.disabled = on;
     const lbl = el.closest('label.f');
@@ -1171,6 +1257,50 @@ function analyze(img) {
       wm2[i] = mn;
     }
     wMap = wm2;
+  }
+
+  // ---- mottle: recolour weight that varies pixel-to-pixel is not an edge ----
+  //
+  // Along a clean silhouette the weight is a smooth ramp: each step away from
+  // the fabric carries a little less. In the tight channel between the torso
+  // and an arm, JPEG mush mixes fabric, skin and background three ways, and
+  // the key's per-pixel verdicts come out scattered — 30 here, 180 there, side
+  // by side. Under violet that scatter lands on violet and disappears. Under
+  // any other colour every pixel recolours by a different amount, which is the
+  // blue speckle on the seam. The photograph carries the same scatter, so
+  // sharpening or smoothing the mask alone cannot fix it — the pixels
+  // themselves need neutralising.
+  //
+  // The signature is local VARIANCE of weight, which a real edge — however
+  // soft — does not produce. Where a background-side pixel's 5x5 neighbourhood
+  // scatters, its weight is cut and its chroma handed to the neutraliser. The
+  // variance gate keeps this strictly off clean templates: a smooth ramp's
+  // deviation is a fraction of the threshold.
+  // Two passes: the first collapses the scattered mid-band, which lowers the
+  // neighbourhood mean and exposes the pixels hugging the solid edge on the
+  // second. Near-solid pixels are only exempt above 0.96 — a 0.93 pixel inside
+  // a scattered neighbourhood is part of the scatter, not of the garment.
+  for (let pass = 0; pass < 2; pass++) {
+    const w2 = new Float32Array(wMap);
+    for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+      const i = y * W + x;
+      if (!outside[i]) continue;
+      const v = wMap[i];
+      if (v <= 0.04 || v >= 0.96) continue;
+      let sum = 0, sum2 = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const q = wMap[(y + dy) * W + (x + dx)];
+        sum += q; sum2 += q * q;
+      }
+      const mean = sum / 25, sd = Math.sqrt(Math.max(0, sum2 / 25 - mean * mean));
+      if (sd > 0.22) {
+        const k = smooth(sd, 0.22, 0.36);
+        w2[i] = v * (1 - k);
+        neut[i] = Math.max(neut[i], 0.85 * k);
+        evAny[i] = Math.max(evAny[i], 0.85 * k);
+      }
+    }
+    wMap = w2;
   }
 
   const shadeVal = new Float32Array(N);
