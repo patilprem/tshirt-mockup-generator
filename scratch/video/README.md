@@ -44,6 +44,18 @@ The bake refuses a clip that leaves fewer than 120 trackers alive end to end. Th
 quality control on generated plates: treat a rejection as "generate another clip", not as
 something to tune around.
 
+## Pack a plate for the browser
+
+```sh
+python3 scratch/video/pack_plate.py scratch/video/plates/street-01
+```
+
+A baked plate is lossless PNGs — 220 MB for six seconds, fine for the studio and
+unshippable. Packing gets it to a few megabytes: the garment footage and the matte and
+shade layers as H.264, the mesh quantised to 1/16 px and gzipped. The despill has to
+happen at bake time rather than here, because 4:2:0 chroma subsampling smears the
+blank's colour across the silhouette and no render-time correction recovers it.
+
 ## Render a mockup
 
 ```sh

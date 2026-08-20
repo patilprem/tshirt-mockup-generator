@@ -189,6 +189,28 @@ def garment_matte(bgr, key_hue, tol=22, sat_min=60, val_min=45):
     return cv2.GaussianBlur(m, (0, 0), 2.5)
 
 
+def suppress_spill(bgr, matte, key_hue, tol=22):
+    """Neutralise the blank's colour in and around the garment silhouette.
+
+    The renderer replaces every garment pixel anyway, so a plate never needs to
+    keep the key colour - and keeping it is actively harmful once the plate ships
+    as 4:2:0 video, where chroma is subsampled across the silhouette. The blank
+    then bleeds a couple of pixels into the background, past where the matte can
+    follow, and no amount of render-time despilling recovers it because the
+    evidence was destroyed by the encoder. Killing the chroma at bake time, while
+    the frames are still lossless, means there is nothing left to fringe.
+    """
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    h = hsv[:, :, 0].astype(np.int16)
+    sat = hsv[:, :, 1].astype(np.float32)
+    dh = np.minimum(np.abs(h - key_hue), 180 - np.abs(h - key_hue))
+    keyness = np.clip((tol - dh) / tol, 0, 1) * np.clip((sat - 30) / 70.0, 0, 1)
+    near = cv2.dilate((matte > 8).astype(np.uint8), np.ones((11, 11), np.uint8))
+    w = cv2.GaussianBlur(keyness * near.astype(np.float32), (0, 0), 1.0)[:, :, None]
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)[:, :, None]
+    return np.clip(bgr.astype(np.float32) * (1 - w) + gray * w, 0, 255).astype(np.uint8)
+
+
 def shade_layer(bgr, matte, sigma=42):
     """Illumination as a ratio against the garment's own low-pass.
 
@@ -266,6 +288,9 @@ def main():
         m = garment_matte(img, a.key_hue)
         cv2.imwrite(os.path.join(a.out, 'matte', f'{t:04d}.png'), m)
         cv2.imwrite(os.path.join(a.out, 'shade', f'{t:04d}.png'), shade_layer(img, m))
+        # Overwrite the extracted frame with its despilled version, so the plate
+        # on disk is already the one that is safe to encode and ship.
+        cv2.imwrite(files[t], suppress_spill(img, m, a.key_hue))
         if t % 50 == 0:
             print('baked', t, flush=True)
 

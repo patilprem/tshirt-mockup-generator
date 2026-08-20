@@ -16,8 +16,6 @@ import cv2
 import numpy as np
 
 SPEC = 0.28
-# Hue half-window used to recognise the blank, matching build_plate.garment_matte.
-TOL = 22
 
 
 def relight_lut(rgb, ambient, rel_max):
@@ -100,7 +98,6 @@ def main():
     gu, gv = np.meshgrid(np.linspace(0, 1, g + 1), np.linspace(0, 1, g + 1))
     src_grid = np.stack([gu.ravel() * (dw - 1), gv.ravel() * (dh - 1)], 1).reshape(g + 1, g + 1, 2)
 
-    key_hue = meta.get('keyHue')
     lut = None
     if a.color:
         h = a.color.lstrip('#')
@@ -116,21 +113,6 @@ def main():
         out = frame.astype(np.float32)
         if lut is not None:
             out = out * (1 - matte[:, :, None]) + lut[shade] * matte[:, :, None]
-            # Despill. The garment silhouette is anti-aliased, so its edge pixels
-            # are part fabric and part background and never reach full matte.
-            # Recolouring by the matte alone leaves their share of the key colour
-            # behind as a violet fringe, which is the one artifact that reads as
-            # "keyed" rather than "filmed". Push whatever still carries the key
-            # hue in that transition ring the rest of the way to the target.
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            hh, ss = hsv[:, :, 0].astype(np.int16), hsv[:, :, 1].astype(np.float32)
-            dh = np.minimum(np.abs(hh - key_hue), 180 - np.abs(hh - key_hue))
-            keyness = np.clip((TOL - dh) / TOL, 0, 1) * np.clip((ss - 40) / 60.0, 0, 1)
-            ring = cv2.dilate((matte > 0.02).astype(np.uint8), np.ones((7, 7), np.uint8)) \
-                - (matte > 0.98).astype(np.uint8)
-            w = cv2.GaussianBlur(keyness * np.clip(ring, 0, 1) * (1 - matte), (0, 0), 1.2)
-            out = out * (1 - w[:, :, None]) + lut[shade] * w[:, :, None]
-
         mx, my = cell_maps(mesh[t], src_grid, g, W, H)
         warped = cv2.remap(design, mx, my, cv2.INTER_LINEAR,
                            borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0, 0))

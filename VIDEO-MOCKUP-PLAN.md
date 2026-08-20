@@ -178,10 +178,14 @@ quality, so take the largest output the model offers.
 1. **Prove the plate library.** Ten plates covering the formats that travel on TikTok: walking,
    laughing, mirror, café, street, flat-lay-to-body. Generate in batches, screen, bake the
    survivors, keep what reads as filmed.
-2. **Port the renderer to the browser.** The maths is already framework-free canvas work in
-   `onmodel-engine.js`; the mesh is a small typed array per frame and WebCodecs or
-   MediaRecorder handles encoding. Keeps the "files never leave the browser" wedge intact,
-   which is the entire positioning in PRODUCT-PLAN.
+2. **Port the renderer to the browser.** Delivery is settled: `pack_plate.py` takes a baked
+   plate from 220 MB of PNGs to **3.8 MB** — garment footage, matte and shade as H.264, mesh
+   quantised to 1/16 px and gzipped — and a round trip through that bundle costs 3.4/255 mean
+   error against the lossless render. A ten-plate library is under 40 MB, and a session only
+   fetches the plate the shopper picked. The maths is already framework-free canvas work in
+   `onmodel-engine.js`, the mesh is a small typed array per frame, and WebCodecs handles
+   encoding. Keeps the "files never leave the browser" wedge intact, which is the entire
+   positioning in PRODUCT-PLAN.
 3. **Ship colour + design together.** The colour-cycle video is a native TikTok format and falls
    straight out of the relight path.
 4. **Grow the library** once the first ten hold. Plate count is the moat; nothing else about
@@ -195,8 +199,10 @@ quality, so take the largest output the model offers.
   is the mitigation rather than a cure — a plate with no fold detail at all also carries no
   usable shade layer, so the print will sit flat however well it tracks. Prefer generations with
   visible folds and directional light.
-- **Browser render time.** ~95 s of CPU per clip is fine on a laptop and painful on a phone.
-  Offer a lower-resolution preview and a full-resolution export.
+- **Browser render time.** The Python reference is single-threaded CPU at ~29-95 s per clip. A
+  canvas or WebGL port does the warp and multiply on the GPU, so the real unknown is encode
+  throughput on a mid-range phone, not the compositing. Offer a low-resolution preview and a
+  full-resolution export until that is measured.
 - **Uncanny-valley plates.** A generated model that reads as AI undercuts a product whose pitch
   is realism. Judge plates on whether they pass as filmed, not on prompt adherence.
 - **Likeness and licensing.** Generated people avoid model releases but carry the video model's
