@@ -1476,7 +1476,10 @@ button:active:not(:disabled),
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* Above the feedback launcher (2147483000) and its own overlay/panel: a
+     dialog that has taken over the screen should not have a floating button
+     sitting on top of its Export button. */
+  z-index: 2147483001;
   animation: modal-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
