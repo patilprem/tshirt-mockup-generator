@@ -464,61 +464,126 @@ import KofiSupport from './KofiSupport.astro';
   <!-- Batch Export Modal -->
   <div class="download-modal-overlay" id="batch-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title" tabindex="-1">
     <div class="download-modal-card batch-modal-card">
-      <h3 id="batch-modal-title" class="modal-title">Batch Export</h3>
+      <div class="batch-modal-head">
+        <h3 id="batch-modal-title" class="modal-title">Batch Export</h3>
+        <p class="batch-modal-sub">Render a whole set of mockups at once and download them as a single ZIP.</p>
+      </div>
 
       <div class="batch-tabs" role="tablist">
-        <button type="button" class="batch-tab active" id="batch-tab-variants" role="tab" aria-selected="true" aria-controls="batch-panel-variants">One design &rarr; variants</button>
-        <button type="button" class="batch-tab" id="batch-tab-designs" role="tab" aria-selected="false" aria-controls="batch-panel-designs">Many designs &rarr; this template</button>
-      </div>
-
-      <!-- Tab 1: one design, selected garments × colors -->
-      <div class="batch-tab-panel" id="batch-panel-variants" role="tabpanel">
-        <div class="batch-section">
-          <span class="batch-section-label">Garments</span>
-          <div class="batch-garment-grid" id="batch-garments"></div>
-        </div>
-        <div class="batch-section">
-          <span class="batch-section-label">Fabric colors <span class="batch-hint">(from the preset palette; current custom color is always included if active)</span></span>
-          <div class="batch-color-grid" id="batch-colors"></div>
-        </div>
-        <div class="batch-section">
-          <span class="batch-section-label">Placement</span>
-          <label class="batch-radio"><input type="radio" name="batch-placement" value="keep" checked /> Keep my placement <span class="batch-hint">(mapped onto each garment&rsquo;s print area)</span></label>
-          <label class="batch-radio"><input type="radio" name="batch-placement" value="center-chest" /> Snap to Center Chest <span class="batch-hint">(11&Prime; standard, sized per garment)</span></label>
-        </div>
-      </div>
-
-      <!-- Tab 2: many designs, current garment + color -->
-      <div class="batch-tab-panel" id="batch-panel-designs" role="tabpanel" style="display: none;">
-        <p class="batch-template-summary" id="batch-template-summary"></p>
-        <div class="upload-zone batch-upload-zone" id="batch-drop-zone" role="button" tabindex="0" aria-label="Upload designs for batch export">
-          <span class="upload-icon" aria-hidden="true">&#10022;</span>
-          <span class="upload-text">Add design files</span>
-          <span class="upload-hint">Drop multiple PNG/JPG files or click to browse</span>
-          <input type="file" id="batch-file-input" accept="image/*" multiple style="display: none;" />
-        </div>
-        <ul class="batch-file-list" id="batch-file-list"></ul>
-      </div>
-
-      <div class="batch-section batch-quality-row">
-        <span class="batch-section-label">Quality</span>
-        <label class="batch-radio"><input type="radio" name="batch-quality" value="1000" checked /> 1&times;</label>
-        <label class="batch-radio"><input type="radio" name="batch-quality" value="2000" /> 2&times; <span class="batch-hint">(larger files)</span></label>
-      </div>
-
-      <p class="batch-estimate" id="batch-estimate" aria-live="polite"></p>
-
-      <div class="batch-progress" id="batch-progress" style="display: none;">
-        <div class="batch-progress-track"><div class="batch-progress-fill" id="batch-progress-fill"></div></div>
-        <span class="batch-progress-label" id="batch-progress-label"></span>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn btn-secondary" id="batch-cancel-btn">Cancel</button>
-        <button class="btn btn-primary" id="batch-start-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export ZIP
+        <button type="button" class="batch-tab active" id="batch-tab-variants" role="tab" aria-selected="true" aria-controls="batch-panel-variants">
+          <span class="batch-tab-title">One design</span>
+          <span class="batch-tab-sub">across garments &amp; colors</span>
         </button>
+        <button type="button" class="batch-tab" id="batch-tab-designs" role="tab" aria-selected="false" aria-controls="batch-panel-designs">
+          <span class="batch-tab-title">Many designs</span>
+          <span class="batch-tab-sub">on this one template</span>
+        </button>
+      </div>
+
+      <div class="batch-modal-body">
+        <!-- Tab 1: one design, selected garments × colors -->
+        <div class="batch-tab-panel" id="batch-panel-variants" role="tabpanel">
+          <div class="batch-section">
+            <div class="batch-section-head">
+              <span class="batch-section-label">Garments <span class="batch-count" id="batch-garment-count">0</span></span>
+              <span class="batch-quick">
+                <button type="button" class="batch-link" data-batch-select="garments" data-batch-state="all">All</button>
+                <span class="batch-quick-sep" aria-hidden="true">/</span>
+                <button type="button" class="batch-link" data-batch-select="garments" data-batch-state="none">None</button>
+              </span>
+            </div>
+            <div class="batch-garment-grid" id="batch-garments"></div>
+          </div>
+
+          <div class="batch-section">
+            <div class="batch-section-head">
+              <span class="batch-section-label">Fabric colors <span class="batch-count" id="batch-color-count">0</span></span>
+              <span class="batch-quick">
+                <button type="button" class="batch-link" data-batch-select="colors" data-batch-state="all">All</button>
+                <span class="batch-quick-sep" aria-hidden="true">/</span>
+                <button type="button" class="batch-link" data-batch-select="colors" data-batch-state="none">None</button>
+              </span>
+            </div>
+            <p class="batch-hint">Preset palette &mdash; your current custom color is included whenever it&rsquo;s active.</p>
+            <div class="batch-color-grid" id="batch-colors"></div>
+          </div>
+
+          <div class="batch-section">
+            <span class="batch-section-label">Placement</span>
+            <div class="batch-options">
+              <label class="batch-option">
+                <input type="radio" name="batch-placement" value="keep" checked />
+                <span class="batch-option-body">
+                  <span class="batch-option-details">
+                    <span class="batch-option-label">Keep my placement</span>
+                    <span class="batch-option-sub">Mapped onto each garment&rsquo;s print area</span>
+                  </span>
+                  <span class="batch-option-dot" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="batch-option">
+                <input type="radio" name="batch-placement" value="center-chest" />
+                <span class="batch-option-body">
+                  <span class="batch-option-details">
+                    <span class="batch-option-label">Snap to Center Chest</span>
+                    <span class="batch-option-sub">11&Prime; standard, sized per garment</span>
+                  </span>
+                  <span class="batch-option-dot" aria-hidden="true"></span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: many designs, current garment + color -->
+        <div class="batch-tab-panel" id="batch-panel-designs" role="tabpanel" style="display: none;">
+          <p class="batch-template-summary" id="batch-template-summary"></p>
+          <div class="upload-zone batch-upload-zone" id="batch-drop-zone" role="button" tabindex="0" aria-label="Upload designs for batch export">
+            <span class="upload-icon" aria-hidden="true">&#10022;</span>
+            <span class="upload-text">Add design files</span>
+            <span class="upload-hint">Drop multiple PNG/JPG files or click to browse</span>
+            <input type="file" id="batch-file-input" accept="image/*" multiple style="display: none;" />
+          </div>
+          <ul class="batch-file-list" id="batch-file-list"></ul>
+        </div>
+      </div>
+
+      <div class="batch-modal-foot">
+        <!-- Quality sits with the size estimate it drives, and out of the
+             scrolling body: it applies to both modes, and buried at the
+             bottom of a long list it was the setting people missed. -->
+        <div class="batch-foot-row">
+          <div class="batch-section batch-quality-row">
+            <span class="batch-section-label">Quality</span>
+            <div class="batch-seg">
+              <label class="batch-seg-item">
+                <input type="radio" name="batch-quality" value="1000" checked />
+                <span>1&times;</span>
+              </label>
+              <label class="batch-seg-item">
+                <input type="radio" name="batch-quality" value="2000" />
+                <span>2&times; <span class="batch-hint">larger files</span></span>
+              </label>
+            </div>
+          </div>
+          <p class="batch-estimate" id="batch-estimate" aria-live="polite"></p>
+        </div>
+
+        <div class="batch-progress" id="batch-progress" style="display: none;">
+          <div class="batch-progress-track"><div class="batch-progress-fill" id="batch-progress-fill"></div></div>
+          <span class="batch-progress-label" id="batch-progress-label"></span>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="batch-cancel-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span id="batch-cancel-label">Cancel</span>
+          </button>
+          <button class="btn btn-primary" id="batch-start-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export ZIP
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -3763,6 +3828,10 @@ import KofiSupport from './KofiSupport.astro';
     const batchFileList = document.getElementById('batch-file-list');
     const batchTemplateSummary = document.getElementById('batch-template-summary');
     const batchEstimate = document.getElementById('batch-estimate');
+    const batchGarmentCount = document.getElementById('batch-garment-count');
+    const batchColorCount = document.getElementById('batch-color-count');
+    const batchCancelLabel = document.getElementById('batch-cancel-label');
+    const batchCard = batchModal && batchModal.querySelector('.batch-modal-card');
     const batchProgress = document.getElementById('batch-progress');
     const batchProgressFill = document.getElementById('batch-progress-fill');
     const batchProgressLabel = document.getElementById('batch-progress-label');
@@ -3793,6 +3862,22 @@ import KofiSupport from './KofiSupport.astro';
       return options;
     }
 
+    // A tick glyph for the custom checkbox/swatch indicators — the native
+    // control is kept for semantics and keyboard, and hidden behind this.
+    function checkGlyph() {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke-width', '3.5');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
+      svg.setAttribute('aria-hidden', 'true');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      path.setAttribute('points', '20 6 9 17 4 12');
+      svg.appendChild(path);
+      return svg;
+    }
+
     function buildBatchGarmentGrid() {
       batchGarmentsGrid.innerHTML = '';
       Object.entries(garmentConfigs).forEach(([type, cfg]) => {
@@ -3803,8 +3888,20 @@ import KofiSupport from './KofiSupport.astro';
         input.value = type;
         input.checked = type === activeGarmentType;
         input.addEventListener('change', updateBatchEstimate);
+        // The whole chip is the hit target, so the row is clickable end to
+        // end rather than just the 15px native box it used to be.
+        const body = document.createElement('span');
+        body.className = 'batch-chip-body';
+        const box = document.createElement('span');
+        box.className = 'batch-chip-box';
+        box.appendChild(checkGlyph());
+        const name = document.createElement('span');
+        name.className = 'batch-chip-name';
+        name.textContent = cfg.label;
+        body.appendChild(box);
+        body.appendChild(name);
         label.appendChild(input);
-        label.appendChild(document.createTextNode(' ' + cfg.label));
+        label.appendChild(body);
         batchGarmentsGrid.appendChild(label);
       });
     }
@@ -3825,11 +3922,18 @@ import KofiSupport from './KofiSupport.astro';
         input.type = 'checkbox';
         input.value = opt.hex;
         input.dataset.name = opt.name;
+        // The swatch is the only label a colour has, so the name has to
+        // reach a screen reader some other way than by being drawn.
+        input.setAttribute('aria-label', opt.name);
         input.checked = getNormalizedHex(opt.hex) === currentHex;
         input.addEventListener('change', updateBatchEstimate);
         const swatch = document.createElement('span');
         swatch.className = 'batch-swatch';
         swatch.style.backgroundColor = opt.hex;
+        const badge = document.createElement('span');
+        badge.className = 'batch-swatch-check';
+        badge.appendChild(checkGlyph());
+        swatch.appendChild(badge);
         label.appendChild(input);
         label.appendChild(swatch);
         batchColorsGrid.appendChild(label);
@@ -3848,12 +3952,50 @@ import KofiSupport from './KofiSupport.astro';
       return garments * colors;
     }
 
+    // The footer line is the modal's only answer to "what am I about to
+    // get?", so when the answer is nothing it says which choice is missing
+    // rather than going blank next to a disabled button.
+    function batchBlockedReason() {
+      if (batchMode === 'designs') {
+        return batchFiles.length === 0 ? 'Add one or more design files to export.' : '';
+      }
+      if (!designImage) return 'Upload a design first — batch export renders your design onto each garment.';
+      const garments = batchGarmentsGrid.querySelectorAll('input:checked').length;
+      const colors = batchColorsGrid.querySelectorAll('input:checked').length;
+      if (!garments && !colors) return 'Pick at least one garment and one fabric color.';
+      if (!garments) return 'Pick at least one garment.';
+      if (!colors) return 'Pick at least one fabric color.';
+      return '';
+    }
+
+    function updateBatchCounts() {
+      const pairs = [
+        [batchGarmentCount, batchGarmentsGrid],
+        [batchColorCount, batchColorsGrid],
+      ];
+      pairs.forEach(([badge, grid]) => {
+        if (!badge || !grid) return;
+        const n = grid.querySelectorAll('input:checked').length;
+        badge.textContent = String(n);
+        badge.classList.toggle('is-zero', n === 0);
+      });
+    }
+
     function updateBatchEstimate() {
+      updateBatchCounts();
       const n = countBatchJobs();
       const perImageMb = getBatchQuality() === 2000 ? 3.2 : 1.0;
-      const est = n === 0 ? '' : `${n} image${n === 1 ? '' : 's'} &middot; ~${Math.max(1, Math.round(n * perImageMb))} MB ZIP`;
-      batchEstimate.innerHTML = est;
-      batchStartBtn.disabled = n === 0 || (batchMode === 'variants' && !designImage);
+      const blocked = batchBlockedReason();
+      if (blocked) {
+        batchEstimate.textContent = blocked;
+        batchEstimate.classList.add('is-empty');
+      } else {
+        const mb = Math.max(1, Math.round(n * perImageMb));
+        batchEstimate.innerHTML =
+          `<strong>${n} image${n === 1 ? '' : 's'}</strong> &middot; ~${mb} MB ZIP`;
+        batchEstimate.classList.remove('is-empty');
+      }
+      batchStartBtn.disabled = n === 0 || !!blocked;
     }
 
     function setBatchMode(mode) {
@@ -3872,7 +4014,12 @@ import KofiSupport from './KofiSupport.astro';
       batchFileList.innerHTML = '';
       batchFiles.forEach((file, i) => {
         const li = document.createElement('li');
+        // Numbered, because the list doubles as the running order of the ZIP.
+        const index = document.createElement('span');
+        index.className = 'batch-file-index';
+        index.textContent = String(i + 1);
         const name = document.createElement('span');
+        name.className = 'batch-file-name';
         name.textContent = file.name;
         const remove = document.createElement('button');
         remove.type = 'button';
@@ -3884,6 +4031,7 @@ import KofiSupport from './KofiSupport.astro';
           renderBatchFileList();
           updateBatchEstimate();
         });
+        li.appendChild(index);
         li.appendChild(name);
         li.appendChild(remove);
         batchFileList.appendChild(li);
@@ -3987,9 +4135,10 @@ import KofiSupport from './KofiSupport.astro';
 
       batchRunning = true;
       batchCancelled = false;
+      batchCard && batchCard.classList.add('is-running');
       batchStartBtn.style.display = 'none';
       batchProgress.style.display = '';
-      batchCancelBtn.textContent = 'Stop';
+      if (batchCancelLabel) batchCancelLabel.textContent = 'Stop';
 
       const usedNames = new Set();
       const uniqueName = (name) => {
@@ -4093,7 +4242,8 @@ import KofiSupport from './KofiSupport.astro';
         batchProgressLabel.textContent = 'Export failed — please try again.';
       } finally {
         batchRunning = false;
-        batchCancelBtn.textContent = 'Cancel';
+        batchCard && batchCard.classList.remove('is-running');
+        if (batchCancelLabel) batchCancelLabel.textContent = 'Cancel';
         batchStartBtn.style.display = '';
         if (done > 0 && !batchCancelled) {
           batchProgress.style.display = 'none';
@@ -4123,6 +4273,19 @@ import KofiSupport from './KofiSupport.astro';
 
       batchModal.querySelectorAll('input[name="batch-quality"], input[name="batch-placement"]').forEach((input) => {
         input.addEventListener('change', updateBatchEstimate);
+      });
+
+      // "All / None" — with eight garments and twelve colours, ticking the
+      // full grid by hand was the most common way into this modal.
+      batchModal.querySelectorAll('[data-batch-select]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const grid = btn.dataset.batchSelect === 'colors' ? batchColorsGrid : batchGarmentsGrid;
+          const checked = btn.dataset.batchState === 'all';
+          grid.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+            input.checked = checked;
+          });
+          updateBatchEstimate();
+        });
       });
 
       batchStartBtn.addEventListener('click', () => {

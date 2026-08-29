@@ -1646,92 +1646,298 @@ button:active:not(:disabled),
 
 /* ---------------------------------------------------------------------------
    Batch Export modal
+
+   The one modal in the app with more controls than fit on a phone screen, so
+   it is built as three bands rather than one scrolling column: a fixed head
+   (title + mode), a scrolling body, and a fixed foot that always shows what
+   the export will produce next to the button that starts it. Before, the
+   card itself scrolled — the count and the Export button could both be
+   scrolled out of sight while you were still choosing garments.
+
+   Every control here is a native input wrapped in a label, with the input
+   visually hidden and its immediately-following sibling carrying the whole
+   visual treatment. That keeps checked/focus styling to plain sibling
+   selectors — no :has(), no JS class bookkeeping — while keyboard focus,
+   the accent, and the form semantics stay native.
 --------------------------------------------------------------------------- */
 .batch-modal-card {
-  max-width: 560px;
-  gap: var(--space-18);
-  max-height: 90vh;
-  overflow-y: auto;
+  width: min(620px, 94vw);
+  max-width: none;
+  /* Bands manage their own padding so the head/foot rules can span edge to
+     edge and the scrollbar rides the card's inner edge, not the text. */
+  padding: 0;
+  gap: 0;
+  max-height: min(92vh, 840px);
+  overflow: hidden;
 }
 
-.batch-tabs {
+.batch-modal-head {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-28) var(--space-28) var(--space-18);
+}
+
+.batch-modal-sub {
+  font-size: var(--text-14);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.batch-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  padding: var(--space-20) var(--space-28) var(--space-24);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.batch-modal-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-28) var(--space-24);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(10, 11, 15, 0.35);
+}
+
+.batch-modal-foot .modal-actions {
+  margin-top: 0;
+}
+
+/* --- Mode tabs ----------------------------------------------------------- */
+.batch-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-8);
+  padding: 0 var(--space-28) var(--space-20);
 }
 
 .batch-tab {
-  flex: 1;
-  padding: var(--space-10) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  text-align: left;
+  padding: var(--space-10) var(--space-14);
   border-radius: var(--radius-md);
   border: 1px solid var(--tab-border, rgba(255, 255, 255, 0.08));
   background: var(--tab-bg, rgba(255, 255, 255, 0.02));
-  color: var(--tab-color, var(--text-muted));
-  font-size: var(--text-14);
-  font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.batch-tab:hover {
+  --tab-bg: rgba(255, 255, 255, 0.05);
+  --tab-border: rgba(255, 255, 255, 0.16);
+}
+
+.batch-tab-title {
+  font-size: var(--text-15);
+  font-weight: 600;
+  /* An unselected mode is a choice you can still make, not a disabled one —
+     it was muted enough before to read as greyed out. */
+  color: var(--tab-title, var(--text-primary));
+}
+
+.batch-tab-sub {
+  font-size: var(--text-12);
+  color: var(--text-muted);
 }
 
 .batch-tab.active {
-  --tab-color: var(--primary);
+  --tab-title: var(--primary);
   --tab-border: var(--primary);
   /* Was rgba(139, 92, 246, 0.08) — an off-brand purple left over from
      somewhere else, unrelated to the cyan/blue palette everywhere else
      in this file. Corrected to match the rest of the active-tab family. */
   --tab-bg: color-mix(in srgb, var(--primary) 8%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
+/* --- Sections ------------------------------------------------------------ */
 .batch-tab-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-24);
 }
 
 .batch-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-10);
+}
+
+.batch-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
 }
 
 .batch-section-label {
-  font-size: var(--text-13);
-  font-weight: 600;
-  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--text-12);
+  font-weight: 700;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.6px;
+}
+
+/* Live count of what is picked, so the section header answers "how many?"
+   without counting swatches. */
+.batch-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--primary);
+  font-size: var(--text-11);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.batch-count.is-zero {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+.batch-quick {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-12);
+}
+
+.batch-link {
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--text-12);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.batch-link:hover {
+  color: var(--primary);
 }
 
 .batch-hint {
   font-size: var(--text-12);
   font-weight: 400;
+  line-height: 1.4;
   color: var(--text-muted);
   text-transform: none;
   letter-spacing: 0;
+  margin: 0;
 }
 
+/* --- Garment chips -------------------------------------------------------- */
 .batch-garment-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-6) var(--space-12);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
 }
 
 .batch-check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  font-size: var(--text-14);
-  color: var(--text-primary);
+  position: relative;
+  display: block;
   cursor: pointer;
   user-select: none;
 }
 
 .batch-check input {
-  accent-color: var(--primary);
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
 }
 
+.batch-chip-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: var(--text-14);
+  color: var(--text-secondary);
+  transition: background-color 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.batch-check:hover .batch-chip-body {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--text-primary);
+}
+
+.batch-chip-box {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid rgba(255, 255, 255, 0.24);
+  transition: background-color 0.18s, border-color 0.18s;
+}
+
+.batch-chip-box svg {
+  width: 11px;
+  height: 11px;
+  stroke: var(--bg-main);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.15s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.batch-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-check input:checked + .batch-chip-body {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  color: var(--text-primary);
+}
+
+.batch-check input:checked + .batch-chip-body .batch-chip-box {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.batch-check input:checked + .batch-chip-body .batch-chip-box svg {
+  opacity: 1;
+  transform: none;
+}
+
+.batch-check input:focus-visible + .batch-chip-body {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- Colour swatches ------------------------------------------------------ */
 .batch-color-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1740,64 +1946,262 @@ button:active:not(:disabled),
 
 .batch-color-check {
   position: relative;
-  gap: 0;
+  display: block;
+  cursor: pointer;
+  line-height: 0;
 }
 
 .batch-color-check input {
   position: absolute;
+  width: 1px;
+  height: 1px;
   opacity: 0;
+  margin: 0;
   pointer-events: none;
 }
 
 .batch-swatch {
-  display: block;
-  width: 26px;
-  height: 26px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-md);
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  transition: all 0.15s;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.batch-color-check:hover .batch-swatch {
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* A ring alone had to carry selection against twelve arbitrary fabric
+   colours; the badge reads the same on white, on black and on khaki. */
+.batch-swatch-check {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px rgba(8, 10, 14, 0.45);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.15s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.batch-swatch-check svg {
+  width: 10px;
+  height: 10px;
+  stroke: var(--bg-main);
 }
 
 .batch-color-check input:checked + .batch-swatch {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4);
-  transform: scale(1.08);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
-.batch-radio {
+.batch-color-check input:checked + .batch-swatch .batch-swatch-check {
+  opacity: 1;
+  transform: none;
+}
+
+.batch-color-check input:focus-visible + .batch-swatch {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- Placement option cards ----------------------------------------------- */
+.batch-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.batch-option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.batch-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+}
+
+.batch-option-body {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
-  font-size: var(--text-14);
-  color: var(--text-primary);
-  cursor: pointer;
-  user-select: none;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  transition: background-color 0.18s, border-color 0.18s;
 }
 
-.batch-radio input {
-  accent-color: var(--primary);
-  cursor: pointer;
+.batch-option:hover .batch-option-body {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.batch-option-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.batch-option-label {
+  font-size: var(--text-14);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.batch-option-sub {
+  font-size: var(--text-12);
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.batch-option-dot {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+  transition: border-color 0.18s;
+}
+
+.batch-option-dot::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.15s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.batch-option input:checked + .batch-option-body {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.batch-option input:checked + .batch-option-body .batch-option-label {
+  color: var(--primary);
+}
+
+.batch-option input:checked + .batch-option-body .batch-option-dot {
+  border-color: var(--primary);
+}
+
+.batch-option input:checked + .batch-option-body .batch-option-dot::after {
+  opacity: 1;
+  transform: none;
+}
+
+.batch-option input:focus-visible + .batch-option-body {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- Quality segmented control -------------------------------------------- */
+.batch-foot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  flex-wrap: wrap;
 }
 
 .batch-quality-row {
   flex-direction: row;
   align-items: center;
-  gap: var(--space-16);
+  gap: var(--space-10);
 }
 
-.batch-template-summary {
-  font-size: var(--text-14);
-  color: var(--text-muted);
+.batch-seg {
+  display: inline-flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.batch-seg-item {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-seg-item input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
   margin: 0;
 }
 
+.batch-seg-item > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-14);
+  border-radius: var(--radius-full);
+  font-size: var(--text-13);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: background-color 0.18s, color 0.18s;
+}
+
+.batch-seg-item:hover > span {
+  color: var(--text-primary);
+}
+
+.batch-seg-item input:checked + span {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--primary);
+}
+
+.batch-seg-item input:checked + span .batch-hint {
+  color: color-mix(in srgb, var(--primary) 70%, var(--text-muted));
+}
+
+.batch-seg-item input:focus-visible + span {
+  outline: var(--focus-ring-width) solid var(--focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- Designs tab ---------------------------------------------------------- */
+.batch-template-summary {
+  font-size: var(--text-13);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
 .batch-upload-zone {
-  padding: var(--space-18);
+  padding: var(--space-20);
 }
 
 .batch-upload-zone.dragover {
   border-color: var(--primary);
-  background: rgba(139, 92, 246, 0.06);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
 }
 
 .batch-file-list {
@@ -1807,47 +2211,95 @@ button:active:not(:disabled),
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-height: 130px;
+  max-height: 160px;
   overflow-y: auto;
   font-size: var(--text-13);
   color: var(--text-primary);
 }
 
+.batch-file-list:not(:empty) {
+  margin-top: var(--space-4);
+}
+
 .batch-file-list li {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-8);
-  padding: var(--space-4) var(--space-10);
+  padding: var(--space-6) var(--space-8) var(--space-6) var(--space-10);
   border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.03);
 }
 
-.batch-file-list li span {
+.batch-file-index {
+  flex-shrink: 0;
+  min-width: 18px;
+  font-size: var(--text-11);
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-file-name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .batch-file-remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
   border: none;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--text-muted);
   font-size: var(--text-16);
-  cursor: pointer;
   line-height: 1;
-  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .batch-file-remove:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
+/* Mid-export the choices are already baked into the running job, so the body
+   stops taking input rather than letting you edit a set that is being
+   rendered. */
+.batch-modal-card.is-running .batch-modal-body,
+.batch-modal-card.is-running .batch-quality-row {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* --- Footer status -------------------------------------------------------- */
 .batch-estimate {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: right;
+  gap: var(--space-8);
+  flex: 1;
+  min-width: 0;
   font-size: var(--text-14);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin: 0;
-  min-height: 1.2em;
+  min-height: 1.3em;
+}
+
+.batch-estimate strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.batch-estimate.is-empty {
+  color: var(--text-muted);
 }
 
 .batch-progress {
@@ -1867,18 +2319,75 @@ button:active:not(:disabled),
   height: 100%;
   width: 0%;
   border-radius: var(--radius-full);
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
   transition: width 0.2s ease;
 }
 
 .batch-progress-label {
   font-size: var(--text-13);
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 #batch-start-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+  cursor: var(--cursor-disabled);
+}
+
+@media (max-width: 600px) {
+  .batch-modal-card {
+    width: 100%;
+    max-height: 100%;
+    /* A phone gets a sheet: full width, squared off at the bottom, so the
+       foot with the count and the Export button sits on the screen edge
+       instead of floating in the middle of a dimmed page. */
+    margin-top: auto;
+    border-radius: var(--radius-20) var(--radius-20) 0 0;
+  }
+
+  .batch-modal-head {
+    padding: var(--space-20) var(--space-20) var(--space-14);
+  }
+
+  .batch-tabs {
+    padding: 0 var(--space-20) var(--space-16);
+  }
+
+  .batch-modal-body {
+    padding: var(--space-16) var(--space-20) var(--space-20);
+    gap: var(--space-20);
+  }
+
+  .batch-modal-foot {
+    padding: var(--space-14) var(--space-20) var(--space-20);
+  }
+
+  /* Two short chip columns still beat one tall list here: eight garments in
+     a single column is most of a phone screen of scrolling before the
+     colours are even in view. */
+  .batch-garment-grid {
+    gap: var(--space-6);
+  }
+
+  .batch-chip-body {
+    padding: var(--space-10);
+    gap: var(--space-8);
+  }
+
+  .batch-foot-row {
+    gap: var(--space-8);
+  }
+
+  .batch-estimate {
+    justify-content: flex-start;
+    text-align: left;
+    flex-basis: 100%;
+  }
+
+  .batch-swatch {
+    width: 34px;
+    height: 34px;
+  }
 }
 
 
