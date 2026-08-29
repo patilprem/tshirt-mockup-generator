@@ -1,5 +1,5 @@
 {
-  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after the input downscale was made an integration rather than a resample - drawImage aliases when reducing, and stadium-hoodie-m is the only source above the analysis grid - taking it from 116.7 to 90.9 and the mean to 76.2. A real photographic edge, measured with no pipeline in between (scratch/measure_photo_edge.cjs), reads 68 to 85 at these widths - so below about 85 this number no longer separates a defect from the picture and the crops decide. The six tank and sweatshirt entries were measured on first admission rather than improved to - they are new garments, and a floor set at what they actually read is the only honest one. Edited deliberately, with crops compared, never to make a red build green.",
+  "_comment": "Edge smoothness floor, measured from the shipped weight maps. edgeRough is the staircase (higher is worse); edgeWidth is the transition in pixels. A build may not ship an edge rougher than these; width is held to an absolute 2.4 px rather than to the previous build, since a properly resolved boundary is both narrower and smoother. Set after the input downscale was made an integration rather than a resample - drawImage aliases when reducing, and stadium-hoodie-m is the only source above the analysis grid - taking it from 116.7 to 90.9 and the mean to 76.2. A real photographic edge, measured with no pipeline in between (scratch/measure_photo_edge.cjs), reads 68 to 85 at these widths - so below about 85 this number no longer separates a defect from the picture and the crops decide. The six tank and sweatshirt entries were measured on first admission rather than improved to - they are new garments, and a floor set at what they actually read is the only honest one. Edited deliberately, with crops compared, never to make a red build green. The three plain-backdrop tees were set the same way, on first admission: studio-grey-m 90.1, studio-warm-f 85.5, workroom-m 76.8. A seamless backdrop gives the measure nothing to hide behind, which is why the two studio scenes read above the two-thirds of the set shot in a room.",
   "beach-m": {
     "edgeWidth": 3.1,
     "edgeRough": 75
@@ -76,9 +76,17 @@
     "edgeWidth": 4.44,
     "edgeRough": 79.3
   },
+  "studio-grey-m": {
+    "edgeWidth": 3.79,
+    "edgeRough": 90.1
+  },
   "studio-tank-f": {
     "edgeWidth": 4.26,
     "edgeRough": 111.6
+  },
+  "studio-warm-f": {
+    "edgeWidth": 4.14,
+    "edgeRough": 85.5
   },
   "sunbeam-wall-f": {
     "edgeWidth": 4.27,
@@ -91,5 +99,9 @@
   "tree-lined-f": {
     "edgeWidth": 4.65,
     "edgeRough": 80.8
+  },
+  "workroom-m": {
+    "edgeWidth": 3.95,
+    "edgeRough": 76.8
   }
 }

@@ -1171,5 +1171,158 @@
       "w": 764.84375,
       "h": 911.71875
     }
+  },
+  {
+    "id": "studio-grey-m",
+    "label": "Studio Grey",
+    "model": "male",
+    "scene": "Plain grey studio backdrop",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/studio-grey-m-photo.jpg?v=52db14bb",
+    "weight": "/assets/on-model/studio-grey-m-weight.png?v=754780ad",
+    "shade": "/assets/on-model/studio-grey-m-shade.jpg?v=4d06dbac",
+    "thumbPhoto": "/assets/on-model/studio-grey-m-thumb-photo.jpg?v=d2aec273",
+    "thumbWeight": "/assets/on-model/studio-grey-m-thumb-weight.png?v=160a5f34",
+    "thumbShade": "/assets/on-model/studio-grey-m-thumb-shade.jpg?v=c1a89077",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9954,
+      1
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      106.3,
+      77.2,
+      151
+    ],
+    "quad": {
+      "tl": [
+        395.234375,
+        670.3125
+      ],
+      "tr": [
+        682.109375,
+        670.3125
+      ],
+      "br": [
+        679.375,
+        1035.15625
+      ],
+      "bl": [
+        392.5,
+        1035.15625
+      ]
+    },
+    "bbox": {
+      "x": 157.8125,
+      "y": 474.21875,
+      "w": 758.59375,
+      "h": 934.375
+    }
+  },
+  {
+    "id": "studio-warm-f",
+    "label": "Studio Warm",
+    "model": "female",
+    "scene": "Warm neutral studio backdrop",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/studio-warm-f-photo.jpg?v=583c3214",
+    "weight": "/assets/on-model/studio-warm-f-weight.png?v=7a863484",
+    "shade": "/assets/on-model/studio-warm-f-shade.jpg?v=296deb3b",
+    "thumbPhoto": "/assets/on-model/studio-warm-f-thumb-photo.jpg?v=fb3a75dc",
+    "thumbWeight": "/assets/on-model/studio-warm-f-thumb-weight.png?v=a7b71c2f",
+    "thumbShade": "/assets/on-model/studio-warm-f-thumb-shade.jpg?v=0eea5d92",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9745,
+      0.9694
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      108.3,
+      72.2,
+      158
+    ],
+    "quad": {
+      "tl": [
+        399.921875,
+        700.78125
+      ],
+      "tr": [
+        714.921875,
+        700.78125
+      ],
+      "br": [
+        685.625,
+        1075
+      ],
+      "bl": [
+        370.625,
+        1075
+      ]
+    },
+    "bbox": {
+      "x": 185.15625,
+      "y": 499.21875,
+      "w": 731.25,
+      "h": 959.375
+    }
+  },
+  {
+    "id": "workroom-m",
+    "label": "Work Room",
+    "model": "male",
+    "scene": "Home office, shelves and plants",
+    "width": 1066,
+    "height": 1600,
+    "photo": "/assets/on-model/workroom-m-photo.jpg?v=2ec8754c",
+    "weight": "/assets/on-model/workroom-m-weight.png?v=2afedf5f",
+    "shade": "/assets/on-model/workroom-m-shade.jpg?v=04978abd",
+    "thumbPhoto": "/assets/on-model/workroom-m-thumb-photo.jpg?v=48b50648",
+    "thumbWeight": "/assets/on-model/workroom-m-thumb-weight.png?v=6cd8f13a",
+    "thumbShade": "/assets/on-model/workroom-m-thumb-shade.jpg?v=77dd5154",
+    "thumbWidth": 112,
+    "thumbHeight": 168,
+    "ambientTint": [
+      1,
+      0.9416,
+      0.8961
+    ],
+    "relMax": 1.45,
+    "violetBase": [
+      111.3,
+      73.8,
+      167
+    ],
+    "quad": {
+      "tl": [
+        388.984375,
+        703.90625
+      ],
+      "tr": [
+        685.234375,
+        703.90625
+      ],
+      "br": [
+        681.71875,
+        1099.21875
+      ],
+      "bl": [
+        385.46875,
+        1099.21875
+      ]
+    },
+    "bbox": {
+      "x": 135.15625,
+      "y": 491.40625,
+      "w": 803.125,
+      "h": 1012.5
+    }
   }
 ]

@@ -121,6 +121,14 @@ const TEMPLATES = [
   { id: 'holiday-tank-m', file: 'holiday-tank-m.png', label: 'Holiday Tank', model: 'male', scene: 'Open sky, bright daylight' },
   { id: 'city-sweatshirt-f', file: 'city-sweatshirt-f.png', label: 'City Sweatshirt', model: 'female', scene: 'City street, bare winter trees' },
   { id: 'porch-sweatshirt-m', file: 'porch-sweatshirt-m.png', label: 'Porch Sweatshirt', model: 'male', scene: 'Autumn porch, pumpkins' },
+  // Two plain-backdrop tees, which the set had none of — every other scene
+  // carries a room or a street behind the model. A seamless backdrop is the
+  // easiest case this pipeline faces and the hardest one to fake: there is no
+  // scene detail to hide a rim or a halo against, so a boundary that is even
+  // slightly wrong reads immediately against flat grey.
+  { id: 'studio-grey-m', file: 'studio-grey-m.png', label: 'Studio Grey', model: 'male', scene: 'Plain grey studio backdrop' },
+  { id: 'studio-warm-f', file: 'studio-warm-f.png', label: 'Studio Warm', model: 'female', scene: 'Warm neutral studio backdrop' },
+  { id: 'workroom-m', file: 'workroom-m.png', label: 'Work Room', model: 'male', scene: 'Home office, shelves and plants' },
 ];
 
 (async () => {
