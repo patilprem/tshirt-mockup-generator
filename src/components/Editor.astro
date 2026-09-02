@@ -49,23 +49,6 @@ import KofiSupport from './KofiSupport.astro';
       <div class="control-group">
         <div class="on-model-gallery" id="on-model-selector"></div>
       </div>
-      <!-- The chosen canvas aspect crops the photo rather than letterboxing
-           it, so a template can lose the model's head or feet to that crop.
-           This nudges which part of the photo the crop keeps. -->
-      <div class="control-group">
-        <div class="control-label-row">
-          <label class="control-label-text" for="photo-position-slider">Photo Position</label>
-          <div class="manual-input-container">
-            <input type="number" id="photo-position-manual" class="control-manual-input" min="-100" max="100" value="0" />
-            <span class="manual-unit">%</span>
-          </div>
-        </div>
-        <input type="range" id="photo-position-slider" min="-100" max="100" value="0" aria-label="Vertical photo position" />
-        <div class="control-label-row" style="margin-top: 2px;">
-          <span class="manual-unit">Down</span>
-          <span class="manual-unit">Up</span>
-        </div>
-      </div>
     </div>
 
     <!-- Section 0: Garment Type -->
@@ -276,6 +259,12 @@ import KofiSupport from './KofiSupport.astro';
   <main class="viewport" style="flex-direction: column; gap: 12px;">
     <div class="canvas-container" id="canvas-container">
       <canvas id="editor-canvas" width="1000" height="1000"></canvas>
+      <!-- On-model only: hints that the photo underneath can be dragged (or
+           scrolled) vertically. Pure DOM chrome over the canvas, never drawn
+           onto it, so it cannot show up in an exported frame. -->
+      <div class="onmodel-scroll-track" id="onmodel-scroll-track" aria-hidden="true">
+        <div class="onmodel-scroll-thumb" id="onmodel-scroll-thumb"></div>
+      </div>
       <!-- Loading Overlay -->
       <div class="canvas-loading-overlay" id="canvas-loading" style="display: none;" aria-live="polite">
         <div class="spinner" aria-hidden="true"></div>
@@ -990,8 +979,8 @@ import KofiSupport from './KofiSupport.astro';
     const highlightShineSlider = document.getElementById('highlight-shine-slider');
     const highlightShineManual = document.getElementById('highlight-shine-manual');
     const downloadBtn = document.getElementById('download-btn');
-    const photoPositionSlider = document.getElementById('photo-position-slider');
-    const photoPositionManual = document.getElementById('photo-position-manual');
+    const onModelScrollTrack = document.getElementById('onmodel-scroll-track');
+    const onModelScrollThumb = document.getElementById('onmodel-scroll-thumb');
     const resetBtn = document.getElementById('reset-btn');
     const canvasHint = document.getElementById('canvas-hint');
     const garmentSelector = document.getElementById('garment-selector');
@@ -1859,6 +1848,12 @@ import KofiSupport from './KofiSupport.astro';
     let onModelSelected = false;    // handles show only while the print is selected
     let onModelThumbColour = '';    // last colour the picker thumbnails were painted in
     let onModelDrag = null;
+    // A touch/mouse drag on the photo itself (as opposed to onModelDrag,
+    // which is always a drag of the print). Lives alongside onModelDrag
+    // rather than folded into it because the two can never overlap — one
+    // starts only where the hit-test on the print fails — but they are
+    // otherwise unrelated gestures against unrelated state.
+    let onModelPhotoDrag = null;
     // User's vertical nudge on the auto-centred crop, -1..1: negative slides
     // the crop window toward the top of the photo (revealing more head, more
     // of the bottom lost), positive toward the bottom. Zero reproduces the
@@ -1866,13 +1861,66 @@ import KofiSupport from './KofiSupport.astro';
     // than a pixel offset so one number keeps meaning across every aspect
     // preset and template, whose available vertical slack all differ.
     let onModelOffsetY = 0;
-    // Single writer for onModelOffsetY so the slider, the manual input and
-    // scrolling the canvas itself can never disagree about the current value.
     function setOnModelOffsetY(v) {
       onModelOffsetY = Math.max(-1, Math.min(1, v));
-      const pct = Math.round(onModelOffsetY * 100);
-      if (photoPositionSlider) photoPositionSlider.value = pct;
-      if (photoPositionManual) photoPositionManual.value = pct;
+    }
+
+    // How far the crop can move off its auto-centred position: baseY is
+    // that centred-on-the-print, clamped-inside-the-photo position (what the
+    // rect used to be unconditionally); maxY is the photo's total vertical
+    // slack at this aspect. Shared by onModelCropRect (offset -> pixels) and
+    // the photo-drag handlers (pixels -> offset) so the two can only ever
+    // agree on what a given offset means.
+    function onModelOffsetYBounds(entry) {
+      const ratio = CANVAS_ASPECTS[canvasAspect] || { w: 1, h: 1 };
+      const fit = Math.min(entry.w / ratio.w, entry.h / ratio.h);
+      const ch = ratio.h * fit;
+      const q = entry.meta && entry.meta.quad;
+      const qcy = q ? (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4 : entry.h / 2;
+      const maxY = entry.h - ch;
+      const baseY = Math.max(0, Math.min(qcy - ch / 2, maxY));
+      return { baseY, maxY };
+    }
+    // Inverse of onModelCropRect's y: given an absolute crop-rect y (photo
+    // pixels), what offset produced it. Used only to turn a drag's absolute
+    // position back into the normalised value everything else stores.
+    function onModelOffsetYFromCropY(bounds, y) {
+      const { baseY, maxY } = bounds;
+      if (y >= baseY) return maxY > baseY ? (y - baseY) / (maxY - baseY) : 0;
+      return baseY > 0 ? (y - baseY) / baseY : 0;
+    }
+
+    let onModelScrollFadeTimer = null;
+    // Sizes and positions the thumb like an ordinary scrollbar's — thumb
+    // height is the visible fraction of the photo (crop.h / entry.h), thumb
+    // position is how far into the available slack the crop currently sits
+    // (crop.y / maxY) — and hides the whole track when there's no vertical
+    // slack to pan, so the hint never claims a gesture that would do nothing.
+    function updateOnModelScrollIndicator(entry, crop) {
+      if (!onModelScrollTrack || !onModelScrollThumb) return;
+      const { maxY } = onModelOffsetYBounds(entry);
+      if (maxY <= 1) {
+        onModelScrollTrack.classList.remove('visible', 'active');
+        return;
+      }
+      const trackH = onModelScrollTrack.clientHeight;
+      if (!trackH) return;
+      const thumbH = Math.max(24, trackH * (crop.h / entry.h));
+      const thumbTop = (trackH - thumbH) * (crop.y / maxY);
+      onModelScrollThumb.style.height = `${thumbH}px`;
+      onModelScrollThumb.style.top = `${thumbTop}px`;
+      onModelScrollTrack.classList.add('visible');
+    }
+    // Brightens the thumb while the user is actively scrolling/dragging, then
+    // lets it settle back to its resting translucency shortly after — a
+    // moment of extra feedback for the gesture that just moved it.
+    function flashOnModelScrollIndicator() {
+      if (!onModelScrollTrack) return;
+      onModelScrollTrack.classList.add('active');
+      clearTimeout(onModelScrollFadeTimer);
+      onModelScrollFadeTimer = setTimeout(() => {
+        onModelScrollTrack.classList.remove('active');
+      }, 900);
     }
 
     // 256-entry relight LUT: shade byte -> RGB for a given base colour. Shared
@@ -1931,14 +1979,12 @@ import KofiSupport from './KofiSupport.astro';
       const ch = ratio.h * fit;
       const q = entry.meta && entry.meta.quad;
       const qcx = q ? (q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4 : entry.w / 2;
-      const qcy = q ? (q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4 : entry.h / 2;
       // Clamping MOVES the rect, it never shrinks it. 4:3 keeps only half the
       // height, so on most templates it lands hard against the top or bottom
       // edge; trimming it there would quietly hand back a different aspect
       // than the preset the user picked.
       const clamp = (v, hi) => Math.max(0, Math.min(v, hi));
-      const maxY = entry.h - ch;
-      const baseY = clamp(qcy - ch / 2, maxY);
+      const { baseY, maxY } = onModelOffsetYBounds(entry);
       // onModelOffsetY nudges off that auto-centred baseY within whatever
       // slack remains on the side the user is pushing toward — the slack
       // above and below baseY is rarely equal, so each side is scaled by its
@@ -2092,6 +2138,10 @@ import KofiSupport from './KofiSupport.astro';
       const oy = (frameH - dh) / 2 - crop.y * k;
 
       onModelView = { k, ox, oy };
+      // DOM chrome, not a canvas draw: only for the live on-screen canvas,
+      // never the export's own off-screen one, so it can only ever be seen,
+      // never saved.
+      if (targetCtx === ctx) updateOnModelScrollIndicator(entry, crop);
 
       targetCtx.clearRect(0, 0, frameW, frameH);
       targetCtx.save();
@@ -2133,11 +2183,17 @@ import KofiSupport from './KofiSupport.astro';
       const rect = canvas.getBoundingClientRect();
       const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const clientY = clientYOf(e);
       return {
         x: ((clientX - rect.left) * sx - onModelView.ox) / onModelView.k,
         y: ((clientY - rect.top) * sy - onModelView.oy) / onModelView.k,
       };
+    }
+    // touchend carries no e.touches, only e.changedTouches — callers that
+    // need a Y during a drag only ever call this on start/move, where
+    // e.touches is present, so this stays a plain client-Y reader.
+    function clientYOf(e) {
+      return e.touches && e.touches.length ? e.touches[0].clientY : e.clientY;
     }
     function onModelRotHandle(b) {
       const co = Math.cos(designRotation), si = Math.sin(designRotation);
@@ -2182,13 +2238,35 @@ import KofiSupport from './KofiSupport.astro';
       designPos.y = 420 + (y - b.qcy) / b.quadH * 1000;
     }
 
+    // Starts a drag of the photo itself — the background outside the print,
+    // where onModelHitTest always misses. Absolute, not incremental: it
+    // remembers where the crop's own y sat under the finger at touch-down, so
+    // the photo tracks the finger exactly for the rest of the gesture rather
+    // than drifting from re-summed per-frame deltas.
+    function startOnModelPhotoDrag(e, entry) {
+      const bounds = onModelOffsetYBounds(entry);
+      if (bounds.maxY <= 0) return; // photo already fills the frame vertically — nothing to pan
+      if (e.cancelable) e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      onModelPhotoDrag = {
+        ...bounds,
+        k: onModelView.k,
+        sy: canvas.height / rect.height,
+        startClientY: clientYOf(e),
+        startCropY: onModelCropRect(entry).y,
+      };
+      flashOnModelScrollIndicator();
+      render();
+    }
+
     function onModelPointerStart(e) {
       const entry = onModelCache.get(activeOnModelId);
-      if (!entry || !designImage) return;
-      const pt = onModelToTemplate(e);
-      const hit = onModelHitTest(pt, entry);
-      if (!hit) {                      // click outside deselects, as in flat-lay
+      if (!entry) return;
+      const pt = designImage ? onModelToTemplate(e) : null;
+      const hit = pt ? onModelHitTest(pt, entry) : null;
+      if (!hit) {                      // outside the print: deselect and pan the photo instead
         if (onModelSelected) { onModelSelected = false; render(); }
+        startOnModelPhotoDrag(e, entry);
         return;
       }
       if (e.cancelable) e.preventDefault();
@@ -2210,6 +2288,22 @@ import KofiSupport from './KofiSupport.astro';
     function onModelPointerMove(e) {
       const entry = onModelCache.get(activeOnModelId);
       if (!entry) return;
+      if (onModelPhotoDrag) {
+        if (e.cancelable) e.preventDefault();
+        const drag = onModelPhotoDrag;
+        const deltaClientY = clientYOf(e) - drag.startClientY;
+        const deltaTemplatePx = (deltaClientY * drag.sy) / drag.k;
+        // The photo follows the finger: dragging up (deltaClientY < 0) moves
+        // the crop window DOWN the source photo (cropY increases), revealing
+        // more of what is below — the same "push the photo up" direction the
+        // wheel handler uses, so both land on the same offset for the same
+        // apparent motion.
+        const newCropY = drag.startCropY - deltaTemplatePx;
+        setOnModelOffsetY(onModelOffsetYFromCropY(drag, newCropY));
+        flashOnModelScrollIndicator();
+        render();
+        return;
+      }
       if (!onModelDrag) {
         if (!designImage) { canvas.style.cursor = 'default'; return; }
         const h = onModelHitTest(onModelToTemplate(e), entry);
@@ -2256,6 +2350,7 @@ import KofiSupport from './KofiSupport.astro';
     }
 
     function onModelPointerEnd() {
+      if (onModelPhotoDrag) { onModelPhotoDrag = null; render(); }
       if (onModelDrag) { onModelDrag = null; render(); }
     }
 
@@ -2317,6 +2412,7 @@ import KofiSupport from './KofiSupport.astro';
       document.querySelectorAll('#mockup-style-toggle .style-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.style === style);
       });
+      if (style !== 'onmodel' && onModelScrollTrack) onModelScrollTrack.classList.remove('visible', 'active');
       const onModelSection = document.getElementById('on-model-section');
       const garmentSection = document.getElementById('garment-type-section');
       const propsSection = document.getElementById('aesthetic-props-section');
@@ -3150,7 +3246,7 @@ import KofiSupport from './KofiSupport.astro';
     });
     window.addEventListener('mousemove', (e) => {
       if (mockupStyle === 'onmodel') {
-        if (onModelDrag || e.target === canvas) onModelPointerMove(e);
+        if (onModelDrag || onModelPhotoDrag || e.target === canvas) onModelPointerMove(e);
         return;
       }
       handleMove(getCanvasCoords(e));
@@ -3169,7 +3265,7 @@ import KofiSupport from './KofiSupport.astro';
       }
     });
     window.addEventListener('touchmove', (e) => {
-      if (mockupStyle === 'onmodel') { if (onModelDrag) onModelPointerMove(e); return; }
+      if (mockupStyle === 'onmodel') { if (onModelDrag || onModelPhotoDrag) onModelPointerMove(e); return; }
       if (isDragging || isScaling || isRotating || draggedPropType || isScalingProp || isRotatingProp) {
         handleMove(getCanvasCoords(e));
       }
@@ -3468,26 +3564,21 @@ import KofiSupport from './KofiSupport.astro';
       render();
     });
 
-    if (photoPositionSlider && photoPositionManual) {
-      setupSliderBinding(photoPositionSlider, photoPositionManual, -100, 100, 100, (val) => {
-        setOnModelOffsetY(val);
-        render();
-      });
-    }
-
-    // Scrolling over the photo nudges the same crop the slider drives — the
-    // natural gesture for "show more of what's above/below" on a photo
-    // that's already cropped to fit the frame. Purely a canvas interaction:
-    // it only ever changes which pixels drawOnModelScene reads for the next
-    // render, so it has no presence — no scrollbar, no indicator — to leak
-    // into an exported frame, whether that frame is the on-screen canvas or
-    // runDownload's separate off-screen one.
+    // Scrolling over the photo (desktop) nudges the crop the same way
+    // dragging the photo does (see startOnModelPhotoDrag et al, the touch
+    // equivalent) — the natural gesture for "show more of what's above/below"
+    // on a photo that's already cropped to fit the frame. Purely a canvas/DOM
+    // interaction: the scroll-track hint is DOM chrome over the canvas, never
+    // drawn onto it, so nothing here can leak into an exported frame, whether
+    // that frame is the on-screen canvas or runDownload's separate
+    // off-screen one.
     // Ctrl/pinch-zoom wheel events are left alone so trackpad zoom still works.
     canvas.addEventListener('wheel', (e) => {
       if (mockupStyle !== 'onmodel' || e.ctrlKey) return;
       e.preventDefault();
       const step = Math.max(-0.15, Math.min(0.15, e.deltaY / 300));
       setOnModelOffsetY(onModelOffsetY + step);
+      flashOnModelScrollIndicator();
       render();
     }, { passive: false });
 
