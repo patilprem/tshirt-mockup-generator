@@ -49,6 +49,23 @@ import KofiSupport from './KofiSupport.astro';
       <div class="control-group">
         <div class="on-model-gallery" id="on-model-selector"></div>
       </div>
+      <!-- The chosen canvas aspect crops the photo rather than letterboxing
+           it, so a template can lose the model's head or feet to that crop.
+           This nudges which part of the photo the crop keeps. -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <label class="control-label-text" for="photo-position-slider">Photo Position</label>
+          <div class="manual-input-container">
+            <input type="number" id="photo-position-manual" class="control-manual-input" min="-100" max="100" value="0" />
+            <span class="manual-unit">%</span>
+          </div>
+        </div>
+        <input type="range" id="photo-position-slider" min="-100" max="100" value="0" aria-label="Vertical photo position" />
+        <div class="control-label-row" style="margin-top: 2px;">
+          <span class="manual-unit">Down</span>
+          <span class="manual-unit">Up</span>
+        </div>
+      </div>
     </div>
 
     <!-- Section 0: Garment Type -->
@@ -973,6 +990,8 @@ import KofiSupport from './KofiSupport.astro';
     const highlightShineSlider = document.getElementById('highlight-shine-slider');
     const highlightShineManual = document.getElementById('highlight-shine-manual');
     const downloadBtn = document.getElementById('download-btn');
+    const photoPositionSlider = document.getElementById('photo-position-slider');
+    const photoPositionManual = document.getElementById('photo-position-manual');
     const resetBtn = document.getElementById('reset-btn');
     const canvasHint = document.getElementById('canvas-hint');
     const garmentSelector = document.getElementById('garment-selector');
@@ -1840,6 +1859,13 @@ import KofiSupport from './KofiSupport.astro';
     let onModelSelected = false;    // handles show only while the print is selected
     let onModelThumbColour = '';    // last colour the picker thumbnails were painted in
     let onModelDrag = null;
+    // User's vertical nudge on the auto-centred crop, -1..1: negative slides
+    // the crop window toward the top of the photo (revealing more head, more
+    // of the bottom lost), positive toward the bottom. Zero reproduces the
+    // original clamped-to-the-print-quad framing exactly. Normalised rather
+    // than a pixel offset so one number keeps meaning across every aspect
+    // preset and template, whose available vertical slack all differ.
+    let onModelOffsetY = 0;
 
     // 256-entry relight LUT: shade byte -> RGB for a given base colour. Shared
     // by the target colour and the violet reference so model errors cancel.
@@ -1903,9 +1929,19 @@ import KofiSupport from './KofiSupport.astro';
       // edge; trimming it there would quietly hand back a different aspect
       // than the preset the user picked.
       const clamp = (v, hi) => Math.max(0, Math.min(v, hi));
+      const maxY = entry.h - ch;
+      const baseY = clamp(qcy - ch / 2, maxY);
+      // onModelOffsetY nudges off that auto-centred baseY within whatever
+      // slack remains on the side the user is pushing toward — the slack
+      // above and below baseY is rarely equal, so each side is scaled by its
+      // own distance rather than by maxY, keeping -1 and +1 always exactly
+      // the top and bottom edges of the photo.
+      const y = onModelOffsetY >= 0
+        ? baseY + onModelOffsetY * (maxY - baseY)
+        : baseY + onModelOffsetY * baseY;
       return {
         x: clamp(qcx - cw / 2, entry.w - cw),
-        y: clamp(qcy - ch / 2, entry.h - ch),
+        y,
         w: cw,
         h: ch,
       };
@@ -2431,6 +2467,12 @@ import KofiSupport from './KofiSupport.astro';
           host.querySelectorAll('.on-model-card').forEach(b => b.setAttribute('aria-pressed', b === btn));
           const meta = onModelTemplates.find(t => t.id === activeOnModelId);
           if (!meta) return;
+          // A different photo has a different print quad and its own crop
+          // slack, so a nudge measured against the old one has no reason to
+          // still be a good framing here.
+          onModelOffsetY = 0;
+          if (photoPositionSlider) photoPositionSlider.value = 0;
+          if (photoPositionManual) photoPositionManual.value = 0;
           if (canvasLoading) canvasLoading.style.display = 'flex';
           try {
             await loadOnModelTemplate(meta);
@@ -3420,6 +3462,13 @@ import KofiSupport from './KofiSupport.astro';
       render();
     });
 
+    if (photoPositionSlider && photoPositionManual) {
+      setupSliderBinding(photoPositionSlider, photoPositionManual, -100, 100, 100, (val) => {
+        onModelOffsetY = val;
+        render();
+      });
+    }
+
     resetBtn.addEventListener('click', () => {
       shirtColor = '#212121';
       designRotation = 0;
@@ -3473,7 +3522,10 @@ import KofiSupport from './KofiSupport.astro';
       shadowDepthManual.value = 60;
       highlightShineSlider.value = 15;
       highlightShineManual.value = 15;
-      
+      onModelOffsetY = 0;
+      if (photoPositionSlider) photoPositionSlider.value = 0;
+      if (photoPositionManual) photoPositionManual.value = 0;
+
       presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
       presetColors.querySelector('[data-color="#212121"]').classList.add('active');
       customColorPreview.style.backgroundColor = '#212121';
