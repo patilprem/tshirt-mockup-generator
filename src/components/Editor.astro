@@ -1866,6 +1866,14 @@ import KofiSupport from './KofiSupport.astro';
     // than a pixel offset so one number keeps meaning across every aspect
     // preset and template, whose available vertical slack all differ.
     let onModelOffsetY = 0;
+    // Single writer for onModelOffsetY so the slider, the manual input and
+    // scrolling the canvas itself can never disagree about the current value.
+    function setOnModelOffsetY(v) {
+      onModelOffsetY = Math.max(-1, Math.min(1, v));
+      const pct = Math.round(onModelOffsetY * 100);
+      if (photoPositionSlider) photoPositionSlider.value = pct;
+      if (photoPositionManual) photoPositionManual.value = pct;
+    }
 
     // 256-entry relight LUT: shade byte -> RGB for a given base colour. Shared
     // by the target colour and the violet reference so model errors cancel.
@@ -2470,9 +2478,7 @@ import KofiSupport from './KofiSupport.astro';
           // A different photo has a different print quad and its own crop
           // slack, so a nudge measured against the old one has no reason to
           // still be a good framing here.
-          onModelOffsetY = 0;
-          if (photoPositionSlider) photoPositionSlider.value = 0;
-          if (photoPositionManual) photoPositionManual.value = 0;
+          setOnModelOffsetY(0);
           if (canvasLoading) canvasLoading.style.display = 'flex';
           try {
             await loadOnModelTemplate(meta);
@@ -3464,10 +3470,26 @@ import KofiSupport from './KofiSupport.astro';
 
     if (photoPositionSlider && photoPositionManual) {
       setupSliderBinding(photoPositionSlider, photoPositionManual, -100, 100, 100, (val) => {
-        onModelOffsetY = val;
+        setOnModelOffsetY(val);
         render();
       });
     }
+
+    // Scrolling over the photo nudges the same crop the slider drives — the
+    // natural gesture for "show more of what's above/below" on a photo
+    // that's already cropped to fit the frame. Purely a canvas interaction:
+    // it only ever changes which pixels drawOnModelScene reads for the next
+    // render, so it has no presence — no scrollbar, no indicator — to leak
+    // into an exported frame, whether that frame is the on-screen canvas or
+    // runDownload's separate off-screen one.
+    // Ctrl/pinch-zoom wheel events are left alone so trackpad zoom still works.
+    canvas.addEventListener('wheel', (e) => {
+      if (mockupStyle !== 'onmodel' || e.ctrlKey) return;
+      e.preventDefault();
+      const step = Math.max(-0.15, Math.min(0.15, e.deltaY / 300));
+      setOnModelOffsetY(onModelOffsetY + step);
+      render();
+    }, { passive: false });
 
     resetBtn.addEventListener('click', () => {
       shirtColor = '#212121';
@@ -3522,9 +3544,7 @@ import KofiSupport from './KofiSupport.astro';
       shadowDepthManual.value = 60;
       highlightShineSlider.value = 15;
       highlightShineManual.value = 15;
-      onModelOffsetY = 0;
-      if (photoPositionSlider) photoPositionSlider.value = 0;
-      if (photoPositionManual) photoPositionManual.value = 0;
+      setOnModelOffsetY(0);
 
       presetColors.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
       presetColors.querySelector('[data-color="#212121"]').classList.add('active');
