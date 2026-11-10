@@ -38,6 +38,12 @@ Everything below requires account access or publishing under your identity, so C
   Product Hunt pages are heavily cited by AI assistants and ChatGPT is the site's largest channel.
   That is a hypothesis, not a measured result.
 - [ ] **Directory submissions** (each ~5 min, backlink value adds up): AlternativeTo (list FreeTeeMockup as an alternative to Placeit/Smartmockups/Mockey), free-tool directories (e.g. toolify.ai, insanelycooltools.com, futurepedia if AI-angle fits). Claude drafts the copy; you create the listings.
+- [x] **LaunchBuff** (2026-11-10): listed at https://launchbuff.com/products/teemockup-bwx9r2. The
+  listing only goes public once their badge is live on the site, and they re-check it periodically,
+  so the badge is rendered site-wide from `src/components/LaunchBadges.astro` in the footer brand
+  column. Its markup is emitted verbatim through `set:html` because their verifier looks for the
+  exact snippet they hand out — do not "tidy" those tags or add attributes to them. Treat the badge
+  as load-bearing: remove it and the listing is dropped.
 - [ ] **Community sharing**: once the first blog guides exist, share them where POD sellers hang out — r/printondemand, r/Etsy (mind self-promo rules — contribute, don't just drop links), Etsy seller Facebook groups, Printful/Printify community forums. Claude drafts per-channel posts on request.
 - [x] **After 4–6 weeks of GSC data**: done 2026-08-08. Full analysis in
   [MONETIZATION-PLAN.md](MONETIZATION-PLAN.md) §2. Headline: 8 clicks / 166 impressions in ~7 weeks;
