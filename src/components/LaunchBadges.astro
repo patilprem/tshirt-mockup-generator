@@ -1,69 +1,21 @@
 ---
 // Launch-directory badges for the footer brand column.
 //
-// Plain anchors + <img>, no third-party JS — same rule as KofiSupport.astro, so
-// this costs nothing against Core Web Vitals and nothing against the "files
-// never leave your browser" claim. The images are hotlinked from the
-// directories on purpose: that is how they verify the badge is live. They are
-// lazy + async with explicit intrinsic dimensions, so they never block render
-// and never shift layout.
+// BADGE_HTML is the snippet LaunchBuff hands out on its "Add badge to go live"
+// step, verbatim. It goes through set:html rather than being written as Astro
+// markup so the built HTML is byte-identical to what they gave us: Astro's
+// compressHTML would otherwise collapse the newline and drop the `/>`, and a
+// scoped <style> here would stamp data-astro-cid-* onto the tags. Their
+// verifier fetches the homepage HTML and looks for this markup, so assume the
+// check is a literal string match and give it an exact one. For the same
+// reason there is no loading="lazy" or decoding="async": not in their snippet.
 //
-const BADGES = [
-  {
-    name: 'LaunchBuff',
-    href: 'https://launchbuff.com/products/teemockup-bwx9r2',
-    src: 'https://launchbuff.com/badge-featured-dark.svg',
-    alt: 'Featured on LaunchBuff',
-    width: 256,
-    height: 80,
-  },
-];
+// Styling lives in global.css under .launch-badges. Plain anchor + <img>, no
+// third-party JS — same rule as KofiSupport.astro.
+//
+const BADGE_HTML = `<a href="https://launchbuff.com/products/teemockup-bwx9r2" target="_blank" rel="noopener noreferrer" title="Featured on LaunchBuff">
+  <img src="https://launchbuff.com/badge-featured-dark.svg" alt="Featured on LaunchBuff" width="256" height="80" />
+</a>`;
 ---
 
-<div class="launch-badges" aria-label="Featured on">
-  {BADGES.map((badge) => (
-    <a
-      href={badge.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={`${badge.alt} (opens in a new tab)`}
-      class="launch-badge"
-    >
-      <img
-        src={badge.src}
-        alt={badge.alt}
-        width={badge.width}
-        height={badge.height}
-        loading="lazy"
-        decoding="async"
-      />
-    </a>
-  ))}
-</div>
-
-<style>
-  .launch-badges {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    margin-top: 18px;
-  }
-
-  .launch-badge {
-    display: inline-flex;
-    line-height: 0;
-    border-radius: var(--radius-md);
-    transition: var(--transition-smooth);
-  }
-
-  .launch-badge:hover {
-    transform: translateY(-1px);
-  }
-
-  .launch-badge img {
-    width: 100%;
-    max-width: 190px;
-    height: auto;
-  }
-</style>
+<div class="launch-badges" aria-label="Featured on"><Fragment set:html={BADGE_HTML} /></div>
