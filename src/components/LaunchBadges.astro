@@ -1,0 +1,21 @@
+---
+// Launch-directory badges for the footer brand column.
+//
+// BADGE_HTML is the snippet LaunchBuff hands out on its "Add badge to go live"
+// step, verbatim. It goes through set:html rather than being written as Astro
+// markup so the built HTML is byte-identical to what they gave us: Astro's
+// compressHTML would otherwise collapse the newline and drop the `/>`, and a
+// scoped <style> here would stamp data-astro-cid-* onto the tags. Their
+// verifier fetches the homepage HTML and looks for this markup, so assume the
+// check is a literal string match and give it an exact one. For the same
+// reason there is no loading="lazy" or decoding="async": not in their snippet.
+//
+// Styling lives in global.css under .launch-badges. Plain anchor + <img>, no
+// third-party JS — same rule as KofiSupport.astro.
+//
+const BADGE_HTML = `<a href="https://launchbuff.com/products/teemockup-bwx9r2" target="_blank" rel="noopener noreferrer" title="Featured on LaunchBuff">
+  <img src="https://launchbuff.com/badge-featured-dark.svg" alt="Featured on LaunchBuff" width="256" height="80" />
+</a>`;
+---
+
+<div class="launch-badges" aria-label="Featured on"><Fragment set:html={BADGE_HTML} /></div>

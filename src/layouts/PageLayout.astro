@@ -5,6 +5,7 @@ import '../styles/landing.css';
 import '../styles/page.css';
 import FeedbackWidget from '../components/FeedbackWidget.astro';
 import KofiSupport from '../components/KofiSupport.astro';
+import LaunchBadges from '../components/LaunchBadges.astro';
 
 interface Props {
   title: string;
@@ -117,6 +118,7 @@ const ogImageUrl = `https://freeteemockup.com${ogImage ?? '/og-image.png'}`;
           </a>
           <p class="footer-tagline">The best free t-shirt mockup generator online. AI-powered 3D fabric folds, 8 garments, instant PNG download.</p>
           <KofiSupport variant="footer" />
+          <LaunchBadges />
         </div>
         <div class="footer-col">
           <h4 class="footer-col-title">Product</h4>

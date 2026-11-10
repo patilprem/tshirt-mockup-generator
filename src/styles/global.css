@@ -2503,3 +2503,31 @@ button:active:not(:disabled),
 .form-success-icon .lc {
   display: inline-block;
 }
+
+/* ─── LAUNCH DIRECTORY BADGES (footer brand column) ─── */
+/* Styled from global.css, not a scoped <style> in LaunchBadges.astro, so the
+   badge markup stays byte-identical to the snippet the directory verifies. */
+.launch-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.launch-badges a {
+  display: inline-flex;
+  line-height: 0;
+  border-radius: var(--radius-md);
+  transition: var(--transition-smooth);
+}
+
+.launch-badges a:hover {
+  transform: translateY(-1px);
+}
+
+.launch-badges img {
+  width: 256px;
+  max-width: 100%;
+  height: auto;
+}
